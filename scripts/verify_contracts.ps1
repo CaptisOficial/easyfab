@@ -30,6 +30,7 @@ $requiredContracts = @(
     "workspace.schema.json",
     "workspace.layout.json",
     "installation.schema.json"
+    "profile_upgrade.schema.json"
 )
 
 foreach ($c in $requiredContracts) {
@@ -78,4 +79,8 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Fallo en pruebas Rust."
 }
 
+& powershell -NoProfile -ExecutionPolicy Bypass -File "$projectRoot\scripts\upgrade_profile_layout.Tests.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Fallo en pruebas de cambio de layout."
+}
 Write-Host "`n=== [GATE 0 APROBADO: Sistema íntegro] ===" -ForegroundColor Green

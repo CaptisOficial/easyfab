@@ -1,5 +1,11 @@
 # Acceso y recuperación de contraseña — fase 2
 
+Recorrido inicial actualizado en PLAN-012: [guía de primer acceso](../product/execution/f01/first-access.md).
+Alan confirmó que los usuarios actuales son de prueba y autorizó limpiar ese directorio
+para crear el Admin desde la app. Después confirmó registro y acceso nativo de Alan.
+PLAN-013 conserva esas nuevas cuentas al preparar carpetas personales; no se vuelven
+a limpiar usuarios. El backend elige el perfil por versión explícita del espacio.
+
 Estado de implementación: verificado localmente el 2026-10-28; Gate 0, build frontend y 13 pruebas Rust aprobados (incluye directorio administrativo). El usuario confirmó el acceso nativo del administrador y el cambio obligatorio de contraseña. La sincronización y el acceso de ingenieros entre equipos siguen pendientes de prueba. Política acordada: exactamente **8 caracteres** para la contraseña definitiva y la temporal. No se exige una mezcla artificial de símbolos. Temporal aleatoria de 8 caracteres sin letras ambiguas, vigencia de 24 horas.
 
 ## Máquina de estados
@@ -24,7 +30,7 @@ stateDiagram-v2
 | Sin sesión | Elegir usuario e ingresar | Sin token persistente |
 | Temporal pendiente | El titular puede autenticar la temporal con su usuario EasyFAB | Hash Argon2id, revisión y vencimiento firmados en `team.json` |
 | Cambio obligatorio | Solo cambiar contraseña o cerrar sesión; no emitir temporales ni operar proyectos | Sesión restringida en Rust |
-| Normal | Operaciones según rol; cada comando protegido revalida firma y revisión | Credencial definitiva firmada en `engineers/<id-easyfab>.json` |
+| Normal | Operaciones según rol; cada comando protegido revalida firma y revisión | Credencial definitiva firmada en `engineers/<id>/profile.json` (layout 2) o `<id>.json` (legacy 1) |
 | Temporal vencida | Rechazar acceso; pedir nueva temporal al Admin | No se prorroga automáticamente |
 | Inactivo o firma alterada | Rechazar acceso y operaciones protegidas | Estado y firma de rol canónicos |
 
@@ -93,7 +99,7 @@ Prueba manual: ingresar como Admin, crear un ingeniero con un ID EasyFAB nuevo y
 
 ## Identidad EasyFAB independiente de Windows (PLAN-003B)
 
-La cuenta se define por ID, nombre, rol y contraseña EasyFAB. No se solicita, almacena ni valida la identidad Windows del titular. Cada sesión escribe únicamente `engineers/<id-easyfab>.json`, con rutas validadas por Rust y sin aceptar rutas desde el frontend. Pueden existir varias cuentas EasyFAB en el mismo equipo y utilizarse desde otro equipo habilitado con acceso al mismo OneDrive y a la confianza local de la aplicación.
+La cuenta se define por ID, nombre, rol y contraseña EasyFAB. No se solicita, almacena ni valida la identidad Windows del titular. Cada sesión escribe únicamente su perfil según el layout del manifiesto, con rutas validadas por Rust y sin aceptar rutas desde el frontend. Pueden existir varias cuentas EasyFAB en el mismo equipo y utilizarse desde otro equipo habilitado con acceso al mismo OneDrive y a la confianza local de la aplicación.
 
 El usuario confirmó que solo existe Admin y autorizó ajustar directamente su registro/perfil. Se conserva contraseña, revisión, actividades y firma de rol; se actualiza la firma de metadatos temporales al payload `[id,password_hash,credential_revision,temporary_expires_at]` y se cambia el nombre del perfil a su ID. Antes de modificar se validan firmas y propietario, y se conservan respaldos de los dos archivos. No se añade compatibilidad de Windows al runtime.
 

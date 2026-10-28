@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB offline profile layout upgrade backup record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "workspace_id", "team_hash", "profiles"],
+  "properties": {
+    "version": {"const": 1},
+    "workspace_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "team_hash": {"type": "string", "pattern": "^[0-9A-F]{64}$"},
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "hash"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_.-]+$"},
+          "hash": {"type": "string", "pattern": "^[0-9A-F]{64}$"}
+        }
+      }
+    }
+  }
+}

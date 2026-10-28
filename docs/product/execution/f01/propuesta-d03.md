@@ -1,6 +1,13 @@
 # F01 / D03 — Carpetas personales y evidencias
 
 Fecha: 2026-10-28. Estado: propuesta pendiente de aceptación de Alan.
+
+Actualización posterior de Alan (PLAN-012): solo existen usuarios/datos de prueba;
+autoriza limpiar y regenerar la carpeta compartida según nuevos contratos, sin
+migrar esos datos. Por tanto, la estrategia de migración/rollback descrita abajo
+queda como referencia para futuros espacios con datos que sí deban conservarse;
+no es requisito de la regeneración del piloto actual. Primer recorrido de acceso:
+[PLAN-012 / guía](first-access.md). Esta aclaración no implementa el layout propuesto.
 Autoridad vigente: AGENTS.md, contracts/v1 y arquitectura de espacio/acceso.
 Esta entrega prepara decisiones; no modifica contratos publicados, runtime ni datos.
 F01 completo sigue pendiente de D01–D05, preferencias y restantes contratos.

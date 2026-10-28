@@ -1,6 +1,10 @@
 # Evidencia parcial F01 — propuesta D03
 
 Fecha: 2026-10-28. Entrega documental completada; aceptación de Alan pendiente.
+
+Actualización posterior: Alan autorizó descartar usuarios/datos de prueba y regenerar
+el espacio si es necesario. Ya no se requiere migrar esos datos. La entrega de acceso
+inicial y prueba de perfiles se registra separadamente en [first-access.md](first-access.md).
 No es aceptación completa F00/F01 ni interfaz aceptada para consumidores del DAG.
 
 Se leyeron AGENTS.md, plan maestro, estrategia, roadmap, contrato de misión,

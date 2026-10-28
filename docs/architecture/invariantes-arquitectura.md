@@ -7,7 +7,7 @@
 ## 1. Topología de Datos (Zero-Conflict OneDrive Synchronization)
 
 Para eliminar colisiones causadas por el motor de sincronización de OneDrive:
-1. **Dominio de Usuario Exclusivo:** Cada ingeniero escribe única y exclusivamente en `engineers/<id-easyfab>.json`. El propietario se determina por la sesión EasyFAB autenticada, independiente de la cuenta Windows. Ningún usuario abre en modo de escritura el archivo de otro ingeniero. La partición no elimina conflictos por edición simultánea de una misma cuenta en varios equipos.
+1. **Dominio de Usuario Exclusivo:** Layout 2 usa `engineers/<id-easyfab>/profile.json` y prepara `evidence/` dentro de la misma partición. Layout 1 conserva `<id>.json` hasta cambio explícito. El manifiesto es la autoridad de versión, sin fallback por existencia de archivos. El propietario se determina por la sesión EasyFAB autenticada, independiente de Windows; ningún rol escribe perfiles ajenos en operación normal. La partición no elimina conflictos de una misma cuenta en varios equipos. PLAN-013 no habilita todavía subida de evidencias.
 2. **Append-Only de Incidencias:** El archivo `issues.json` se manipula mediante adiciones acíclicas con identificadores únicos (`ISS-YYYY-XXXX`).
 3. **Ruta Absoluta Resuelta en Rust:** El frontend de React jamás calcula ni asume rutas de disco. Rust resuelve todas las rutas desde la carpeta compartida configurada y el espacio activo validado. La referencia local guardada tiene prioridad sobre la ubicación del portable; la detección de OneDrive solo propone una carpeta cuando no hay configuración. Ningún módulo puede imponer una ruta corporativa fija ni reemplazar una configuración no disponible.
 

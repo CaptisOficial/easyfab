@@ -24,7 +24,7 @@ export function InitialAdminForm({ onReady }: { onReady: () => Promise<void> }) 
     <p>Este espacio todavía no tiene usuarios. El responsable del área debe crear la primera cuenta.</p>
     {error && <p role="alert" className="text-kmx-red">{error}</p>}
     {temporary ? <div role="status" className="space-y-3">
-      <p>Admin creado. Guarda esta contraseña temporal; vence en 24 horas:</p>
+      <p>Admin creado: {id.trim()}. Guarda esta contraseña temporal; vence en 24 horas:</p>
       <output className="block font-mono">{temporary}</output>
       <p>Ingresa con ella y cámbiala por tu contraseña de 8 caracteres.</p>
       <button disabled={busy} onClick={proceed} className="border px-4 py-2">Continuar al acceso</button>

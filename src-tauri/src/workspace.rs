@@ -20,6 +20,9 @@ struct Layout {
     exports: String,
     backups: String,
     executable: String,
+    profiles: String,
+    profile: String,
+    evidence: String,
 }
 fn layout() -> Result<Layout, String> {
     let value: Layout =
@@ -35,6 +38,9 @@ fn layout() -> Result<Layout, String> {
         &value.exports,
         &value.backups,
         &value.executable,
+        &value.profiles,
+        &value.profile,
+        &value.evidence,
     ] {
         if path.is_empty()
             || !Path::new(path)
@@ -54,6 +60,83 @@ fn layout() -> Result<Layout, String> {
 struct Manifest {
     version: u32,
     id: String,
+    #[serde(default = "legacy_profile_layout")]
+    profile_layout_version: u32,
+    #[serde(default)]
+    maintenance: bool,
+}
+fn legacy_profile_layout() -> u32 {
+    1
+}
+fn validate_manifest(manifest: &Manifest) -> Result<(), String> {
+    if manifest.version != 1
+        || !valid_id(&manifest.id)
+        || ![1, 2].contains(&manifest.profile_layout_version)
+    {
+        return Err("Versión o identidad del espacio incompatible.".into());
+    }
+    if manifest.maintenance {
+        return Err("Espacio en mantenimiento. No se permite acceder.".into());
+    }
+    Ok(())
+}
+
+/// El llamador ya validó el espacio activo. Nunca deducir versión de archivos existentes.
+pub(crate) fn profile_path(data: &Path, id: &str) -> Result<PathBuf, String> {
+    if id.is_empty() || id.contains(['/', '\\', ':']) || id == "." || id.contains("..") {
+        return Err("ID de perfil inválido.".into());
+    }
+    let l = layout()?;
+    let manifest: Manifest =
+        read_json(&data.parent().ok_or("Espacio inválido.")?.join(&l.manifest))?;
+    validate_manifest(&manifest)?;
+    let base = data.join(&l.profiles);
+    let legacy = base.join(format!("{id}.json"));
+    let current = base.join(id).join(&l.profile);
+    let canonical_data = data.canonicalize().map_err(|e| e.to_string())?;
+    for path in [&base, &base.join(id), &current, &legacy] {
+        if path.exists()
+            && !path
+                .canonicalize()
+                .map_err(|e| e.to_string())?
+                .starts_with(&canonical_data)
+        {
+            return Err("Perfil fuera del espacio validado.".into());
+        }
+    }
+    if (manifest.profile_layout_version == 2 && legacy.exists())
+        || (manifest.profile_layout_version == 1 && current.exists())
+    {
+        return Err(
+            "Perfil en una ubicación incompatible. Requiere mantenimiento explícito.".into(),
+        );
+    }
+    Ok(if manifest.profile_layout_version == 1 {
+        legacy
+    } else {
+        current
+    })
+}
+
+pub(crate) fn prepare_profile_directory(data: &Path, id: &str) -> Result<(), String> {
+    let path = profile_path(data, id)?;
+    let l = layout()?;
+    let parent = path.parent().ok_or("Ruta de perfil inválida.")?;
+    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    // Solo layout 2 tiene carpeta personal; legacy mantiene su estructura sin alterarla.
+    if parent == data.join(&l.profiles).join(id) {
+        let evidence = parent.join(l.evidence);
+        if evidence.exists()
+            && !evidence
+                .canonicalize()
+                .map_err(|e| e.to_string())?
+                .starts_with(parent.canonicalize().map_err(|e| e.to_string())?)
+        {
+            return Err("Evidencia fuera del perfil.".into());
+        }
+        fs::create_dir_all(evidence).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -139,6 +222,7 @@ pub fn open(root: &Path, expected_id: Option<&str>) -> Result<WorkspaceInfo, Str
     let l = layout()?;
     let path = root.join(&l.folder);
     let manifest: Manifest = read_json(&path.join(&l.manifest))?;
+    validate_manifest(&manifest)?;
     if manifest.version != 1
         || !valid_id(&manifest.id)
         || expected_id.is_some_and(|id| id != manifest.id)
@@ -188,6 +272,8 @@ pub fn initialize(root: &Path, local_dir: &Path) -> Result<WorkspaceInfo, String
         let manifest = Manifest {
             version: 1,
             id: nonce(),
+            profile_layout_version: 2,
+            maintenance: false,
         };
         write_json(&path.join(&l.manifest), &manifest, false)?;
     }

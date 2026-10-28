@@ -21,7 +21,7 @@
     {
       "le_id": "le_f02",
       "title": "Carpetas y migración",
-      "baseline": "Pendiente de implementación/aceptación",
+      "baseline": "Parcial PLAN-013: resolver por versión y carpetas personales con herramienta de cambio/rollback; F02 completo y evidencias operativas pendientes",
       "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
       "done": "D03 aprobada; migración reversible e idempotente, credenciales preservadas y una sola fuente activa.",
       "evidence": "docs/product/execution/f02/acceptance.md"

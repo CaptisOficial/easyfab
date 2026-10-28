@@ -8,6 +8,10 @@
 
 Entrada canónica al alcance completo: [Plan maestro](../../product/plan-maestro.md), con veinte entregables, dependencias y aceptación. Los planes siguientes documentan entregas parciales.
 
+PLAN-013: Carpetas personales — `complete`, 2026-10-28. [Plan](PLAN_013_PROFILE_FOLDERS.md). 7 frontend + 24 Rust, Gate 0 con suite de cambio/rollback y release aprobados. Layout 2 aplicado al espacio activo; 2 perfiles y team.json preservados por huella. Portable/contratos publicados y pantalla nativa de acceso comprobada. Reingreso manual tras cambio pendiente; evidence vacía, subida de adjuntos/F02 completo pendientes.
+
+PLAN-012: Primer acceso y prueba de perfiles — `complete`, 2026-10-28. [Plan](PLAN_012_FIRST_ACCESS.md). 7 frontend + 23 Rust, Gate 0, prueba de preparación aislada y build release aprobados. Portable publicado, usuarios de prueba respaldados/retirados; pantalla nativa Crear administrador inicial comprobada. Recorrido manual completo por Alan pendiente; no acredita concurrencia ni F02/evidencias.
+
 PLAN-011: Propuesta F01/D03 — `complete`, 2026-10-28. [Plan](PLAN_011_D03_PROPOSAL.md), [propuesta pendiente de Alan](../../product/execution/f01/propuesta-d03.md). Base revalidada: 21 Rust + 4 frontend y Gate 0 aprobados. Cierre documental; F01, D03 y F02 permanecen pendientes de aceptación/implementación.
 
 PLAN-010: Consolidación del plan maestro — `complete`, 2026-10-28. [Plan](PLAN_010_MASTER_PLAN.md). DAG válido, diagramas generados, revisión independiente, 25 pruebas y Gate 0 aprobados. El cierre de esta documentación no equivale a completar el sistema.

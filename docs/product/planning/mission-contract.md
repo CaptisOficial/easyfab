@@ -23,4 +23,4 @@ En la biblioteca corporativa original, Weekly MTG/Eg. Alan/20261027, existen `KM
 
 ## Autoridad vigente
 
-Append-only sobre un array compartido y UUID no resuelven por sí solos escrituras simultáneas de OneDrive. D01 debe demostrar el protocolo escogido antes del módulo de incidencias. El invariante vigente sigue siendo issues.json y engineers/<id>.json; las alternativas necesitan aprobación y actualización explícita de gobernanza.
+Append-only sobre un array compartido y UUID no resuelven por sí solos escrituras simultáneas de OneDrive. D01 debe demostrar el protocolo escogido antes del módulo de incidencias. Incidencias mantiene issues.json. PLAN-013 autoriza el subalcance de carpeta personal de D03: manifiesto con layout 1 (<id>.json) o 2 (<id>/profile.json y evidence/), una sola versión activa y mantenimiento explícito para conservar cuentas existentes. No cambia el DAG completo ni cierra F01: es una entrega acotada sin escritores FAB ni subida de adjuntos. D01, D02, D04, D05 y las políticas de evidencia siguen pendientes antes de sus consumidores.

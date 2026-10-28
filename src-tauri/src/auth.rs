@@ -29,3 +29,6 @@ pub use users::{create_user, list_users, set_user_active};
 pub use users::provision_initial_admin;
 
 pub use models::LoginDirectory;
+
+#[cfg(test)]
+mod onboarding_tests;

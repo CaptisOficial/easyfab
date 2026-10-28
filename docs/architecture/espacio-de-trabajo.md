@@ -2,6 +2,11 @@
 
 Documento canónico de espacios e instanciación. Fecha: 2026-10-28.
 
+PLAN-013: espacios nuevos usan `workspace.json.profile_layout_version=2`.
+Si el campo falta, el contrato lo define como legacy 1; un manifiesto faltante,
+inválido, desconocido o con maintenance=true bloquea acceso. No inferir versión de
+los archivos ni probar ambas rutas. Ver [carpetas personales](../product/execution/f02/acceptance.md).
+
 ## Autoridad y mapa único
 
 La **raíz compartida** es la carpeta corporativa elegida en cada equipo. La ubicación inicial es `ENGINEERING FILES - 10.FAB` de OneDrive corporativo. El nombre del perfil Windows y su ruta absoluta pueden variar entre equipos; no forman parte de la identidad del usuario EasyFAB ni del espacio.
@@ -33,7 +38,9 @@ Estos criterios son requisitos de comportamiento; la aprobación de pruebas auto
     │   ├── projects.json
     │   ├── issues.json
     │   ├── config_plant.json
-    │   └── engineers/<id-easyfab>.json
+    │   └── engineers/<id-easyfab>/
+    │       ├── profile.json
+    │       └── evidence/
     ├── software/easyfab.exe    Ejecutable portable publicado
     ├── docs/architecture/     Mapa, acceso e invariantes de la versión publicada
     ├── contracts/v1/          Contratos publicados con esa versión
@@ -63,7 +70,7 @@ Decisión aprobada el 2026-10-28: guardar la configuración propia del equipo y 
 | Llave de confianza | `master.key`, local y bajo custodia Admin; nunca sincronizada |
 | Preferencias de aplicación | LocalAppData, por instalación; sin datos operativos ni autoridad sobre el espacio |
 | Tema, tamaño de interfaz y filtros personales | LocalAppData, separados por ID estable de espacio e ID de usuario EasyFAB |
-| Directorio de usuarios, roles y credenciales protegidas | `data/team.json` y perfiles `data/engineers/<id-easyfab>.json`, según sus contratos y RBAC |
+| Directorio de usuarios, roles y credenciales protegidas | `data/team.json` y `data/engineers/<id>/profile.json` en layout 2; legacy 1 conserva `<id>.json` hasta mantenimiento |
 | Configuración de planta y catálogos generales | `data/config_plant.json` y contratos correspondientes |
 | Proyectos, actividades, avances e incidencias | Archivos canónicos en `data/`, con partición de escritura y RBAC |
 | Reportes, respaldos, contratos y documentación publicados | Directorios compartidos definidos por el layout |
@@ -112,7 +119,7 @@ Cambiar carpeta exige cerrar sesión y cancela accesos en curso. Conecta el espa
 | Elegir espacio desde un equipo | Solo referencia local, después de crear/validar el espacio compartido |
 | Primer alta Admin | `data/team.json` vacío y llave local, mediante acción explícita |
 | Alta/baja/reactivación/recuperación | `data/team.json`, solo sesión normal Admin |
-| Cambiar contraseña y actividades propias | `data/engineers/<id-easyfab>.json`, según sesión autenticada |
+| Cambiar contraseña y actividades propias | Partición propia según manifiesto: `data/engineers/<id>/profile.json` (2) o `<id>.json` (1) |
 | Proyectos | `data/projects.json`, Supervisor/Admin |
 | Incidencias | `data/issues.json`, append-only según contrato |
 | Exportación | `exports/`; no implementada todavía |

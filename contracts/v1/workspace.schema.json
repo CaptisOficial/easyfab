@@ -8,6 +8,17 @@
     "id"
   ],
   "properties": {
+    "profile_layout_version": {
+      "type": "integer",
+      "enum": [1, 2],
+      "default": 1,
+      "description": "Ausente significa perfil legacy <id>.json; 2 usa <id>/profile.json. Espacios nuevos usan 2."
+    },
+    "maintenance": {
+      "type": "boolean",
+      "default": false,
+      "description": "Bloquea acceso durante cambio explícito de layout."
+    },
     "version": {
       "const": 1
     },

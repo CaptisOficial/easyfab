@@ -44,7 +44,7 @@ Los hitos expresan resultados, no fechas ni porcentajes inventados. F13 puede av
 
 ## Espacio y ciclo de datos
 
-Vigente: `<raíz>/easy-fab/data/engineers/<id-easyfab>.json`. Propuesta D03: `<raíz>/easy-fab/data/engineers/<id>/profile.json` y `evidence/<actividad-id>/<adjunto>`. Esta propuesta no modifica todavía layout, contratos ni datos. La migración debe preservar credenciales e historial, verificar antes/después y ofrecer rollback; nunca dejar dos perfiles activos.
+PLAN-013 implementa el subalcance de carpetas de D03: espacios nuevos usan `<raíz>/easy-fab/data/engineers/<id>/profile.json` y preparan `evidence/`. Los anteriores mantienen `<id>.json` hasta mantenimiento explícito, con respaldo/rollback y credenciales preservadas. El manifiesto decide la única ruta activa. [Evidencia y alcance](execution/f02/acceptance.md). La subida de adjuntos, sus políticas y D03 completo siguen pendientes; no se cierra F01 ni se ejecuta automáticamente todo F02.
 
 Desarrollo de D03 para revisión de Alan: [propuesta concreta](execution/f01/propuesta-d03.md) y [revalidación de base](execution/f01/acceptance.md), 2026-10-28. Define contratos candidatos, política inicial de adjuntos y transición recuperable; todavía no cierra F01 ni habilita F02.
 

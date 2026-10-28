@@ -62,7 +62,7 @@ pub fn trusted(m: &Member, key: &[u8]) -> bool {
 /// La particion pertenece al usuario autenticado de EasyFAB.
 pub(super) fn own_path(dir: &Path, m: &Member) -> Result<std::path::PathBuf, String> {
     validate_profile_key(&m.id)?;
-    Ok(dir.join("engineers").join(format!("{}.json", m.id)))
+    crate::workspace::profile_path(dir, &m.id)
 }
 pub(super) fn atomic_json(path: &Path, value: &serde_json::Value) -> Result<(), String> {
     let tmp = path.with_extension(format!("{}.tmp", revision()));

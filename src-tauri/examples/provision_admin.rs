@@ -2,6 +2,13 @@
 #[path = "../src/auth.rs"]
 #[allow(dead_code, unused_imports)]
 mod auth;
+#[path = "../src/workspace.rs"]
+#[allow(dead_code)]
+mod workspace;
+#[path = "../src/bootstrap.rs"]
+mod bootstrap;
+#[path = "../src/workspace_assets.rs"]
+mod workspace_assets;
 use std::{io, path::PathBuf};
 fn ask(prompt: &str) -> Result<String, String> {
     eprintln!("{prompt}");

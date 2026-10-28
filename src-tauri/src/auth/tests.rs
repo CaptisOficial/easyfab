@@ -6,6 +6,15 @@ fn temporary_normal_reset_expiry_and_tampering() {
         .join("target")
         .join(format!("easyfab-auth-{}", revision()));
     fs::create_dir_all(dir.join("engineers")).unwrap();
+    // Fixture legacy con manifiesto propio, sin consultar la instalación real.
+    let data = dir.join("data");
+    fs::create_dir_all(data.join("engineers")).unwrap();
+    fs::write(
+        dir.join("workspace.json"),
+        r#"{"version":1,"id":"00000000000000000000000000000001"}"#,
+    )
+    .unwrap();
+    let dir = data;
     let key = [42; 32];
     let mut m = Member {
         id: "test".into(),
@@ -47,7 +56,7 @@ fn temporary_normal_reset_expiry_and_tampering() {
     assert!(effective(&dir, &m, &key).is_err());
     fs::remove_file(profile).unwrap();
     fs::remove_dir(dir.join("engineers")).unwrap();
-    fs::remove_dir(dir).unwrap();
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
 }
 
 #[test]

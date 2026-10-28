@@ -22,7 +22,7 @@ Automatizar, blindar y simplificar la captura, consolidación y reporte de avanc
    - En `%LOCALAPPDATA%/EasyFAB` residen la referencia de ubicación (`installation.json`), la llave de confianza (`master.key`) y las preferencias locales de aplicación y usuario. Las preferencias personales se separan por ID de espacio e ID de usuario EasyFAB; nunca determinan identidad ni permisos. Usuarios, roles, credenciales protegidas, configuración general, datos y avances permanecen en la carpeta compartida configurada. Nunca sincronizar la llave ni guardar contraseñas en claro. La persistencia de preferencias es una decisión de arquitectura pendiente de implementación y contrato canónico.
    - Cero fuga de datos a nubes públicas no autorizadas.
 2. **Partición de Escritura Anti-Conflictos (Zero Sync Conflicts):**
-   - Ingenieros escriben exclusivamente en `engineers/<id-easyfab>.json`.
+   - Cada cuenta escribe exclusivamente en su partición: layout 2 `engineers/<id-easyfab>/profile.json` y `engineers/<id-easyfab>/evidence/`. Espacios anteriores conservan layout 1 `engineers/<id-easyfab>.json` hasta mantenimiento explícito. El manifiesto selecciona una sola versión; nunca buscar el otro perfil como fallback. Supervisor/Admin tampoco escriben perfiles ajenos en operación normal.
    - Supervisor/Admin gestiona `projects.json`; solo Admin gestiona `team.json`.
    - Incidencias se añaden en modo *append-only* en `issues.json`.
 3. **Seguridad y RBAC de 3 Niveles:**
@@ -70,7 +70,7 @@ C:\Dev\easyfab/
 |---|---|---|
 | **Admin (Alan)** | Gobernanza de contratos, directorio de usuarios, catálogos maestros y llaves HMAC. | `team.json`, `config_plant.json`, `contracts/v1/*` |
 | **Supervisor (FAB)** | Creación y balance de Macro Proyectos, compuertas DoD 100%, exportación KMX-FW. | `projects.json`, reportes ejecutivos |
-| **Engineer (Alexa/Antonio)** | Subtareas, hitos (0%-100%), reporte de paros/scrap de piso. | `engineers/<user>.json`, `issues.json` (append) |
+| **Engineer (Alexa/Antonio)** | Subtareas, hitos (0%-100%), reporte de paros/scrap de piso. | Partición `engineers/<id>/` (layout 2; `<id>.json` solo legacy 1), `issues.json` (append) |
 
 ## 5. Pruebas desde la primera implementación
 

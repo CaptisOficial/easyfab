@@ -41,6 +41,10 @@ pub fn install(docs: &Path, contracts: &Path) -> Result<(), String> {
         &contracts.join("v1"),
         &[
             (
+                "profile_upgrade.schema.json",
+                include_str!("../../contracts/v1/profile_upgrade.schema.json"),
+            ),
+            (
                 "workspace.layout.json",
                 include_str!("../../contracts/v1/workspace.layout.json"),
             ),

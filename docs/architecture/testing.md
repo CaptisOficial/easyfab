@@ -52,3 +52,21 @@ Referencias: [Cargo](https://doc.rust-lang.org/cargo/commands/cargo-test.html),
 [organización Rust](https://doc.rust-lang.org/book/ch11-03-test-organization.html),
 [pruebas Tauri](https://v2.tauri.app/develop/tests/),
 [Vitest](https://vitest.dev/guide/).
+
+## Recorrido inicial (PLAN-012)
+
+`Login.test.tsx` usa jsdom y Testing Library: alta inicial, acceso restringido,
+cambio de contraseña, directorio Admin, alta de ingeniero y reingreso personal;
+también errores al leer directorio y guardar contraseña. Es una prueba UI con IPC
+simulado, no una prueba nativa de permisos.
+
+`auth/onboarding_tests.rs` ejecuta el recorrido real de almacenamiento y credenciales
+en un proceso hijo con LOCALAPPDATA sintético. No cambia variables globales del
+proceso padre. Incluye Admin, Engineer/Supervisor, denegación administrativa,
+contraseña inválida, temporal reemplazada y preservación de perfiles/llave.
+La suite cuenta el caso padre y el punto de entrada del proceso hijo como dos tests.
+
+`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare_first_access.Tests.ps1`
+comprueba preparación de piloto, respaldo, retiro de perfiles de prueba, conservación
+de referencia/llave/proyectos y rechazo de identidad incorrecta. Usa fixture descartable
+en src-tauri/target. Este comando es adicional a npm test/Gate 0.

@@ -95,3 +95,46 @@ fn workspace_info_matches_the_ipc_contract() {
     required.sort();
     assert_eq!(keys, required);
 }
+
+#[test]
+fn profile_layout_is_explicit_and_never_falls_back_to_another_profile() {
+    let (root, local) = fixture();
+    let info = initialize(&root, &local).unwrap();
+    let data = Path::new(&info.data_dir);
+    let manifest_path = Path::new(&info.path).join("workspace.json");
+    let mut manifest: serde_json::Value = read_json(&manifest_path).unwrap();
+    assert_eq!(manifest["profile_layout_version"], 2);
+    let path = profile_path(data, "engineer").unwrap();
+    assert_eq!(path, data.join("engineers/engineer/profile.json"));
+    prepare_profile_directory(data, "engineer").unwrap();
+    assert!(data.join("engineers/engineer/evidence").is_dir());
+    assert!(!data.join("engineers/another").exists());
+    fs::write(data.join("engineers/engineer.json"), b"{}").unwrap();
+    assert!(profile_path(data, "engineer").is_err());
+    manifest
+        .as_object_mut()
+        .unwrap()
+        .remove("profile_layout_version");
+    fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        profile_path(data, "engineer").unwrap(),
+        data.join("engineers/engineer.json")
+    );
+    prepare_profile_directory(data, "profile").unwrap();
+    assert!(!data.join("engineers/evidence").exists());
+    fs::write(&path, b"{}").unwrap();
+    assert!(profile_path(data, "engineer").is_err());
+    for id in ["../other", "C:\\other", "other/file", "."] {
+        assert!(profile_path(data, id).is_err());
+    }
+    manifest["profile_layout_version"] = serde_json::json!(3);
+    fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    assert!(open(&root, Some(&info.id)).is_err());
+    manifest["profile_layout_version"] = serde_json::json!(2);
+    manifest["maintenance"] = serde_json::json!(true);
+    fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    assert!(open(&root, Some(&info.id)).is_err());
+    assert!(profile_path(data, "engineer").is_err());
+    fs::remove_file(manifest_path).unwrap();
+    assert!(profile_path(data, "engineer").is_err());
+}

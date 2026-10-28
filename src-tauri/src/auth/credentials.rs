@@ -123,6 +123,7 @@ pub fn change_password(dir: &Path, session: &Session, new_pin: &str) -> Result<(
     value["credential"] = serde_json::to_value(c).map_err(|e| e.to_string())?;
     value["last_synced"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
     revalidate(dir, session)?;
+    crate::workspace::prepare_profile_directory(dir, &m.id)?;
     atomic_json(&path, &value)
 }
 pub fn reset_password(dir: &Path, session: &Session, target: &str) -> Result<String, String> {

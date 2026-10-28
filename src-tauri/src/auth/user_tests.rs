@@ -75,8 +75,14 @@ fn deactivate_reactivate_revokes_previous_credentials() {
     let nonexistent = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("target")
         .join(revision());
+    std::fs::create_dir_all(nonexistent.join("data")).unwrap();
+    std::fs::write(
+        nonexistent.join("workspace.json"),
+        r#"{"version":1,"id":"00000000000000000000000000000001"}"#,
+    )
+    .unwrap();
     assert!(
-        super::super::credentials::effective(&nonexistent, &team.members[0], &key)
+        super::super::credentials::effective(&nonexistent.join("data"), &team.members[0], &key)
             .unwrap()
             .1
     );
@@ -120,7 +126,16 @@ fn accounts_are_independent_of_windows_and_have_distinct_profiles() {
     let mut supervisor = input("supervisor");
     supervisor.role = "supervisor".into();
     add_member(&mut team, supervisor, &key).unwrap();
-    let dir = std::path::Path::new("data");
+    let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join(revision());
+    let dir = &base.join("data");
+    std::fs::create_dir_all(dir).unwrap();
+    std::fs::write(
+        base.join("workspace.json"),
+        r#"{"version":1,"id":"00000000000000000000000000000001"}"#,
+    )
+    .unwrap();
     assert_eq!(
         own_path(dir, &team.members[0]).unwrap(),
         dir.join("engineers/engineer.json")

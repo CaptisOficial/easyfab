@@ -213,3 +213,29 @@ fn dates_and_contract_input_are_strict() {
     value["status"] = "Completed".into();
     assert!(serde_json::from_value::<NewProject>(value).is_err());
 }
+
+#[test]
+fn published_contract_matches_project_and_ipc_fields() {
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../../../contracts/v1/projects.schema.json")).unwrap();
+    let ipc: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../contracts/v1/project_registration.schema.json"
+    ))
+    .unwrap();
+    let input = serde_json::to_value(input()).unwrap();
+    let required = ipc["$defs"]["new_project"]["required"].as_array().unwrap();
+    assert_eq!(input.as_object().unwrap().len(), required.len());
+    for key in required {
+        assert!(input.get(key.as_str().unwrap()).is_some());
+    }
+    for state in ["Not Started", "In Progress", "Completed", "On Hold"] {
+        assert!(schema["$defs"]["project"]["properties"]["status"]["enum"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!(state)));
+    }
+    assert_eq!(
+        schema["properties"]["projects"]["items"]["$ref"],
+        "#/$defs/project"
+    );
+}

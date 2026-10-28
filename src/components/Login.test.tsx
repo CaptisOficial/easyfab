@@ -96,3 +96,23 @@ describe("primer recorrido de acceso", () => {
   });
 });
 
+
+it.each([
+  ["admin", false, true], ["supervisor", false, true],
+  ["engineer", false, false], ["admin", true, false], ["supervisor", true, false],
+] as const)("acceso proyectos: rol %s, restringida %s", async (role, restricted, visible) => {
+  vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [{ id: "fixture", name: "Fixture" }], requires_admin: false });
+  vi.mocked(api.login).mockResolvedValue({ id: "fixture", name: "Fixture", role, must_change_password: restricted });
+  vi.mocked(api.listUsers).mockResolvedValue([]);
+  render(<Login />);
+  await userEvent.type(await screen.findByLabelText("Contraseña (8 caracteres)"), "User1234");
+  await userEvent.click(screen.getByRole("button", { name: "Ingresar" }));
+  await screen.findByText("Usuario EasyFAB: fixture");
+  if (visible) {
+    expect(await screen.findByRole("heading", { name: "Proyectos FAB" })).toBeTruthy();
+    expect(api.projectsOverview).toHaveBeenCalledTimes(1);
+  } else {
+    expect(screen.queryByRole("heading", { name: "Proyectos FAB" })).toBeNull();
+    expect(api.projectsOverview).not.toHaveBeenCalled();
+  }
+});

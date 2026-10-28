@@ -1,0 +1,118 @@
+flowchart TD
+    %% Strategy: easyfab-master-v1
+    subgraph roots[Roots]
+        le_f00(["le_f00 — Arquitectura"])
+    end
+    le_f01["le_f01 — Arquitectura + Alan"]
+    le_f02["le_f02 — Rust almacenamiento"]
+    le_f03["le_f03 — Rust acceso"]
+    le_f04["le_f04 — Rust dominio"]
+    le_f05["le_f05 — Rust dominio"]
+    le_f06["le_f06 — Rust archivos"]
+    le_f07["le_f07 — Rust dominio"]
+    le_f08["le_f08 — Rust dominio"]
+    le_f09["le_f09 — Rust analítica"]
+    le_f10["le_f10 — React"]
+    le_f11["le_f11 — React"]
+    le_f12["le_f12 — React"]
+    le_f13["le_f13 — Especialista Excel"]
+    le_f14["le_f14 — Rust reportes"]
+    le_f15["le_f15 — Rust almacenamiento"]
+    le_f16["le_f16 — Integrador"]
+    le_f17["le_f17 — QA + FAB"]
+    le_f18["le_f18 — Release"]
+    le_f19["le_f19 — Operador + Alan"]
+    le_f00 -->|f00_interface| le_f01
+    le_f01 -->|f01_interface| le_f02
+    le_f02 -->|f02_interface| le_f03
+    le_f01 -->|f01_interface| le_f03
+    le_f03 -->|f03_interface| le_f04
+    le_f01 -->|f01_interface| le_f04
+    le_f04 -->|f04_interface| le_f05
+    le_f02 -->|f02_interface| le_f05
+    le_f03 -->|f03_interface| le_f05
+    le_f01 -->|f01_interface| le_f05
+    le_f05 -->|f05_interface| le_f06
+    le_f02 -->|f02_interface| le_f06
+    le_f03 -->|f03_interface| le_f06
+    le_f01 -->|f01_interface| le_f06
+    le_f06 -->|f06_interface| le_f07
+    le_f05 -->|f05_interface| le_f07
+    le_f04 -->|f04_interface| le_f07
+    le_f03 -->|f03_interface| le_f07
+    le_f01 -->|f01_interface| le_f07
+    le_f07 -->|f07_interface| le_f08
+    le_f04 -->|f04_interface| le_f08
+    le_f03 -->|f03_interface| le_f08
+    le_f02 -->|f02_interface| le_f08
+    le_f01 -->|f01_interface| le_f08
+    le_f08 -->|f08_interface| le_f09
+    le_f07 -->|f07_interface| le_f09
+    le_f06 -->|f06_interface| le_f09
+    le_f05 -->|f05_interface| le_f09
+    le_f04 -->|f04_interface| le_f09
+    le_f01 -->|f01_interface| le_f09
+    le_f08 -->|f08_interface| le_f10
+    le_f06 -->|f06_interface| le_f10
+    le_f05 -->|f05_interface| le_f10
+    le_f03 -->|f03_interface| le_f10
+    le_f01 -->|f01_interface| le_f10
+    le_f09 -->|f09_interface| le_f11
+    le_f07 -->|f07_interface| le_f11
+    le_f04 -->|f04_interface| le_f11
+    le_f03 -->|f03_interface| le_f11
+    le_f01 -->|f01_interface| le_f11
+    le_f09 -->|f09_interface| le_f12
+    le_f01 -->|f01_interface| le_f12
+    le_f01 -->|f01_interface| le_f13
+    le_f09 -->|f09_interface| le_f14
+    le_f13 -->|f13_interface| le_f14
+    le_f03 -->|f03_interface| le_f14
+    le_f01 -->|f01_interface| le_f14
+    le_f14 -->|f14_interface| le_f15
+    le_f02 -->|f02_interface| le_f15
+    le_f03 -->|f03_interface| le_f15
+    le_f01 -->|f01_interface| le_f15
+    le_f10 -->|f10_interface| le_f16
+    le_f11 -->|f11_interface| le_f16
+    le_f12 -->|f12_interface| le_f16
+    le_f14 -->|f14_interface| le_f16
+    le_f15 -->|f15_interface| le_f16
+    le_f09 -->|f09_interface| le_f16
+    le_f01 -->|f01_interface| le_f16
+    le_f16 -->|f16_interface| le_f17
+    le_f01 -->|f01_interface| le_f17
+    le_f17 -->|f17_interface| le_f18
+    le_f16 -->|f16_interface| le_f18
+    le_f01 -->|f01_interface| le_f18
+    le_f18 -->|f18_interface| le_f19
+    le_f17 -->|f17_interface| le_f19
+    interface_0[("mission_contract")]
+    interface_0 -. read-only .-> le_f00
+    interface_0 -. read-only .-> le_f01
+    interface_0 -. read-only .-> le_f02
+    interface_0 -. read-only .-> le_f03
+    interface_0 -. read-only .-> le_f04
+    interface_0 -. read-only .-> le_f05
+    interface_0 -. read-only .-> le_f06
+    interface_0 -. read-only .-> le_f07
+    interface_0 -. read-only .-> le_f08
+    interface_0 -. read-only .-> le_f09
+    interface_0 -. read-only .-> le_f10
+    interface_0 -. read-only .-> le_f11
+    interface_0 -. read-only .-> le_f12
+    interface_0 -. read-only .-> le_f13
+    interface_0 -. read-only .-> le_f14
+    interface_0 -. read-only .-> le_f15
+    interface_0 -. read-only .-> le_f16
+    interface_0 -. read-only .-> le_f17
+    interface_0 -. read-only .-> le_f18
+    interface_0 -. read-only .-> le_f19
+    interface_1[("publication_authorization")]
+    interface_1 -. read-only .-> le_f19
+    ce_gate[["CE gate — Definition of Done"]]
+    le_f19 --> ce_gate
+    classDef interface stroke-dasharray: 5 5;
+    classDef gate stroke-width:2px;
+    class ce_gate gate;
+    class interface_0,interface_1 interface;

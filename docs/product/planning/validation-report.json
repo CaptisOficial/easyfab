@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-28",
+  "strategy_validation": {"valid": true, "experts": 20, "implicit_ce_gates": 1},
+  "generated_views": ["easyfab-dag.mmd", "easyfab-fsm.mmd"],
+  "validator_tests_passed": 5,
+  "product_tests": {"rust_passed": 21, "frontend_passed": 4},
+  "gate_zero": "passed",
+  "independent_review": "scope_review; five material adjustments incorporated",
+  "limits": "Documentation validation only. Future business modules and native multi-device acceptance remain pending."
+}

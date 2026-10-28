@@ -2,7 +2,9 @@ use super::*;
 
 #[test]
 fn temporary_normal_reset_expiry_and_tampering() {
-    let dir = std::env::temp_dir().join(format!("easyfab-auth-{}", revision()));
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join(format!("easyfab-auth-{}", revision()));
     fs::create_dir_all(dir.join("engineers")).unwrap();
     let key = [42; 32];
     let mut m = Member {
@@ -10,7 +12,6 @@ fn temporary_normal_reset_expiry_and_tampering() {
         name: "Test".into(),
         role: "engineer".into(),
         area: "10.FAB".into(),
-        windows_username: std::env::var("USERNAME").unwrap(),
         password_hash: hash_password("ABCD2345").unwrap(),
         role_signature: sign_role("test", "engineer", "active", &key),
         status: "active".into(),

@@ -1,0 +1,752 @@
+{
+  "contract_version": "captis-strategy-v2",
+  "strategy_id": "easyfab-master-v1",
+  "mission_id": "easyfab-complete-system",
+  "topology": "dag_pipeline",
+  "max_concurrency": 3,
+  "execution_limits": {
+    "max_strategy_revisions": 3,
+    "max_total_duration_seconds": 14400,
+    "max_total_tokens": 160000
+  },
+  "read_only_interfaces": [
+    "mission_contract",
+    "publication_authorization"
+  ],
+  "living_experts": [
+    {
+      "le_id": "le_f00",
+      "role": "Arquitectura",
+      "goal": "produce F00 deliverable: Base verificada",
+      "context_profile": "evidence_v1",
+      "depends_on": [],
+      "scope": {
+        "mission_slice": "Base verificada",
+        "writes": [
+          "execution/f00/**",
+          "docs/product/execution/f00/**"
+        ],
+        "inputs": [
+          "mission_contract"
+        ],
+        "outputs": [
+          "f00_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f00-v1"
+      }
+    },
+    {
+      "le_id": "le_f01",
+      "role": "Arquitectura + Alan",
+      "goal": "produce F01 deliverable: Decisiones y contratos",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f00"
+      ],
+      "scope": {
+        "mission_slice": "Decisiones y contratos",
+        "writes": [
+          "contracts/v1/**",
+          "docs/product/execution/f01/**",
+          "package.json",
+          "package-lock.json",
+          "vitest.config.ts"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f00_interface"
+        ],
+        "outputs": [
+          "f01_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f01-v1"
+      }
+    },
+    {
+      "le_id": "le_f02",
+      "role": "Rust almacenamiento",
+      "goal": "produce F02 deliverable: Carpetas y migración",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Carpetas y migración",
+        "writes": [
+          "src-tauri/src/storage/**",
+          "docs/product/execution/f02/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml",
+          "src-tauri/src/auth/directory.rs",
+          "src-tauri/src/auth/credentials.rs",
+          "src-tauri/src/workspace.rs",
+          "src-tauri/src/bootstrap.rs"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f02_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f02-v1"
+      }
+    },
+    {
+      "le_id": "le_f03",
+      "role": "Rust acceso",
+      "goal": "produce F03 deliverable: Confianza, recuperación y preferencias",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f02",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Confianza, recuperación y preferencias",
+        "writes": [
+          "src-tauri/src/auth/**",
+          "docs/product/execution/f03/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml",
+          "src-tauri/src/auth_commands.rs",
+          "src-tauri/src/user_commands.rs",
+          "src-tauri/src/preferences/**",
+          "src/features/preferences/**",
+          "src/components/auth/**",
+          "src/components/Login.tsx"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f02_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f03_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f03-v1"
+      }
+    },
+    {
+      "le_id": "le_f04",
+      "role": "Rust dominio",
+      "goal": "produce F04 deliverable: Proyectos y catálogos",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Proyectos y catálogos",
+        "writes": [
+          "src-tauri/src/projects/**",
+          "docs/product/execution/f04/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f04_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f04-v1"
+      }
+    },
+    {
+      "le_id": "le_f05",
+      "role": "Rust dominio",
+      "goal": "produce F05 deliverable: Actividades e hitos",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f04",
+        "le_f02",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Actividades e hitos",
+        "writes": [
+          "src-tauri/src/tasks/**",
+          "docs/product/execution/f05/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f04_interface",
+          "f02_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f05_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f05-v1"
+      }
+    },
+    {
+      "le_id": "le_f06",
+      "role": "Rust archivos",
+      "goal": "produce F06 deliverable: Evidencias",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f05",
+        "le_f02",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Evidencias",
+        "writes": [
+          "src-tauri/src/evidence/**",
+          "docs/product/execution/f06/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f05_interface",
+          "f02_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f06_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f06-v1"
+      }
+    },
+    {
+      "le_id": "le_f07",
+      "role": "Rust dominio",
+      "goal": "produce F07 deliverable: Aprobación y retrabajo",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f06",
+        "le_f05",
+        "le_f04",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Aprobación y retrabajo",
+        "writes": [
+          "src-tauri/src/approvals/**",
+          "docs/product/execution/f07/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml",
+          "src/features/pilot/**",
+          "src/App.tsx"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f06_interface",
+          "f05_interface",
+          "f04_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f07_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f07-v1"
+      }
+    },
+    {
+      "le_id": "le_f08",
+      "role": "Rust dominio",
+      "goal": "produce F08 deliverable: Incidencias de piso",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f07",
+        "le_f04",
+        "le_f03",
+        "le_f02",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Incidencias de piso",
+        "writes": [
+          "src-tauri/src/incidents/**",
+          "docs/product/execution/f08/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f07_interface",
+          "f04_interface",
+          "f03_interface",
+          "f02_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f08_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f08-v1"
+      }
+    },
+    {
+      "le_id": "le_f09",
+      "role": "Rust analítica",
+      "goal": "produce F09 deliverable: Lecturas y métricas",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f08",
+        "le_f07",
+        "le_f06",
+        "le_f05",
+        "le_f04",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Lecturas y métricas",
+        "writes": [
+          "src-tauri/src/read_models/**",
+          "docs/product/execution/f09/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f08_interface",
+          "f07_interface",
+          "f06_interface",
+          "f05_interface",
+          "f04_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f09_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f09-v1"
+      }
+    },
+    {
+      "le_id": "le_f10",
+      "role": "React",
+      "goal": "produce F10 deliverable: Vista Engineer",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f08",
+        "le_f06",
+        "le_f05",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Vista Engineer",
+        "writes": [
+          "src/features/engineer/**",
+          "docs/product/execution/f10/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f08_interface",
+          "f06_interface",
+          "f05_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f10_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f10-v1"
+      }
+    },
+    {
+      "le_id": "le_f11",
+      "role": "React",
+      "goal": "produce F11 deliverable: Vistas Supervisor y Admin",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f09",
+        "le_f07",
+        "le_f04",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Vistas Supervisor y Admin",
+        "writes": [
+          "src/features/supervisor/**",
+          "docs/product/execution/f11/**",
+          "src/features/admin/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f09_interface",
+          "f07_interface",
+          "f04_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f11_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f11-v1"
+      }
+    },
+    {
+      "le_id": "le_f12",
+      "role": "React",
+      "goal": "produce F12 deliverable: Gantt y capacidad",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f09",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Gantt y capacidad",
+        "writes": [
+          "src/features/planning/**",
+          "docs/product/execution/f12/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f09_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f12_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f12-v1"
+      }
+    },
+    {
+      "le_id": "le_f13",
+      "role": "Especialista Excel",
+      "goal": "produce F13 deliverable: Plantilla oficial Excel",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Plantilla oficial Excel",
+        "writes": [
+          "fixtures/kmx-fw/**",
+          "docs/product/execution/f13/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f13_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f13-v1"
+      }
+    },
+    {
+      "le_id": "le_f14",
+      "role": "Rust reportes",
+      "goal": "produce F14 deliverable: Exportación KMX-FW",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f09",
+        "le_f13",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Exportación KMX-FW",
+        "writes": [
+          "src-tauri/src/export/**",
+          "docs/product/execution/f14/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f09_interface",
+          "f13_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f14_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f14-v1"
+      }
+    },
+    {
+      "le_id": "le_f15",
+      "role": "Rust almacenamiento",
+      "goal": "produce F15 deliverable: Resiliencia y respaldo",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f14",
+        "le_f02",
+        "le_f03",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Resiliencia y respaldo",
+        "writes": [
+          "src-tauri/src/backup/**",
+          "docs/product/execution/f15/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f14_interface",
+          "f02_interface",
+          "f03_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f15_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f15-v1"
+      }
+    },
+    {
+      "le_id": "le_f16",
+      "role": "Integrador",
+      "goal": "produce F16 deliverable: Integración completa",
+      "context_profile": "integrator_v1",
+      "depends_on": [
+        "le_f10",
+        "le_f11",
+        "le_f12",
+        "le_f14",
+        "le_f15",
+        "le_f09",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Integración completa",
+        "writes": [
+          "src/App.tsx",
+          "docs/product/execution/f16/**",
+          "src-tauri/src/lib.rs",
+          "src-tauri/Cargo.toml",
+          "src/lib/api.ts",
+          "src/index.css"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f10_interface",
+          "f11_interface",
+          "f12_interface",
+          "f14_interface",
+          "f15_interface",
+          "f09_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f16_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f16-v1"
+      }
+    },
+    {
+      "le_id": "le_f17",
+      "role": "QA + FAB",
+      "goal": "produce F17 deliverable: Piloto y aceptación",
+      "context_profile": "evidence_v1",
+      "depends_on": [
+        "le_f16",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Piloto y aceptación",
+        "writes": [
+          "tests/acceptance/**",
+          "docs/product/execution/f17/**",
+          "release/pilot/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f16_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f17_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f17-v1"
+      }
+    },
+    {
+      "le_id": "le_f18",
+      "role": "Release",
+      "goal": "produce F18 deliverable: Candidato portable",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f17",
+        "le_f16",
+        "le_f01"
+      ],
+      "scope": {
+        "mission_slice": "Candidato portable",
+        "writes": [
+          "release/**",
+          "docs/product/execution/f18/**",
+          "src-tauri/tauri.conf.json",
+          "scripts/release/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f17_interface",
+          "f16_interface",
+          "f01_interface"
+        ],
+        "outputs": [
+          "f18_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f18-v1"
+      }
+    },
+    {
+      "le_id": "le_f19",
+      "role": "Operador + Alan",
+      "goal": "produce F19 deliverable: Publicación controlada",
+      "context_profile": "specialist_v1",
+      "depends_on": [
+        "le_f18",
+        "le_f17"
+      ],
+      "scope": {
+        "mission_slice": "Publicación controlada",
+        "writes": [
+          "execution/f19/**",
+          "docs/product/execution/f19/**"
+        ],
+        "inputs": [
+          "mission_contract",
+          "f18_interface",
+          "f17_interface",
+          "publication_authorization"
+        ],
+        "outputs": [
+          "f19_interface"
+        ]
+      },
+      "execution_policy": {
+        "max_attempts": 2,
+        "timeout_seconds": 3600,
+        "idempotency_key": "easyfab-f19-v1"
+      }
+    }
+  ],
+  "execution_order": [
+    "le_f00",
+    "le_f01",
+    "le_f02",
+    "le_f03",
+    "le_f04",
+    "le_f05",
+    "le_f06",
+    "le_f07",
+    "le_f08",
+    "le_f09",
+    "le_f10",
+    "le_f11",
+    "le_f12",
+    "le_f13",
+    "le_f14",
+    "le_f15",
+    "le_f16",
+    "le_f17",
+    "le_f18",
+    "le_f19"
+  ],
+  "evaluation_brief": {
+    "objective": "Aceptar el sistema FAB completo con evidencia verificable",
+    "checks": [
+      {
+        "id": "contracts",
+        "criterion": "Contratos, RBAC, persistencia, pruebas y paridad aprobados"
+      },
+      {
+        "id": "native",
+        "criterion": "Piloto nativo y concurrencia aceptados"
+      },
+      {
+        "id": "release",
+        "criterion": "Excel oficial, recuperación y publicación autorizada comprobados"
+      }
+    ],
+    "pass_condition": "Todos los nodos aceptados, sin decisiones bloqueantes abiertas ni evidencia faltante",
+    "failure_feedback_route": "DS"
+  }
+}

@@ -3,30 +3,39 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use tauri::State;
 
-fn data_path(state: &AppState) -> Result<PathBuf, String> {
-    state
-        .data_dir
+pub(crate) fn data_path(state: &AppState) -> Result<PathBuf, String> {
+    let guard = state
+        .workspace
         .lock()
-        .map_err(|_| "Estado no disponible.")?
-        .clone()
-        .ok_or("Detecta OneDrive primero.".into())
+        .map_err(|_| "Estado no disponible.")?;
+    let info = guard
+        .as_ref()
+        .ok_or("Configura el espacio EasyFAB primero.")?;
+    let current = crate::workspace::open(std::path::Path::new(&info.root), Some(&info.id))?;
+    Ok(PathBuf::from(current.data_dir))
 }
 #[tauri::command]
-pub(crate) fn list_login_users(state: State<'_, AppState>) -> Result<Vec<auth::Choice>, String> {
+pub(crate) fn list_login_users(state: State<'_, AppState>) -> Result<auth::LoginDirectory, String> {
     let team = auth::team(&data_path(&state)?)?;
     if team.members.is_empty() {
-        return Ok(vec![]);
+        return Ok(auth::LoginDirectory {
+            users: vec![],
+            requires_admin: true,
+        });
     }
     let key = auth::read_key()?;
-    Ok(team
-        .members
-        .iter()
-        .filter(|m| auth::trusted(m, &key))
-        .map(|m| auth::Choice {
-            id: m.id.clone(),
-            name: m.name.clone(),
-        })
-        .collect())
+    Ok(auth::LoginDirectory {
+        users: team
+            .members
+            .iter()
+            .filter(|m| auth::trusted(m, &key))
+            .map(|m| auth::Choice {
+                id: m.id.clone(),
+                name: m.name.clone(),
+            })
+            .collect(),
+        requires_admin: false,
+    })
 }
 #[tauri::command]
 pub(crate) async fn login(

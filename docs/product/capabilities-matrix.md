@@ -7,6 +7,8 @@ Fecha: 2026-10-28
 
 ## Matriz de Capacidades por Rol
 
+Esta matriz define permisos objetivo; las marcas no acreditan implementación. El alcance, dependencias y aceptación se encuentran en el [plan maestro](plan-maestro.md). Acceso/espacio y directorio Admin tienen base implementada; los módulos FAB siguen pendientes.
+
 | Capacidad / Módulo | Engineer (Alexa / Antonio) | Supervisor (Supervisión FAB) | Admin (Alan) |
 |---|:---:|:---:|:---:|
 | **Autenticación con PIN (Argon2id)** | ✓ | ✓ | ✓ |
@@ -27,6 +29,12 @@ Fecha: 2026-10-28
 ## Métricas Clave de Éxito del Sistema (KPIs)
 
 1. **Tiempo de Reporte Diario:** Reducción de >15 min a **<60 segundos** por ingeniero para reportar avances o paros de piso.
-2. **Tasa de Conflictos de Sincronización:** **0% de archivos en conflicto** en OneDrive gracias a la partición por usuario.
+2. **Tasa de Conflictos de Sincronización:** objetivo **0% de archivos en conflicto**, pendiente de validar con múltiples equipos. La partición por usuario no cubre archivos comunes ni la misma cuenta en varios equipos; ver D01 del plan maestro.
 3. **Integridad de Reportes:** **100% de paridad** en la exportación Excel contra la plantilla maestra oficial `KMX-FW`.
 4. **Adopción y Disponibilidad:** Funcionamiento autónomo 24/7 sin dependencia de servidores centrales ni credenciales de red externas.
+
+## Directorio implementado (2026-10-28)
+
+Admin con sesión normal: consultar directorio, crear engineer/supervisor, activar/desactivar y emitir temporales. Sin eliminación física, cambio de rol ni alta de otro Admin. Engineer/supervisor y sesiones con cambio obligatorio: sin acceso a comandos administrativos.
+
+Actualización PLAN-003B: altas sin cuenta Windows; ID EasyFAB, nombre y rol. El acceso se realiza con contraseña EasyFAB desde equipos habilitados. Partición de escritura por ID EasyFAB.

@@ -1,0 +1,114 @@
+stateDiagram-v2
+    %% Strategy FSM: easyfab-master-v1
+    [*] --> Draft: Plan Emitido
+    Draft --> Validated: Validación Estática OK
+    Validated --> Scheduling: Iniciar Scheduler
+
+    state "Ejecución del DAG (Living Experts)" as Running {
+        state "le_f00 (evidence_v1)\nArquitectura" as le_f00
+        state "le_f01 (specialist_v1)\nArquitectura + Alan" as le_f01
+        state "le_f02 (specialist_v1)\nRust almacenamiento" as le_f02
+        state "le_f03 (specialist_v1)\nRust acceso" as le_f03
+        state "le_f04 (specialist_v1)\nRust dominio" as le_f04
+        state "le_f05 (specialist_v1)\nRust dominio" as le_f05
+        state "le_f06 (specialist_v1)\nRust archivos" as le_f06
+        state "le_f07 (specialist_v1)\nRust dominio" as le_f07
+        state "le_f08 (specialist_v1)\nRust dominio" as le_f08
+        state "le_f09 (specialist_v1)\nRust analítica" as le_f09
+        state "le_f10 (specialist_v1)\nReact" as le_f10
+        state "le_f11 (specialist_v1)\nReact" as le_f11
+        state "le_f12 (specialist_v1)\nReact" as le_f12
+        state "le_f13 (specialist_v1)\nEspecialista Excel" as le_f13
+        state "le_f14 (specialist_v1)\nRust reportes" as le_f14
+        state "le_f15 (specialist_v1)\nRust almacenamiento" as le_f15
+        state "le_f16 (integrator_v1)\nIntegrador" as le_f16
+        state "le_f17 (evidence_v1)\nQA + FAB" as le_f17
+        state "le_f18 (specialist_v1)\nRelease" as le_f18
+        state "le_f19 (specialist_v1)\nOperador + Alan" as le_f19
+
+        [*] --> le_f00: Dispatch Raíz
+        le_f00 --> le_f01: f00_interface
+        le_f01 --> le_f02: f01_interface
+        le_f02 --> le_f03: f02_interface
+        le_f01 --> le_f03: f01_interface
+        le_f03 --> le_f04: f03_interface
+        le_f01 --> le_f04: f01_interface
+        le_f04 --> le_f05: f04_interface
+        le_f02 --> le_f05: f02_interface
+        le_f03 --> le_f05: f03_interface
+        le_f01 --> le_f05: f01_interface
+        le_f05 --> le_f06: f05_interface
+        le_f02 --> le_f06: f02_interface
+        le_f03 --> le_f06: f03_interface
+        le_f01 --> le_f06: f01_interface
+        le_f06 --> le_f07: f06_interface
+        le_f05 --> le_f07: f05_interface
+        le_f04 --> le_f07: f04_interface
+        le_f03 --> le_f07: f03_interface
+        le_f01 --> le_f07: f01_interface
+        le_f07 --> le_f08: f07_interface
+        le_f04 --> le_f08: f04_interface
+        le_f03 --> le_f08: f03_interface
+        le_f02 --> le_f08: f02_interface
+        le_f01 --> le_f08: f01_interface
+        le_f08 --> le_f09: f08_interface
+        le_f07 --> le_f09: f07_interface
+        le_f06 --> le_f09: f06_interface
+        le_f05 --> le_f09: f05_interface
+        le_f04 --> le_f09: f04_interface
+        le_f01 --> le_f09: f01_interface
+        le_f08 --> le_f10: f08_interface
+        le_f06 --> le_f10: f06_interface
+        le_f05 --> le_f10: f05_interface
+        le_f03 --> le_f10: f03_interface
+        le_f01 --> le_f10: f01_interface
+        le_f09 --> le_f11: f09_interface
+        le_f07 --> le_f11: f07_interface
+        le_f04 --> le_f11: f04_interface
+        le_f03 --> le_f11: f03_interface
+        le_f01 --> le_f11: f01_interface
+        le_f09 --> le_f12: f09_interface
+        le_f01 --> le_f12: f01_interface
+        le_f01 --> le_f13: f01_interface
+        le_f09 --> le_f14: f09_interface
+        le_f13 --> le_f14: f13_interface
+        le_f03 --> le_f14: f03_interface
+        le_f01 --> le_f14: f01_interface
+        le_f14 --> le_f15: f14_interface
+        le_f02 --> le_f15: f02_interface
+        le_f03 --> le_f15: f03_interface
+        le_f01 --> le_f15: f01_interface
+        le_f10 --> le_f16: f10_interface
+        le_f11 --> le_f16: f11_interface
+        le_f12 --> le_f16: f12_interface
+        le_f14 --> le_f16: f14_interface
+        le_f15 --> le_f16: f15_interface
+        le_f09 --> le_f16: f09_interface
+        le_f01 --> le_f16: f01_interface
+        le_f16 --> le_f17: f16_interface
+        le_f01 --> le_f17: f01_interface
+        le_f17 --> le_f18: f17_interface
+        le_f16 --> le_f18: f16_interface
+        le_f01 --> le_f18: f01_interface
+        le_f18 --> le_f19: f18_interface
+        le_f17 --> le_f19: f17_interface
+        le_f19 --> [*]: Handoff Completo
+    }
+
+    Scheduling --> Running: Despachar LEs Listos
+    Running --> Evaluating: Éxito en todos los LEs
+    Running --> Blocked: Falla irrecuperable de dependencia
+
+    state "Evaluación CE (Definition of Done)" as Evaluating {
+        [*] --> VerificandoChecks
+        VerificandoChecks --> DoD_Aprobado: Evidencia Satisfecha
+        VerificandoChecks --> DoD_Rechazado: Evidencia Insuficiente
+    }
+
+    Evaluating --> Approved: DoD_Aprobado
+    Evaluating --> Scheduling: DoD_Rechazado (Revisión disponible)
+    Evaluating --> Exhausted: Límite de revisiones alcanzado
+
+    Approved --> [*]: Misión Completada
+    Blocked --> [*]: Falla Bloqueante
+    Exhausted --> [*]: Límite Agotado

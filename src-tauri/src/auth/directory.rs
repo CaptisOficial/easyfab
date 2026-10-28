@@ -59,26 +59,10 @@ pub fn team(dir: &Path) -> Result<Team, String> {
 pub fn trusted(m: &Member, key: &[u8]) -> bool {
     m.status == "active" && verify_role(&m.id, &m.role, &m.status, &m.role_signature, key)
 }
+/// La particion pertenece al usuario autenticado de EasyFAB.
 pub(super) fn own_path(dir: &Path, m: &Member) -> Result<std::path::PathBuf, String> {
-    if m.windows_username.is_empty()
-        || !m
-            .windows_username
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.')
-        || m.windows_username.contains("..")
-    {
-        return Err("Usuario Windows invalido.".into());
-    }
-    // El dominio de escritura debe coincidir con la identidad Windows local.
-    if !std::env::var("USERNAME")
-        .unwrap_or_default()
-        .eq_ignore_ascii_case(&m.windows_username)
-    {
-        return Err("Usa tu cuenta Windows asignada.".into());
-    }
-    Ok(dir
-        .join("engineers")
-        .join(format!("{}.json", m.windows_username)))
+    validate_profile_key(&m.id)?;
+    Ok(dir.join("engineers").join(format!("{}.json", m.id)))
 }
 pub(super) fn atomic_json(path: &Path, value: &serde_json::Value) -> Result<(), String> {
     let tmp = path.with_extension(format!("{}.tmp", revision()));
@@ -86,14 +70,41 @@ pub(super) fn atomic_json(path: &Path, value: &serde_json::Value) -> Result<(), 
         .write(true)
         .create_new(true)
         .open(&tmp)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("No se pudo preparar el archivo: {e}"))?;
     f.write_all(
         serde_json::to_string_pretty(value)
             .map_err(|e| e.to_string())?
             .as_bytes(),
     )
     .and_then(|_| f.sync_all())
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| format!("No se pudo guardar el archivo: {e}"))?;
     drop(f);
-    fs::rename(&tmp, path).map_err(|e| e.to_string())
+    fs::rename(&tmp, path).map_err(|e| format!("No se pudo publicar el archivo: {e}"))
+}
+
+pub(super) fn validate_profile_key(username: &str) -> Result<(), String> {
+    if username.is_empty()
+        || !username
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.')
+        || username.contains("..")
+    {
+        return Err("Identificador de perfil inválido.".into());
+    }
+    if username.ends_with('.') || username.len() > 64 {
+        return Err("Identificador de perfil inválido.".into());
+    }
+    let stem = username
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    if ["CON", "PRN", "AUX", "NUL"].contains(&stem.as_str())
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && matches!(stem.as_bytes()[3], b'1'..=b'9'))
+    {
+        return Err("Este identificador está reservado; elige otro usuario.".into());
+    }
+    Ok(())
 }

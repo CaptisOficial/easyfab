@@ -21,3 +21,5 @@ Fecha: 2026-10-28
 - **Anti-Tampering:** Mecanismos de seguridad criptográfica (Argon2id + HMAC-SHA256) diseñados para prevenir la falsificación de roles o credenciales mediante edición manual directa de archivos JSON.
 - **Append-Only:** Modo de registro donde nuevos elementos son agregados con UUIDs únicos sin modificar ni sobrescribir registros previos, evitando colisiones de sincronización en OneDrive.
 - **Gate 0:** Compuerta automatizada previa a cualquier entrega o compilación que valida integridad de tipos, paridad de contratos y salud de compilación.
+
+- **Usuario EasyFAB:** Identidad propia del sistema (ID, nombre, rol y contraseña), independiente de Windows. El ID identifica también la partición engineers/<id-easyfab>.json.

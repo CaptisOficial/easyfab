@@ -45,7 +45,85 @@
           "type": "boolean"
         }
       }
+    },
+    "new_user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "enum": [
+            "engineer",
+            "supervisor"
+          ]
+        }
+      }
+    },
+    "directory_user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "role",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "admin",
+            "supervisor",
+            "engineer"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive"
+          ]
+        }
+      }
+    },
+    "login_directory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "users",
+        "requires_admin"
+      ],
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/choice"
+          }
+        },
+        "requires_admin": {
+          "type": "boolean"
+        }
+      }
     }
   },
-  "description": "list_login_users -> choice[]; login(userId,pin) -> session; logout -> null. Sesion autoritativa en memoria Rust; nunca aceptar roles desde UI. change_password(newPin) -> null, termina sesion; reset_password(userId) -> temporal de 24h, solo admin normal. Revision firmada revoca credenciales anteriores."
+  "description": "list_login_users -> login_directory; login(userId,pin) -> session; logout -> null. Sesion autoritativa en memoria Rust; nunca aceptar roles desde UI. change_password(newPin) -> null, termina sesion; reset_password(userId) -> temporal de 24h, solo admin normal. Revision firmada revoca credenciales anteriores. list_users -> directory_user[]; create_user(input:new_user) -> temporary string of 8 chars; set_user_active(userId,active) -> temporary string on activation, null on deactivation. All require a revalidated normal admin session; admin status is protected. Authentication and new users are independent of Windows identity. Profiles are partitioned by EasyFAB id. Temporary credential signatures cover [id,password_hash,credential_revision,temporary_expires_at]. provision_initial_admin(id,name) -> temporary string; only while team.members is empty, no authenticated session, creates local trust explicitly and requires password change."
 }

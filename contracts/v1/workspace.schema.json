@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB shared workspace identity v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  },
+  "$defs": {
+    "info": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "root",
+        "path",
+        "data_dir",
+        "docs_dir",
+        "software_dir",
+        "exports_dir",
+        "backups_dir",
+        "executable",
+        "contracts_dir"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "data_dir": {
+          "type": "string"
+        },
+        "docs_dir": {
+          "type": "string"
+        },
+        "software_dir": {
+          "type": "string"
+        },
+        "exports_dir": {
+          "type": "string"
+        },
+        "backups_dir": {
+          "type": "string"
+        },
+        "executable": {
+          "type": "string"
+        },
+        "contracts_dir": {
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase",
+        "candidate_root",
+        "workspace",
+        "message"
+      ],
+      "properties": {
+        "phase": {
+          "enum": [
+            "unconfigured",
+            "ready",
+            "unavailable"
+          ]
+        },
+        "candidate_root": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workspace": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/info"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

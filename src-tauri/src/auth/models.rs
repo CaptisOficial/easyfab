@@ -11,7 +11,6 @@ pub struct Member {
     pub name: String,
     pub role: String,
     pub area: String,
-    pub windows_username: String,
     pub password_hash: String,
     pub role_signature: String,
     pub status: String,
@@ -41,4 +40,25 @@ pub struct Credential {
     pub revision: String,
     pub password_hash: String,
     pub signature: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NewUser {
+    pub id: String,
+    pub name: String,
+    pub role: String,
+}
+#[derive(Serialize)]
+pub struct DirectoryUser {
+    pub id: String,
+    pub name: String,
+    pub role: String,
+    pub status: String,
+}
+
+#[derive(Serialize)]
+pub struct LoginDirectory {
+    pub users: Vec<Choice>,
+    pub requires_admin: bool,
 }

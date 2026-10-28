@@ -1,4 +1,4 @@
-//! Auto-bootstrap de `Management/Data`.
+//! Auto-bootstrap de `easy-fab/data`.
 //!
 //! Regla: crear únicamente lo que falta. Nunca sobrescribir un archivo existente
 //! (se usa `create_new`, que falla si el archivo ya existe).
@@ -40,7 +40,7 @@ pub fn bootstrap(data_dir: &Path) -> Result<BootstrapReport, String> {
 
     for dir in [data_dir.to_path_buf(), data_dir.join("engineers")] {
         let label = if dir == data_dir {
-            "Management/Data/".to_string()
+            "easy-fab/data/".to_string()
         } else {
             "engineers/".to_string()
         };

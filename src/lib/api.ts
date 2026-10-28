@@ -1,49 +1,51 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
-/** Resultado de la detección de la carpeta ENGINEERING FILES - 10.FAB. */
-export interface OneDriveDetection {
-  found: boolean;
-  /** Raíz `ENGINEERING FILES - 10.FAB` cuando se encontró. */
-  engineering_root: string | null;
-  /** Carpeta de datos `Management/Data`. */
-  data_dir: string | null;
-  /** Origen que permitió la detección (env, registro, escaneo). */
-  source: string | null;
-  /** Rutas revisadas, en orden, para diagnóstico. */
-  candidates_checked: string[];
-}
-
-/** Resultado del auto-bootstrap de `Management/Data`. */
-export interface BootstrapReport {
-  data_dir: string;
-  created: string[];
-  existing: string[];
-}
-
 export const runningInTauri = (): boolean => isTauri();
 
-export async function detectOneDrivePath(): Promise<OneDriveDetection> {
-  if (!runningInTauri()) {
-    // Modo navegador (vite dev sin Tauri): datos de demostración, sin acceso a disco.
-    return {
-      found: false,
-      engineering_root: null,
-      data_dir: null,
-      source: "browser-preview",
-      candidates_checked: [],
-    };
-  }
-  return invoke<OneDriveDetection>("detect_onedrive_path");
+export interface WorkspaceInfo {
+  id: string;
+  root: string;
+  path: string;
+  data_dir: string;
+  docs_dir: string;
+  contracts_dir: string;
+  software_dir: string;
+  exports_dir: string;
+  backups_dir: string;
+  executable: string;
 }
+export interface WorkspaceStatus {
+  phase: "unconfigured" | "ready" | "unavailable";
+  candidate_root: string | null;
+  workspace: WorkspaceInfo | null;
+  message: string | null;
+}
+export async function workspaceStatus(): Promise<WorkspaceStatus> {
+  if (!runningInTauri()) return { phase: "unconfigured", candidate_root: null, workspace: null, message: "Abre la aplicación de escritorio para configurar el espacio compartido." };
+  return invoke<WorkspaceStatus>("workspace_status");
+}
+export const configureWorkspace = (root: string) => invoke<WorkspaceInfo>("configure_workspace", { root });
 
-export async function bootstrapDataDir(): Promise<BootstrapReport> {
-  return invoke<BootstrapReport>("bootstrap_data_dir");
-}
 export interface LoginChoice { id: string; name: string }
 export interface SessionUser { id: string; name: string; role: "admin" | "supervisor" | "engineer"; must_change_password: boolean }
-export const listLoginUsers = () => invoke<LoginChoice[]>("list_login_users");
+export interface LoginDirectory { users: LoginChoice[]; requires_admin: boolean }
+export const listLoginUsers = () => invoke<LoginDirectory>("list_login_users");
 export const login = (userId: string, pin: string) => invoke<SessionUser>("login", { userId, pin });
 export const logout = () => invoke<void>("logout");
 
 export const changePassword = (newPin: string) => invoke<void>("change_password", { newPin });
 export const resetPassword = (userId: string) => invoke<string>("reset_password", { userId });
+export interface NewUser {
+  id: string;
+  name: string;
+  role: "engineer" | "supervisor";
+}
+export interface DirectoryUser extends Omit<NewUser, "role"> {
+  role: SessionUser["role"];
+  status: "active" | "inactive";
+}
+export const listUsers = () => invoke<DirectoryUser[]>("list_users");
+export const createUser = (input: NewUser) => invoke<string>("create_user", { input });
+export const setUserActive = (userId: string, active: boolean) => invoke<string | null>("set_user_active", { userId, active });
+
+export const provisionInitialAdmin = (id: string, name: string) => invoke<string>("provision_initial_admin", { id, name });

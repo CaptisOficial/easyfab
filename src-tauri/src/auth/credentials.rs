@@ -9,7 +9,6 @@ fn valid_seal(payload: &str, signature: &str, key: &[u8]) -> bool {
 pub fn temporary_payload(m: &Member) -> String {
     serde_json::to_string(&(
         &m.id,
-        &m.windows_username,
         &m.password_hash,
         &m.credential_revision,
         &m.temporary_expires_at,
@@ -141,11 +140,7 @@ pub fn reset_password(dir: &Path, session: &Session, target: &str) -> Result<Str
     if !trusted(m, &key) {
         return Err("Rol alterado.".into());
     }
-    let temporary = temporary_password();
-    m.password_hash = hash_password(&temporary)?;
-    m.credential_revision = revision();
-    m.temporary_expires_at = (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339();
-    seal_temporary(m, &key);
+    let temporary = issue_temporary(m, &key)?;
     team.updated_at = chrono::Utc::now().to_rfc3339();
     revalidate(dir, session)?;
     atomic_json(
@@ -158,3 +153,12 @@ pub fn reset_password(dir: &Path, session: &Session, target: &str) -> Result<Str
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+pub(super) fn issue_temporary(member: &mut Member, key: &[u8]) -> Result<String, String> {
+    let temporary = temporary_password();
+    member.password_hash = hash_password(&temporary)?;
+    member.credential_revision = revision();
+    member.temporary_expires_at = (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339();
+    seal_temporary(member, key);
+    Ok(temporary)
+}

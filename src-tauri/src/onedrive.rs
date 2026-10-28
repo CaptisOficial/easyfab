@@ -18,7 +18,6 @@ pub const ENGINEERING_DIR: &str = "ENGINEERING FILES - 10.FAB";
 pub struct OneDriveDetection {
     pub found: bool,
     pub engineering_root: Option<String>,
-    pub data_dir: Option<String>,
     pub source: Option<String>,
     pub candidates_checked: Vec<String>,
 }
@@ -28,11 +27,6 @@ pub struct OneDriveDetection {
 pub struct RootCandidate {
     pub path: PathBuf,
     pub source: String,
-}
-
-/// Ruta de datos relativa a la raíz de ingeniería.
-pub fn data_dir_for(engineering_root: &Path) -> PathBuf {
-    engineering_root.join("Management").join("Data")
 }
 
 /// Reúne raíces de OneDrive candidatas, sin duplicados y en orden de prioridad.
@@ -147,7 +141,6 @@ pub fn find_engineering_root(candidates: &[RootCandidate]) -> OneDriveDetection 
     OneDriveDetection {
         found: false,
         engineering_root: None,
-        data_dir: None,
         source: None,
         candidates_checked: checked,
     }
@@ -156,7 +149,6 @@ pub fn find_engineering_root(candidates: &[RootCandidate]) -> OneDriveDetection 
 fn found(root: PathBuf, source: &str, checked: Vec<String>) -> OneDriveDetection {
     OneDriveDetection {
         found: true,
-        data_dir: Some(data_dir_for(&root).to_string_lossy().to_string()),
         engineering_root: Some(root.to_string_lossy().to_string()),
         source: Some(source.to_string()),
         candidates_checked: checked,
@@ -187,7 +179,7 @@ mod tests {
             source: "test".into(),
         }]);
         assert!(det.found);
-        assert!(det.data_dir.unwrap().ends_with(r"Management\Data") || cfg!(not(windows)));
+        assert!(det.engineering_root.unwrap().ends_with(ENGINEERING_DIR));
         let _ = std::fs::remove_dir_all(root);
     }
 

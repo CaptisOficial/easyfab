@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"EasyFAB plant configuration v1","type":"object","required":["version","machines","lines","failure_types"],"properties":{"version":{"const":1},"machines":{"type":"array"},"lines":{"type":"array"},"failure_types":{"type":"array"}}}

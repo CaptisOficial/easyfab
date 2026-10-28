@@ -25,7 +25,6 @@
           "name",
           "role",
           "area",
-          "windows_username",
           "password_hash",
           "role_signature",
           "status",
@@ -49,9 +48,6 @@
             ]
           },
           "area": {
-            "type": "string"
-          },
-          "windows_username": {
             "type": "string"
           },
           "password_hash": {

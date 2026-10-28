@@ -20,3 +20,12 @@ pub use crypto::{hash_password, revision, sign_role};
 pub use directory::create_master_key;
 #[allow(unused_imports)]
 pub use models::Member;
+
+#[path = "auth/users.rs"]
+mod users;
+pub use models::{DirectoryUser, NewUser};
+pub use users::{create_user, list_users, set_user_active};
+
+pub use users::provision_initial_admin;
+
+pub use models::LoginDirectory;

@@ -1,0 +1,210 @@
+{
+  "kind": "project_planning_catalog_not_runtime_events",
+  "as_of": "2026-10-28",
+  "nodes": [
+    {
+      "le_id": "le_f00",
+      "title": "Base verificada",
+      "baseline": "Revisión documental disponible; revalidar al iniciar",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Auditar código, contratos y evidencia nativa; distinguir pruebas de mocks.",
+      "evidence": "docs/product/execution/f00/acceptance.md"
+    },
+    {
+      "le_id": "le_f01",
+      "title": "Decisiones y contratos",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Resolver D01–D05; contratos versionados, pruebas y autorización de cambios de invariantes antes de consumidores.",
+      "evidence": "docs/product/execution/f01/acceptance.md"
+    },
+    {
+      "le_id": "le_f02",
+      "title": "Carpetas y migración",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "D03 aprobada; migración reversible e idempotente, credenciales preservadas y una sola fuente activa.",
+      "evidence": "docs/product/execution/f02/acceptance.md"
+    },
+    {
+      "le_id": "le_f03",
+      "title": "Confianza, recuperación y preferencias",
+      "baseline": "Base parcial de acceso existente; ampliación pendiente",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "D04 aprobada; recuperación del único Admin, provisión de equipos y rotación; llave siempre local. Contraseña de 8 caracteres, temporal de 24 h y cambio obligatorio. Implementar preferencias locales por espacio/usuario, UI y pruebas; reset no modifica referencia, llave ni permisos.",
+      "evidence": "docs/product/execution/f03/acceptance.md"
+    },
+    {
+      "le_id": "le_f04",
+      "title": "Proyectos y catálogos",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "RBAC real, asignaciones válidas, fechas, líneas, máquinas, fallas y referencias consistentes.",
+      "evidence": "docs/product/execution/f04/acceptance.md"
+    },
+    {
+      "le_id": "le_f05",
+      "title": "Actividades e hitos",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Escritura por sesión propietaria; hitos 0/25/50/75; 100 solicitado no equivale a aprobado.",
+      "evidence": "docs/product/execution/f05/acceptance.md"
+    },
+    {
+      "le_id": "le_f06",
+      "title": "Evidencias",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Adjuntos múltiples con ID/revisión, límites acordados, referencias relativas y rechazo de rutas fuera del espacio; recuperación de copia interrumpida.",
+      "evidence": "docs/product/execution/f06/acceptance.md"
+    },
+    {
+      "le_id": "le_f07",
+      "title": "Aprobación y retrabajo",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "D02 aprobada; autoridad Supervisor/Admin separada del perfil del ingeniero, ligada a revisión y evidencia; rechazo, reapertura e historial.",
+      "evidence": "docs/product/execution/f07/acceptance.md"
+    },
+    {
+      "le_id": "le_f08",
+      "title": "Incidencias de piso",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "D01 aprobada; append-only, deduplicación, correcciones como eventos, horas no negativas y scrap entero no negativo; prueba de reconexión.",
+      "evidence": "docs/product/execution/f08/acceptance.md"
+    },
+    {
+      "le_id": "le_f09",
+      "title": "Lecturas y métricas",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "D05 aprobada; calendario, esfuerzo, capacidad neta, pesos y línea base explícitos; avance declarado/aprobado y datos faltantes diferenciados.",
+      "evidence": "docs/product/execution/f09/acceptance.md"
+    },
+    {
+      "le_id": "le_f10",
+      "title": "Vista Engineer",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Proyectos asignados, captura diaria, hitos y adjuntos; objetivo de captura diaria <60 s e incidencia <30 s medido en piloto.",
+      "evidence": "docs/product/execution/f10/acceptance.md"
+    },
+    {
+      "le_id": "le_f11",
+      "title": "Vistas Supervisor y Admin",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Asignar proyectos, mantener catálogos, revisar evidencias, aprobar/rechazar y consultar desviaciones; estados vacíos y errores accesibles.",
+      "evidence": "docs/product/execution/f11/acceptance.md"
+    },
+    {
+      "le_id": "le_f12",
+      "title": "Gantt y capacidad",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Ventana 21 días W-1/W0/W+1, zona America/Mexico_City; calendario FAB confirmado y capacidad basada en esfuerzo, no conteo de tareas.",
+      "evidence": "docs/product/execution/f12/acceptance.md"
+    },
+    {
+      "le_id": "le_f13",
+      "title": "Plantilla oficial Excel",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "D06: Alan selecciona versión oficial; inspeccionar hojas, tablas, fórmulas, estilos e impresión y fijar fixture autorizado.",
+      "evidence": "docs/product/execution/f13/acceptance.md"
+    },
+    {
+      "le_id": "le_f14",
+      "title": "Exportación KMX-FW",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Snapshot consistente, plantilla oficial preservada y comparación de valores, tablas, fórmulas e impresión; salida en exports del espacio activo.",
+      "evidence": "docs/product/execution/f14/acceptance.md"
+    },
+    {
+      "le_id": "le_f15",
+      "title": "Resiliencia y respaldo",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Respaldo de datos/evidencias/manifest sin master.key; restauración validada, compatibilidad de versiones, disco lleno y JSON inválido sin reinicializar datos.",
+      "evidence": "docs/product/execution/f15/acceptance.md"
+    },
+    {
+      "le_id": "le_f16",
+      "title": "Integración completa",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Proyecto → actividad → evidencia → aprobación → reporte, roles reales y sesiones restringidas probados en backend y UI.",
+      "evidence": "docs/product/execution/f16/acceptance.md"
+    },
+    {
+      "le_id": "le_f17",
+      "title": "Piloto y aceptación",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Preparar portable de piloto con hash antes de pruebas nativas. Pruebas sintéticas aisladas, roles, dos equipos, desconexión/reconexión, ausencia de pérdida/duplicación, tiempos de captura y evidencia nativa separada de mocks.",
+      "evidence": "docs/product/execution/f17/acceptance.md"
+    },
+    {
+      "le_id": "le_f18",
+      "title": "Candidato portable",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Build reproducible, hash, documentos/contratos, compatibilidad y rollback; portable único sin Node/Rust ni instalador obligatorio.",
+      "evidence": "docs/product/execution/f18/acceptance.md"
+    },
+    {
+      "le_id": "le_f19",
+      "title": "Publicación controlada",
+      "baseline": "Pendiente de implementación/aceptación",
+      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "done": "Aprobación explícita futura, raíz resuelta y validada, backup, aceptación FAB y evidencia de publicación/rollback; sin migración implícita.",
+      "evidence": "docs/product/execution/f19/acceptance.md"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D01",
+      "title": "Concurrencia OneDrive",
+      "owner": "Arquitectura + Alan",
+      "closure": "Elegir protocolo verificable para múltiples escritores de issues/projects/team y misma cuenta en dos equipos. Append-only y rename local no garantizan convergencia. Eventos inmutables/proyección o escritor único son alternativas, no cambios ya autorizados.",
+      "status": "pending"
+    },
+    {
+      "id": "D02",
+      "title": "Autoridad de aprobación",
+      "owner": "Supervisor + Arquitectura",
+      "closure": "Elegir registro autoritativo separado del JSON propiedad del ingeniero, unido a revisión y huella de evidencias. Un booleano escrito por el ingeniero no concede aprobación.",
+      "status": "pending"
+    },
+    {
+      "id": "D03",
+      "title": "Carpetas y evidencias",
+      "owner": "Alan + Arquitectura",
+      "closure": "Aprobar layout por usuario, contrato de adjuntos, tipos/tamaños/retención y migración con rollback antes de sustituir engineers/<id>.json.",
+      "status": "pending"
+    },
+    {
+      "id": "D04",
+      "title": "Confianza y recuperación",
+      "owner": "Alan",
+      "closure": "Definir custodio, provisión, rotación y recuperación del único Admin. HMAC compartido con un verificador permite firmar; no sincronizar master.key ni prometer revocación instantánea sin conexión. Otro esquema criptográfico requiere cambio explícito de invariante.",
+      "status": "pending"
+    },
+    {
+      "id": "D05",
+      "title": "Reglas FAB",
+      "owner": "Supervisor",
+      "closure": "Confirmar calendario, semanas, turnos, esfuerzo, capacidad, pesos, unidades y línea base para desviaciones. Datos insuficientes se muestran como desconocidos.",
+      "status": "pending"
+    },
+    {
+      "id": "D06",
+      "title": "Excel oficial",
+      "owner": "Alan + Supervisor",
+      "closure": "Seleccionar e inspeccionar plantilla oficial EN o EN-R2; el sufijo R2 no acredita autoridad. Las hojas/tablas del brief siguen por verificar.",
+      "status": "pending"
+    }
+  ]
+}

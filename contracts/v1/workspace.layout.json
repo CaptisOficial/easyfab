@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "folder": "easy-fab",
+  "manifest": "workspace.json",
+  "data": "data",
+  "docs": "docs",
+  "software": "software",
+  "exports": "exports",
+  "backups": "backups",
+  "executable": "software/easyfab.exe",
+  "contracts": "contracts"
+}

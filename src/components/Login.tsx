@@ -1,9 +1,11 @@
+import { InitialAdminForm } from "./auth/InitialAdminForm";
 import { useEffect, useState, type FormEvent } from "react";
 import { listLoginUsers, login, logout, type LoginChoice, type SessionUser } from "../lib/api";
 import { PasswordChangeForm } from "./auth/PasswordChangeForm";
-import { RecoveryForm } from "./auth/RecoveryForm";
+import { UserDirectory } from "./auth/UserDirectory";
 
-export function Login() {
+export function Login({ onSessionChange }: { onSessionChange?: (active: boolean) => void }) {
+  const [requiresAdmin, setRequiresAdmin] = useState(false);
   const [users, setUsers] = useState<LoginChoice[]>([]);
   const [userId, setUserId] = useState("");
   const [pin, setPin] = useState("");
@@ -15,7 +17,7 @@ export function Login() {
   useEffect(() => {
     let active = true;
     listLoginUsers().then(items => {
-      if (active) { setUsers(items); setUserId(items[0]?.id ?? ""); }
+      if (active) { setUsers(items.users); setUserId(items.users[0]?.id ?? ""); setRequiresAdmin(items.requires_admin); }
     }).catch(e => { if (active) setError(String(e)); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
@@ -26,7 +28,7 @@ export function Login() {
     setBusy(true);
     setError("");
     setNotice("");
-    try { setUser(await login(userId, pin)); }
+    try { setUser(await login(userId, pin)); onSessionChange?.(true); }
     catch (e) { setError(String(e)); }
     finally { setPin(""); setBusy(false); }
   }
@@ -34,7 +36,11 @@ export function Login() {
   async function exit() {
     setBusy(true);
     setError("");
-    try { await logout(); setUser(null); }
+    try {
+      await logout(); setUser(null); onSessionChange?.(false);
+      const choices = await listLoginUsers();
+      setUsers(choices.users); setUserId(choices.users[0]?.id ?? ""); setRequiresAdmin(choices.requires_admin);
+    }
     catch (e) { setError(String(e)); }
     finally { setBusy(false); }
   }
@@ -47,17 +53,19 @@ export function Login() {
       <p>Sesión de {user.name} · {({ admin: "Administrador", supervisor: "Supervisor", engineer: "Ingeniero" })[user.role]}</p>
       {user.must_change_password
         ? <PasswordChangeForm onChanged={() => {
-          setUser(null);
+          setUser(null); onSessionChange?.(false);
           setNotice("Contraseña actualizada. Ingresa con tu nueva contraseña.");
         }} />
         : <>
           <p className="text-sm">Acceso normal verificado. Las vistas de trabajo se incorporan en la fase 3.</p>
-          {user.role === "admin" && <RecoveryForm users={users} />}
+          {user.role === "admin" && <UserDirectory />}
         </>}
       <button disabled={busy} onClick={exit} className="border px-4 py-2">Cerrar sesión</button>
-    </div> : <form onSubmit={submit} className="space-y-4">
+    </div> : !busy && requiresAdmin && !error ? <InitialAdminForm onReady={async () => {
+      const choices=await listLoginUsers(); setUsers(choices.users); setUserId(choices.users[0]?.id ?? ""); setRequiresAdmin(choices.requires_admin);
+    }} /> : <form onSubmit={submit} className="space-y-4">
       {busy && <p role="status">Verificando…</p>}
-      {!busy && !users.length && !error && <p>El directorio no contiene usuarios habilitados. Solicita al administrador el alta y la provisión de confianza del equipo.</p>}
+      {!busy && !users.length && !requiresAdmin && !error && <p>No hay usuarios habilitados. Solicita al administrador revisar el acceso.</p>}
       <label className="block">Usuario
         <select className="mt-1 block w-full border p-2" value={userId} required
           onChange={e => setUserId(e.target.value)} disabled={busy || !users.length}>

@@ -1,25 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB Macro Projects",
+  "description": "Registration: trim text, reject empty/control characters; WBS unique case-insensitively; ID generated from 256 random bits with collision check. Responsible must be an active trusted team member (any published role). Dates are real YYYY-MM-DD, start <= target. Initial state Not Started. Existing unknown properties are preserved; invalid documents are never reset. Historical references may point to subsequently inactive members; new assignments cannot.",
   "type": "object",
   "required": ["version", "projects"],
   "properties": {
-    "version": { "type": "integer", "const": 1 },
-    "projects": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "wbs", "name", "process_area", "lead_engineer_id", "start_date", "target_date", "status"],
-        "properties": {
-          "id": { "type": "string" },
-          "wbs": { "type": "string" },
-          "name": { "type": "string" },
-          "process_area": { "type": "string" },
-          "lead_engineer_id": { "type": "string" },
-          "start_date": { "type": "string", "format": "date" },
-          "target_date": { "type": "string", "format": "date" },
-          "status": { "type": "string", "enum": ["Not Started", "In Progress", "Completed", "On Hold"] }
-        }
+    "version": {"type": "integer", "const": 1},
+    "projects": {"type": "array", "items": {"$ref": "#/$defs/project"}}
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "required": ["id", "wbs", "name", "process_area", "lead_engineer_id", "start_date", "target_date", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "wbs": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "process_area": {"type": "string", "minLength": 1},
+        "lead_engineer_id": {"type": "string", "minLength": 1},
+        "start_date": {"type": "string", "format": "date"},
+        "target_date": {"type": "string", "format": "date"},
+        "status": {"type": "string", "enum": ["Not Started", "In Progress", "Completed", "On Hold"]}
       }
     }
   }

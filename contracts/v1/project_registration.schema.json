@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB project registration IPC v1",
+  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project. Errors are strings. Both require a revalidated normal Admin/Supervisor session and the active workspace; no caller-supplied paths or identity. Creation additionally requires compiled single-writer authorization.",
+  "$defs": {
+    "new_project": {
+      "type": "object", "additionalProperties": false,
+      "required": ["wbs", "name", "process_area", "lead_engineer_id", "start_date", "target_date"],
+      "properties": {
+        "wbs": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "process_area": {"type": "string", "minLength": 1},
+        "lead_engineer_id": {"type": "string", "minLength": 1},
+        "start_date": {"type": "string", "format": "date"},
+        "target_date": {"type": "string", "format": "date"}
+      }
+    },
+    "lead": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {"id": {"type": "string"}, "name": {"type": "string"}}
+    },
+    "overview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["projects", "leads", "can_create", "write_message"],
+      "properties": {
+        "projects": {"type": "array", "items": {"$ref": "projects.schema.json#/$defs/project"}},
+        "leads": {"type": "array", "items": {"$ref": "#/$defs/lead"}},
+        "can_create": {"type": "boolean"},
+        "write_message": {"type": "string"}
+      }
+    }
+  }
+}

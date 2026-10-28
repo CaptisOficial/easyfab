@@ -40,3 +40,14 @@ describe("frontera frontend / Tauri", () => {
     expect(invoke).toHaveBeenCalledExactlyOnceWith("configure_workspace", { root: "invalid-test-root" });
   });
 });
+
+it("proyectos usa los comandos y payload del contrato sin rutas ni identidad del llamador", async () => {
+  const api = await import("./api");
+  const input = { wbs: "FAB-1", name: "Fixture", process_area: "FAB", lead_engineer_id: "eng", start_date: "2026-10-28", target_date: "2026-10-29" };
+  vi.mocked(invoke).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Pending" });
+  await api.projectsOverview();
+  expect(invoke).toHaveBeenLastCalledWith("projects_overview");
+  vi.mocked(invoke).mockRejectedValue("Denied");
+  await expect(api.createProject(input)).rejects.toBe("Denied");
+  expect(invoke).toHaveBeenLastCalledWith("create_project", { input });
+});

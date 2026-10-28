@@ -1,3 +1,4 @@
+import { Projects } from "../features/projects/Projects";
 import { InitialAdminForm } from "./auth/InitialAdminForm";
 import { useEffect, useState, type FormEvent } from "react";
 import { listLoginUsers, login, logout, type LoginChoice, type SessionUser } from "../lib/api";
@@ -61,8 +62,9 @@ export function Login({ onSessionChange }: { onSessionChange?: (active: boolean)
           <p role="status" className="text-sm">Acceso confirmado con tu contraseña personal.</p>
           <p className="text-sm">{user.role === "admin"
             ? "Registra los usuarios del equipo. Para probar uno, guarda su temporal, cierra esta sesión y selecciónalo en el acceso."
-            : "Tu perfil está listo. Los módulos de proyectos y actividades se incorporarán en una siguiente entrega."}</p>
+            : "Tu perfil está listo. El registro de actividades está pendiente."}</p>
           {user.role === "admin" && <UserDirectory />}
+          {user.role !== "engineer" && <Projects />}
         </>}
       <button disabled={busy} onClick={exit} className="border px-4 py-2">Cerrar sesión</button>
     </div> : !busy && requiresAdmin && !error ? <InitialAdminForm onReady={async () => {
@@ -86,3 +88,4 @@ export function Login({ onSessionChange }: { onSessionChange?: (active: boolean)
     </form>}
   </section>;
 }
+

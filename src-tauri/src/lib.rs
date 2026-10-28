@@ -6,6 +6,8 @@ mod auth;
 mod auth_commands;
 mod bootstrap;
 mod onedrive;
+mod project_commands;
+mod projects;
 mod user_commands;
 mod workspace;
 mod workspace_assets;
@@ -23,9 +25,8 @@ pub(crate) struct AppState {
     attempts: Mutex<(u32, Option<std::time::Instant>)>,
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
+fn app_builder<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
+    builder
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             workspace_commands::workspace_status,
@@ -38,8 +39,15 @@ pub fn run() {
             user_commands::list_users,
             user_commands::create_user,
             user_commands::set_user_active,
+            project_commands::projects_overview,
+            project_commands::create_project,
             auth_commands::reset_password
         ])
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    app_builder(tauri::Builder::default())
         .run(tauri::generate_context!())
         .expect("error al iniciar EasyFAB");
 }

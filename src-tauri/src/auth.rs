@@ -32,3 +32,5 @@ pub use models::LoginDirectory;
 
 #[cfg(test)]
 mod onboarding_tests;
+
+pub(crate) use credentials::revalidate;

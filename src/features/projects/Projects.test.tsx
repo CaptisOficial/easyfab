@@ -1,0 +1,60 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Projects } from "./Projects";
+import * as api from "../../lib/api";
+vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn() }));
+afterEach(cleanup);
+const overview: api.ProjectsOverview = { projects: [], leads: [{ id: "eng", name: "Engineer Test" }], can_create: true, write_message: "Piloto autorizado" };
+const project: api.Project = { id: "PRJ-test", wbs: "FAB-1", name: "Fixture project", process_area: "FAB", lead_engineer_id: "eng", start_date: "2026-10-28", target_date: "2026-11-01", status: "Not Started" };
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.projectsOverview).mockResolvedValue(overview); });
+it("muestra carga, vacío, guarda una sola vez y vuelve a consultar al montar", async () => {
+  const user = userEvent.setup();
+  let finish!: (p: api.Project) => void;
+  vi.mocked(api.createProject).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const view = render(<Projects />);
+  expect(screen.getByText("Cargando proyectos…")).toBeTruthy();
+  await screen.findByText("No hay proyectos registrados.");
+  for (const [label, value] of [["Código WBS", "FAB-1"], ["Título del proyecto", "Fixture project"], ["Área de proceso", "FAB"]]) await user.type(screen.getByLabelText(label), value);
+  await user.selectOptions(screen.getByLabelText("Responsable"), "eng");
+  fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-10-28" } });
+  fireEvent.change(screen.getByLabelText("Fecha objetivo"), { target: { value: "2026-11-01" } });
+  await user.click(screen.getByRole("button", { name: "Guardar proyecto" }));
+  fireEvent.submit(screen.getByRole("button", { name: "Guardando…" }).closest("form")!);
+  expect(api.createProject).toHaveBeenCalledTimes(1);
+  expect(api.createProject).toHaveBeenCalledWith({ wbs: project.wbs, name: project.name, process_area: project.process_area, lead_engineer_id: project.lead_engineer_id, start_date: project.start_date, target_date: project.target_date });
+  finish(project);
+  await screen.findByText("Proyecto FAB-1 guardado.");
+  expect(screen.getByText("FAB-1 · Fixture project")).toBeTruthy();
+  view.unmount();
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [project] });
+  render(<Projects />);
+  await screen.findByText("FAB-1 · Fixture project");
+  expect(api.projectsOverview).toHaveBeenCalledTimes(2);
+});
+it("presenta error de lectura y permite reintentar", async () => {
+  vi.mocked(api.projectsOverview).mockRejectedValueOnce("Archivo corrupto");
+  render(<Projects />);
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Archivo corrupto");
+  await userEvent.click(screen.getByRole("button", { name: "Actualizar proyectos" }));
+  await screen.findByText("No hay proyectos registrados.");
+});
+it("bloquea formulario cuando Rust no autoriza el escritor", async () => {
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, can_create: false, write_message: "Alta bloqueada" });
+  render(<Projects />);
+  await screen.findByText("Alta bloqueada");
+  expect(screen.getByLabelText("Código WBS").closest("fieldset")?.disabled).toBe(true);
+  fireEvent.submit(screen.getByRole("button", { name: "Guardar proyecto" }).closest("form")!);
+  expect(api.createProject).not.toHaveBeenCalled();
+});
+it("conserva captura y muestra rechazo de guardado sin anunciar éxito", async () => {
+  vi.mocked(api.createProject).mockRejectedValue("Fecha inválida");
+  render(<Projects />);
+  await screen.findByText("No hay proyectos registrados.");
+  fireEvent.change(screen.getByLabelText("Título del proyecto"), { target: { value: "Conservar" } });
+  fireEvent.submit(screen.getByRole("button", { name: "Guardar proyecto" }).closest("form")!);
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Fecha inválida"));
+  expect((screen.getByLabelText("Título del proyecto") as HTMLInputElement).value).toBe("Conservar");
+  expect(screen.queryByText(/guardado\./)).toBeNull();
+});

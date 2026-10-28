@@ -1,5 +1,9 @@
 # Status de Planes de Desarrollo - EasyFAB
 
+PLAN-014: Alta y consulta mínima de proyectos — `in_progress`, 2026-10-28.
+[Plan](PLAN_014_PROJECT_REGISTRATION.md). Recorrido acotado F04; escritura real
+pendiente de decisión de escritor único. No cierra F01/F03/F04.
+
 Última actualización: 2026-10-28 (America/Mexico_City)
 
 ---

@@ -65,6 +65,10 @@ pub fn install(docs: &Path, contracts: &Path) -> Result<(), String> {
                 include_str!("../../contracts/v1/auth.schema.json"),
             ),
             (
+                "project_registration.schema.json",
+                include_str!("../../contracts/v1/project_registration.schema.json"),
+            ),
+            (
                 "projects.schema.json",
                 include_str!("../../contracts/v1/projects.schema.json"),
             ),
@@ -83,3 +87,4 @@ pub fn install(docs: &Path, contracts: &Path) -> Result<(), String> {
         ],
     )
 }
+

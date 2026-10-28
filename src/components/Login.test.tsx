@@ -8,10 +8,10 @@ import * as api from "../lib/api";
 vi.mock("../lib/api", () => ({
   listLoginUsers: vi.fn(), login: vi.fn(), logout: vi.fn(), changePassword: vi.fn(),
   provisionInitialAdmin: vi.fn(), listUsers: vi.fn(), createUser: vi.fn(),
-  setUserActive: vi.fn(), resetPassword: vi.fn(),
+  setUserActive: vi.fn(), resetPassword: vi.fn(), projectsOverview: vi.fn().mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Piloto pendiente" }), createProject: vi.fn(),
 }));
 afterEach(cleanup);
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Piloto pendiente" }); });
 
 describe("primer recorrido de acceso", () => {
   it("crea Admin, cambia contraseña, registra usuario y permite probar su acceso", async () => {
@@ -95,3 +95,4 @@ describe("primer recorrido de acceso", () => {
     expect(screen.queryByRole("heading", { name: "Gestión de usuarios" })).toBeNull();
   });
 });
+

@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Script de validación Gate 0 (Captis Governance) para EasyFAB.
 .DESCRIPTION
@@ -23,6 +23,7 @@ Write-Host "`n[1/4] Verificando contratos canónicos en contracts/v1/..." -Foreg
 $requiredContracts = @(
     "team.schema.json",
     "projects.schema.json",
+    "project_registration.schema.json",
     "engineer_tasks.schema.json",
     "issues.schema.json",
     "auth.schema.json",
@@ -84,3 +85,4 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Fallo en pruebas de cambio de layout."
 }
 Write-Host "`n=== [GATE 0 APROBADO: Sistema íntegro] ===" -ForegroundColor Green
+

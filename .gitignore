@@ -10,6 +10,11 @@ master.key
 
 # Noesko local indexes & caches
 rag-*.db*
+rag.db*
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
 noesko-telemetry.db*
 noesko-telemetry.db*
 .noesko/

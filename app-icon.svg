@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="48" fill="#111111"/>
+  <rect x="0" y="440" width="512" height="24" fill="#69BE28"/>
+  <text x="256" y="320" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="220" font-weight="800" letter-spacing="-8" fill="#FFFFFF">E<tspan fill="#69BE28">F</tspan></text>
+</svg>

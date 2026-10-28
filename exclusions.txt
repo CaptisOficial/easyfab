@@ -1,0 +1,13 @@
+# Noesko Exclusions
+.git/
+.venv/
+node_modules/
+dist/
+build/
+target/
+.test/
+*.pyc
+*.key
+*.pem
+*.env
+*.db

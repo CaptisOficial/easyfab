@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB Auth IPC v1",
+  "$defs": {
+    "choice": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "role",
+        "must_change_password"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "admin",
+            "supervisor",
+            "engineer"
+          ]
+        },
+        "must_change_password": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "description": "list_login_users -> choice[]; login(userId,pin) -> session; logout -> null. Sesion autoritativa en memoria Rust; nunca aceptar roles desde UI. change_password(newPin) -> null, termina sesion; reset_password(userId) -> temporal de 24h, solo admin normal. Revision firmada revoca credenciales anteriores."
+}

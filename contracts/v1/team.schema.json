@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB Team Directory",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at",
+    "members"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "role",
+          "area",
+          "windows_username",
+          "password_hash",
+          "role_signature",
+          "status",
+          "credential_revision",
+          "temporary_expires_at",
+          "credential_signature"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "supervisor",
+              "engineer"
+            ]
+          },
+          "area": {
+            "type": "string"
+          },
+          "windows_username": {
+            "type": "string"
+          },
+          "password_hash": {
+            "type": "string"
+          },
+          "role_signature": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          },
+          "credential_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "temporary_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "credential_signature": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

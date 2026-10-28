@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB Macro Projects",
+  "type": "object",
+  "required": ["version", "projects"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "wbs", "name", "process_area", "lead_engineer_id", "start_date", "target_date", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "wbs": { "type": "string" },
+          "name": { "type": "string" },
+          "process_area": { "type": "string" },
+          "lead_engineer_id": { "type": "string" },
+          "start_date": { "type": "string", "format": "date" },
+          "target_date": { "type": "string", "format": "date" },
+          "status": { "type": "string", "enum": ["Not Started", "In Progress", "Completed", "On Hold"] }
+        }
+      }
+    }
+  }
+}

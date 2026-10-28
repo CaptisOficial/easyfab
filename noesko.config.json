@@ -1,0 +1,177 @@
+{
+  "active_profile": "full",
+  "api": {
+    "cache_mode": "balanced",
+    "host": "127.0.0.1",
+    "port": 8765
+  },
+  "contract_version": 1,
+  "embeddings": {
+    "model": "paraphrase-multilingual-MiniLM-L12-v2"
+  },
+  "exclusions": {
+    "file": "exclusions.txt",
+    "includes": [],
+    "max_file_bytes": 1000000,
+    "patterns": [],
+    "preset": "standard",
+    "report_skipped": true
+  },
+  "profiles": {
+    "agent-ready": {
+      "cache_mode": "balanced",
+      "description": "API local, cache balanced y payload /api/agent para agentes.",
+      "labels": "hybrid",
+      "llm": "off",
+      "sources": [
+        "docs",
+        "code"
+      ],
+      "topic_source": "all",
+      "topics": true
+    },
+    "code-only": {
+      "cache_mode": "balanced",
+      "description": "Codigo Captis, busqueda rapida y diagnostico tecnico.",
+      "labels": "hybrid",
+      "llm": "off",
+      "sources": [
+        "code"
+      ],
+      "topic_source": "code",
+      "topics": true
+    },
+    "docs-only": {
+      "cache_mode": "balanced",
+      "description": "Documentacion, busqueda rapida y topicos de docs.",
+      "labels": "hybrid",
+      "llm": "off",
+      "sources": [
+        "docs"
+      ],
+      "topic_source": "docs",
+      "topics": true
+    },
+    "full": {
+      "cache_mode": "balanced",
+      "description": "Documentacion + codigo con topicos, sin depender de LLM externa.",
+      "labels": "hybrid",
+      "llm": "off",
+      "sources": [
+        "docs",
+        "code"
+      ],
+      "topic_source": "all",
+      "topics": true
+    },
+    "full+ollama": {
+      "cache_mode": "balanced",
+      "description": "Sistema completo con summaries zero-shot via Ollama local.",
+      "labels": "zeroshot",
+      "llm": "ollama",
+      "sources": [
+        "docs",
+        "code"
+      ],
+      "topic_source": "all",
+      "topics": true
+    }
+  },
+  "retrieval": {
+    "allow_wide_semantic": false,
+    "hybrid_candidates": 300
+  },
+  "sources": {
+    "code": {
+      "db_file": "rag.db",
+      "extensions": [
+        ".astro",
+        ".bat",
+        ".c",
+        ".cc",
+        ".cjs",
+        ".cpp",
+        ".cs",
+        ".css",
+        ".cxx",
+        ".go",
+        ".h",
+        ".hh",
+        ".hpp",
+        ".htm",
+        ".html",
+        ".hxx",
+        ".java",
+        ".js",
+        ".json",
+        ".jsx",
+        ".mjs",
+        ".prisma",
+        ".ps1",
+        ".py",
+        ".rs",
+        ".scss",
+        ".sh",
+        ".sql",
+        ".svelte",
+        ".toml",
+        ".ts",
+        ".tsx",
+        ".vue",
+        ".xml",
+        ".yaml",
+        ".yml"
+      ],
+      "roots": [
+        "C:/Dev/easyfab"
+      ]
+    },
+    "docs": {
+      "db_file": "rag.db",
+      "extensions": [
+        ".md",
+        ".txt",
+        ".rst"
+      ],
+      "roots": [
+        "C:/Dev/easyfab/docs",
+        "C:/Dev/easyfab"
+      ]
+    }
+  },
+  "telemetry": {
+    "anonymous_client_id": null,
+    "capture_query_text": false,
+    "crash_reports": false,
+    "database": "noesko-telemetry.db",
+    "enabled": false,
+    "performance_metrics": false,
+    "retention_days": 90
+  },
+  "topics": {
+    "enabled": true,
+    "k_max": 40,
+    "k_min": 4,
+    "labels": "hybrid",
+    "llm": {
+      "debug": false,
+      "enabled": false,
+      "max_tokens": 160,
+      "model": "qwen2.5:0.5b",
+      "provider": "ollama",
+      "temperature": 0.10000000000000001,
+      "timeout_seconds": 12,
+      "url": "http://127.0.0.1:11434/api/generate"
+    },
+    "output": "topic_model.json",
+    "source": "all"
+  },
+  "visualizer": {
+    "allow_port_fallback": true,
+    "host": "127.0.0.1",
+    "port": 9000
+  },
+  "web": {
+    "url": "https://rag.captis.com.mx"
+  }
+}

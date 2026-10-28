@@ -1,0 +1,38 @@
+[package]
+name = "easyfab"
+version = "0.1.0"
+description = "EasyFAB - reporte semanal de ingeniería local-first para 10.FAB"
+authors = ["Fabrication Engineering 10.FAB - Kawasaki Motores de México"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "easyfab_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = ["tray-icon"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Fase 2 (criptografía y RBAC)
+argon2 = "0.5"
+hmac = "0.12"
+sha2 = "0.10"
+rand_core = { version = "0.6", features = ["getrandom"] }
+# Utilidades
+chrono = { version = "0.4", features = ["serde"] }
+directories = "5.0"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[profile.release]
+# Binario pequeño (~12-15 MB objetivo)
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

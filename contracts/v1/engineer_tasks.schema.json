@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB Engineer Subactivities",
+  "type": "object",
+  "required": [
+    "engineer_id",
+    "last_synced",
+    "subactivities"
+  ],
+  "properties": {
+    "engineer_id": {
+      "type": "string"
+    },
+    "last_synced": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subactivities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "wbs",
+          "task_title",
+          "start_date",
+          "due_date",
+          "milestone_gate",
+          "status",
+          "supervisor_approved"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "wbs": {
+            "type": "string"
+          },
+          "task_title": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "milestone_gate": {
+            "type": "integer",
+            "enum": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "deliverable_evidence": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not Started",
+              "In Progress",
+              "Completed",
+              "At Risk"
+            ]
+          },
+          "supervisor_approved": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "password_hash",
+        "signature"
+      ],
+      "properties": {
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "password_hash": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

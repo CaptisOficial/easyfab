@@ -1,0 +1,20 @@
+node_modules
+dist
+src-tauri/target
+src-tauri/gen
+*.log
+.DS_Store
+# Nunca versionar llaves ni datos de producción
+master.key
+*.key
+
+# Noesko local indexes & caches
+rag-*.db*
+noesko-telemetry.db*
+noesko-telemetry.db*
+.noesko/
+.noesko/
+.index.lock
+.captis-index.lock
+topic_model.json
+pca_projection.json

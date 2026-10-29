@@ -31,7 +31,8 @@ $requiredContracts = @(
     "workspace.schema.json",
     "workspace.layout.json",
     "installation.schema.json"
-    "profile_upgrade.schema.json"
+    "profile_upgrade.schema.json",
+    "user_preferences.schema.json"
 )
 
 foreach ($c in $requiredContracts) {
@@ -71,6 +72,10 @@ if (Test-Path $cargo) {
 }
 
 Write-Host "`n[4/4] Ejecutando pruebas frontend y Rust..." -ForegroundColor Yellow
+& npm.cmd run test:contracts
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Fallo en pruebas de contratos de preferencias."
+}
 & npm.cmd run test:frontend
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Fallo en pruebas frontend."

@@ -13,8 +13,6 @@ La **raíz compartida** es la carpeta corporativa elegida en cada equipo. La ubi
 
 ### Regla de autoridad de Configuración
 
-**EasyFAB debe usar la carpeta compartida seleccionada y validada en Configuración, cualquiera que sea su nombre o ubicación absoluta accesible y autorizada por la empresa.** No se exige el nombre `ENGINEERING FILES - 10.FAB`, una letra de unidad, un perfil Windows ni una ruta fija de OneDrive. Esto conserva la política local-first y no autoriza servicios externos de nube.
-
 La carpeta seleccionada es la raíz que contiene `easy-fab/`; no se debe seleccionar su subcarpeta `data/`. `installation.json` conserva `workspace_root` y `workspace_id` por equipo. Las rutas compartidas del sistema (datos, documentos publicados, contratos publicados, portable, exportaciones y respaldos) derivan de esa raíz mediante el layout canónico. La referencia, la llave de confianza y las preferencias locales permanecen en la instalación local conforme a la separación siguiente.
 
 La selección guardada prevalece incluso si el ejecutable se abre desde otra carpeta. Si la raíz resulta inaccesible, la referencia es inválida o el ID no coincide, el acceso falla explícitamente: no se cambia a la propuesta OneDrive, a la carpeta del ejecutable, al repositorio ni a datos locales alternativos. Cambiar de raíz requiere una selección explícita sin sesión activa; no implica migrar, copiar o fusionar datos.
@@ -79,7 +77,7 @@ Las preferencias locales solo personalizan la experiencia; no otorgan permisos, 
 
 Restablecer preferencias conserva `installation.json`, `master.key` y todos los datos compartidos. Una preferencia ausente o inválida permite recuperar valores de interfaz predeterminados; una referencia de espacio inválida o no disponible sigue bloqueando el acceso. Las preferencias nunca habilitan una fuente local alternativa de datos.
 
-**Estado de implementación:** la referencia local, la llave y los datos compartidos ya existen. La persistencia de preferencias queda definida como decisión de arquitectura; todavía no se implementa. Antes de incorporarla se debe publicar su contrato en `contracts/v1/`, definir su archivo local y añadir pruebas de aislamiento por espacio/usuario, recuperación de preferencias inválidas y preservación de referencia, llave y datos. No se añaden campos de preferencias a `installation.json` sin actualizar su contrato.
+**Estado de implementación:** la referencia local, la llave y los datos compartidos ya existen. La persistencia de preferencias queda definida como decisión de arquitectura; todavía no se implementa. El [contrato local v1 y su política](preferencias.md) están definidos y probados como esquema. Antes de persistirlos faltan pruebas de aislamiento real por espacio/usuario, recuperación de preferencias inválidas y preservación de referencia, llave y datos. No se añaden campos de preferencias a `installation.json` sin actualizar su contrato.
 
 ## Arranque e instanciación
 

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB local user preferences v1",
+  "description": "Presentation only. Ownership must match the validated active workspace and authenticated EasyFAB session; these fields never establish identity or authorization. No shared data, paths or credentials.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "workspace_id",
+    "user_id",
+    "theme",
+    "ui_scale"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+    },
+    "user_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}(?![\\s\\S])"
+    },
+    "theme": {
+      "type": "string",
+      "enum": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "default": "light",
+      "description": "Light preserves the current UI. System follows OS appearance only, never OS identity. Rendering all variants is required before exposing the control."
+    },
+    "ui_scale": {
+      "type": "string",
+      "enum": [
+        "standard",
+        "large"
+      ],
+      "default": "standard",
+      "description": "Standard preserves current UI density; large increases text and controls. No reduction of accessible targets."
+    }
+  }
+}

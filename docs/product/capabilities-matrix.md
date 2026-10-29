@@ -3,6 +3,20 @@
 Fecha: 2026-10-28
 Área: Fabrication Engineering (10.FAB)
 
+Traducción a módulos, componentes y ventanas: [catálogo funcional](catalogo-modulos.md).
+Ubicación y comportamiento: [estándar de navegación](../architecture/navegacion.md).
+La matriz conserva capacidades objetivo; para el flujo vigente prevalece AGENTS.md:
+Admin administra usuarios y consulta proyectos; el único Supervisor activo registra
+proyectos y posteriormente valida cierres. Las marcas históricas de creación y
+aprobación para Admin no autorizan esos permisos en el flujo confirmado.
+
+Traducción a módulos, componentes y ventanas: [catálogo funcional](catalogo-modulos.md).
+Ubicación y comportamiento: [estándar de navegación](../architecture/navegacion.md).
+La matriz conserva capacidades objetivo; para el flujo vigente prevalece AGENTS.md:
+Admin administra usuarios y consulta proyectos; el único Supervisor activo registra
+proyectos y posteriormente valida cierres. Las marcas históricas de creación y
+aprobación para Admin no autorizan esos permisos en el flujo confirmado.
+
 ---
 
 ## Matriz de Capacidades por Rol

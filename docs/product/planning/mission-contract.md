@@ -1,26 +1,75 @@
-# Contrato de misión del plan maestro
+# Contrato de trabajo por historia
 
-`mission_contract` vincula AGENTS.md, contracts/v1, docs/architecture, el plan maestro y las dos revisiones de planning/reviews. Al comenzar una ejecución se congelan sus hashes y revisión Git en un manifiesto; si cambian, DS revalida antes de programar consumidores.
+Política vigente desde 2026-10-29. Sustituye la programación global del plan de
+2026-10-28. Entrada y mapa de autoridad: [plan maestro](../plan-maestro.md).
 
-`publication_authorization` vincula publication-authorization.json. Su estado inicial no autoriza despliegues. Un operador debe autorizar una raíz concreta, versión, respaldo y ventana de publicación antes de escrituras corporativas. El plan usa ámbitos del repositorio y staging; no concede acceso genérico a directorios externos.
+## Flujo mínimo
 
-## Programación y entrega
+1. Delimitar resultado, aceptación, contratos y archivos afectados. Consultar la
+   ficha existente; ampliarla solo si cambia la superficie o su responsabilidad.
+2. Implementar la historia con pruebas relevantes. Resolver únicamente sus
+   dependencias reales. Un bloqueo detiene el alcance afectado; avanzar lo independiente.
+3. Verificar y entregar resultado, evidencia, límites y siguiente acción pendiente.
+   Si falla una comprobación, corregir dentro de la misma historia; no abrir otra
+   fase administrativa ni repetir una comprobación aprobada sin motivo nuevo.
 
-- Máximo tres expertos simultáneos y ámbitos de escritura disjuntos. Los archivos globales Rust tienen cadena de dependencias; las vistas React no registran rutas globales hasta F16.
-- Excepción explícita de integración temprana: F07 entrega en src/features/pilot una vista mínima del recorrido proyecto → actividad → evidencia → aprobación, registrada en App.tsx y comprobada con datos sintéticos. F16 la integra/reemplaza con las vistas completas sin duplicar reglas del backend. Así M2 puede revisarse antes de completar analítica e incidencias.
-- Las aristas F07→F08 y F14→F15 son restricciones de propiedad sobre el registro Rust, no dependencias funcionales. Si se extraen registros independientes, DS podrá revisar el DAG y paralelizar tras demostrar ámbitos disjuntos.
-- Cada nodo publica su propia interfaz y referencias a artefactos con 3–5 decisiones relevantes. Solo consume interfaces de padres directos o entradas inmutables; no redistribuye logs o payloads de ancestros.
-- DoR: padres aceptados, decisiones aplicables cerradas, contratos publicados y autorización vigente del alcance. DoD: pruebas relevantes, contratos en paridad, evidencia y revisión del propietario. F01 incluye contratos de preferencias locales y preparación de pruebas DOM antes de introducir componentes probados.
-- El esquema de estrategia es declarativo e inmutable durante una época. No contiene estados de ejecución. Los eventos reales futuros se guardan aparte conforme a captis-strategy-run-v1; no se inventan eventos para el backlog.
-- Los límites de 4 horas, 160000 tokens y tres revisiones son techos de una futura época de ejecución, no estimaciones del proyecto ni presupuesto de esta conversación. Si el trabajo requiere más, se divide y replanifica con checkpoints verificables.
-- Al superar contexto útil (30000 tokens o doce turnos de herramientas), guardar checkpoint con artefactos, hashes, decisiones, entradas pendientes y próximo nodo; reanudar sin repetir mutaciones.
-- Timeout, contrato inválido, dependencia rechazada, colisión de ámbitos y falta de autorización detienen la rama afectada. Dos intentos como máximo; errores deterministas vuelven a DS/propietario, sin bucles ni aprobación parcial de CE.
-- CE es una única compuerta implícita tras todos los terminales. Requiere todas las pruebas, piloto nativo, Excel oficial y publicación autorizada. Fallos vuelven a DS; QA no modifica código fuera de su ámbito.
+DoR y DoD son criterios de entrada y salida, no aprobaciones manuales adicionales.
+Para cambios rutinarios basta el alcance del chat y su resultado. Guardar una ficha
+persistente si el trabajo cruza conversaciones, necesita handoff o deja bloqueos.
+Reutilizar la ficha/evidencia existente: objetivo, alcance, aceptación, situación,
+impedimento concreto si existe, resultados y próximo paso. No duplicarla en STATUS.
 
-## Plantillas referidas, todavía no seleccionadas
+## Situación de una historia
 
-En la biblioteca corporativa original, Weekly MTG/Eg. Alan/20261027, existen `KMX-FW-Weekly-Report-Template-EN.xlsx` y `KMX-FW-Weekly-Report-Template-EN-R2.xlsx`. Solo se verificó existencia/metadatos. F13 debe inspeccionar contenido y confirmar autoridad con FAB. El brief espera Master Gantt, Subactivity Details/tbl_Subactivities e Issues & Risks/tbl_Issues; esto no acredita la estructura real de ninguno de los archivos.
+Usar tres valores: `pendiente`, `en_curso`, `terminada`. Un impedimento es un campo
+con causa, responsable y acción de desbloqueo; no otro estado. Una entrega parcial
+se describe en evidencia y conserva pendientes sus criterios no satisfechos.
+`Terminada` requiere cumplir el DoD de ese alcance; no acredita toda la entrega de producto.
+Un fallo de pruebas conserva `en_curso`; nueva solicitud tras un cierre abre una
+historia vinculada y conserva intacta la evidencia anterior.
 
-## Autoridad vigente
+```mermaid
+stateDiagram-v2
+    [*] --> pendiente
+    pendiente --> en_curso: alcance y dependencias aplicables definidos
+    en_curso --> en_curso: corregir o resolver impedimento
+    en_curso --> terminada: aceptación y verificaciones del alcance satisfechas
+    terminada --> [*]
+```
 
-Append-only sobre un array compartido y UUID no resuelven por sí solos escrituras simultáneas de OneDrive. D01 debe demostrar el protocolo escogido antes del módulo de incidencias. Incidencias mantiene issues.json. PLAN-013 autoriza el subalcance de carpeta personal de D03: manifiesto con layout 1 (<id>.json) o 2 (<id>/profile.json y evidence/), una sola versión activa y mantenimiento explícito para conservar cuentas existentes. No cambia el DAG completo ni cierra F01: es una entrega acotada sin escritores FAB ni subida de adjuntos. D01, D02, D04, D05 y las políticas de evidencia siguen pendientes antes de sus consumidores.
+Estos estados describen trabajo del agente. Los estados de acceso, actividad,
+aprobación o UI pertenecen al producto y se rigen por sus contratos; no se reducen
+por esta simplificación. Las entregas del plan maestro no son estados de esta FSM.
+
+## Dependencias y concurrencia
+
+Cada dependencia debe identificar el contrato, resultado o decisión consumida.
+D01–D06, definidas en el plan maestro, bloquean únicamente sus consumidores.
+No eludir RBAC, confianza, integridad ni decisiones necesarias para la historia.
+Compartir lib.rs, Cargo.toml o App.tsx exige serializar esas ediciones, no esperar
+la terminación de todos los módulos anteriores.
+
+El modo secuencial no requiere scheduler, contratos JSON, épocas, hashes de toda
+la documentación ni presupuestos artificiales de tokens/turnos. Guardar checkpoint
+cuando haya interrupción, handoff o riesgo real de perder contexto: referencias,
+decisiones, verificaciones y próximo paso; sin copiar logs ni código completo.
+
+Para trabajo concurrente justificado, aplicar captis-dag-orchestration: grafo
+acíclico, escrituras disjuntas, interfaces y artefactos por referencia, salidas propias
+y convergencia en una evaluación de DoD del alcance. Emitir `.strategy.json` solo
+si lo consume un ejecutor o se solicita; validarlo antes de ejecutarlo. Este
+contrato no programa agentes ni autoriza publicación automáticamente.
+
+## Verificación y cierre
+
+Aplicar [testing.md](../../architecture/testing.md). Ejecutar `npm test` y
+`scripts/verify_contracts.ps1` antes del cierre; Gate 0 contiene suites que se
+repiten con npm test. Se conservan ambos comandos exigidos actualmente; no añadir
+otras repeticiones sin cambio, fallo o incertidumbre. Esta revisión no cambia CI.
+
+Registrar comandos y resultados reales. Si falta una comprobación requerida,
+la entrega queda pendiente de verificar y se informa la causa. Un mock IPC no
+acredita RBAC Rust ni WebView. Piloto, concurrencia en dos equipos, Excel oficial
+y publicación se exigen a las historias que entregan esas capacidades, no a toda
+edición documental o de navegación. Usar datos sintéticos y temporales aislados.
+La publicación corporativa conserva autorización explícita y destino validado.

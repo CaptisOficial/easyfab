@@ -28,7 +28,6 @@ pub(crate) fn create_project(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tauri::test::{get_ipc_response, mock_builder, mock_context, noop_assets};
     #[test]
     fn registered_commands_reject_absent_session_and_invalid_payload() {

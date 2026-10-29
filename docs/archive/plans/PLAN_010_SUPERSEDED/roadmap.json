@@ -1,12 +1,12 @@
 {
   "kind": "project_planning_catalog_not_runtime_events",
-  "as_of": "2026-10-28",
+  "as_of": "2026-10-29",
   "nodes": [
     {
       "le_id": "le_f00",
       "title": "Base verificada",
       "baseline": "Revisión documental disponible; revalidar al iniciar",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Auditar código, contratos y evidencia nativa; distinguir pruebas de mocks.",
       "evidence": "docs/product/execution/f00/acceptance.md"
     },
@@ -14,15 +14,15 @@
       "le_id": "le_f01",
       "title": "Decisiones y contratos",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
-      "done": "Resolver D01–D05; contratos versionados, pruebas y autorización de cambios de invariantes antes de consumidores.",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
+      "done": "Resolver D01–D05 por consumidor; contratos versionados, pruebas y autorización de cambios de invariantes antes de implementar cada alcance afectado.",
       "evidence": "docs/product/execution/f01/acceptance.md"
     },
     {
       "le_id": "le_f02",
       "title": "Carpetas y migración",
       "baseline": "Parcial PLAN-013: resolver por versión y carpetas personales con herramienta de cambio/rollback; F02 completo y evidencias operativas pendientes",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "D03 aprobada; migración reversible e idempotente, credenciales preservadas y una sola fuente activa.",
       "evidence": "docs/product/execution/f02/acceptance.md"
     },
@@ -30,15 +30,15 @@
       "le_id": "le_f03",
       "title": "Confianza, recuperación y preferencias",
       "baseline": "Base parcial de acceso existente; ampliación pendiente",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "D04 aprobada; recuperación del único Admin, provisión de equipos y rotación; llave siempre local. Contraseña de 8 caracteres, temporal de 24 h y cambio obligatorio. Implementar preferencias locales por espacio/usuario, UI y pruebas; reset no modifica referencia, llave ni permisos.",
       "evidence": "docs/product/execution/f03/acceptance.md"
     },
     {
       "le_id": "le_f04",
       "title": "Proyectos y catálogos",
-      "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "baseline": "Parcial PLAN-014: alta por único Supervisor activo y consulta Admin; flujo de cuatro cuentas confirmado. Avances, cierres, aceptación nativa y F04 completo pendientes; sin modo especial ni migración",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "RBAC real, asignaciones válidas, fechas, líneas, máquinas, fallas y referencias consistentes.",
       "evidence": "docs/product/execution/f04/acceptance.md"
     },
@@ -46,7 +46,7 @@
       "le_id": "le_f05",
       "title": "Actividades e hitos",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Escritura por sesión propietaria; hitos 0/25/50/75; 100 solicitado no equivale a aprobado.",
       "evidence": "docs/product/execution/f05/acceptance.md"
     },
@@ -54,7 +54,7 @@
       "le_id": "le_f06",
       "title": "Evidencias",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Adjuntos múltiples con ID/revisión, límites acordados, referencias relativas y rechazo de rutas fuera del espacio; recuperación de copia interrumpida.",
       "evidence": "docs/product/execution/f06/acceptance.md"
     },
@@ -62,15 +62,15 @@
       "le_id": "le_f07",
       "title": "Aprobación y retrabajo",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
-      "done": "D02 aprobada; autoridad Supervisor/Admin separada del perfil del ingeniero, ligada a revisión y evidencia; rechazo, reapertura e historial.",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
+      "done": "D02 resuelta para la historia; autoridad del único Supervisor activo separada del perfil del ingeniero y ligada a revisión/evidencia; rechazo, reapertura e historial. Admin consulta, sin aprobación por rol.",
       "evidence": "docs/product/execution/f07/acceptance.md"
     },
     {
       "le_id": "le_f08",
       "title": "Incidencias de piso",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "D01 aprobada; append-only, deduplicación, correcciones como eventos, horas no negativas y scrap entero no negativo; prueba de reconexión.",
       "evidence": "docs/product/execution/f08/acceptance.md"
     },
@@ -78,7 +78,7 @@
       "le_id": "le_f09",
       "title": "Lecturas y métricas",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "D05 aprobada; calendario, esfuerzo, capacidad neta, pesos y línea base explícitos; avance declarado/aprobado y datos faltantes diferenciados.",
       "evidence": "docs/product/execution/f09/acceptance.md"
     },
@@ -86,7 +86,7 @@
       "le_id": "le_f10",
       "title": "Vista Engineer",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Proyectos asignados, captura diaria, hitos y adjuntos; objetivo de captura diaria <60 s e incidencia <30 s medido en piloto.",
       "evidence": "docs/product/execution/f10/acceptance.md"
     },
@@ -94,7 +94,7 @@
       "le_id": "le_f11",
       "title": "Vistas Supervisor y Admin",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Asignar proyectos, mantener catálogos, revisar evidencias, aprobar/rechazar y consultar desviaciones; estados vacíos y errores accesibles.",
       "evidence": "docs/product/execution/f11/acceptance.md"
     },
@@ -102,7 +102,7 @@
       "le_id": "le_f12",
       "title": "Gantt y capacidad",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Ventana 21 días W-1/W0/W+1, zona America/Mexico_City; calendario FAB confirmado y capacidad basada en esfuerzo, no conteo de tareas.",
       "evidence": "docs/product/execution/f12/acceptance.md"
     },
@@ -110,7 +110,7 @@
       "le_id": "le_f13",
       "title": "Plantilla oficial Excel",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "D06: Alan selecciona versión oficial; inspeccionar hojas, tablas, fórmulas, estilos e impresión y fijar fixture autorizado.",
       "evidence": "docs/product/execution/f13/acceptance.md"
     },
@@ -118,7 +118,7 @@
       "le_id": "le_f14",
       "title": "Exportación KMX-FW",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Snapshot consistente, plantilla oficial preservada y comparación de valores, tablas, fórmulas e impresión; salida en exports del espacio activo.",
       "evidence": "docs/product/execution/f14/acceptance.md"
     },
@@ -126,7 +126,7 @@
       "le_id": "le_f15",
       "title": "Resiliencia y respaldo",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Respaldo de datos/evidencias/manifest sin master.key; restauración validada, compatibilidad de versiones, disco lleno y JSON inválido sin reinicializar datos.",
       "evidence": "docs/product/execution/f15/acceptance.md"
     },
@@ -134,7 +134,7 @@
       "le_id": "le_f16",
       "title": "Integración completa",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Proyecto → actividad → evidencia → aprobación → reporte, roles reales y sesiones restringidas probados en backend y UI.",
       "evidence": "docs/product/execution/f16/acceptance.md"
     },
@@ -142,7 +142,7 @@
       "le_id": "le_f17",
       "title": "Piloto y aceptación",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Preparar portable de piloto con hash antes de pruebas nativas. Pruebas sintéticas aisladas, roles, dos equipos, desconexión/reconexión, ausencia de pérdida/duplicación, tiempos de captura y evidencia nativa separada de mocks.",
       "evidence": "docs/product/execution/f17/acceptance.md"
     },
@@ -150,7 +150,7 @@
       "le_id": "le_f18",
       "title": "Candidato portable",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Build reproducible, hash, documentos/contratos, compatibilidad y rollback; portable único sin Node/Rust ni instalador obligatorio.",
       "evidence": "docs/product/execution/f18/acceptance.md"
     },
@@ -158,7 +158,7 @@
       "le_id": "le_f19",
       "title": "Publicación controlada",
       "baseline": "Pendiente de implementación/aceptación",
-      "ready": "Dependencias aceptadas, decisiones aplicables resueltas y alcance de escritura aprobado",
+      "ready": "Contratos y decisiones consumidos por la historia resueltos; alcance autorizado y aceptación definida. No exige cerrar grupos Fxx completos.",
       "done": "Aprobación explícita futura, raíz resuelta y validada, backup, aceptación FAB y evidencia de publicación/rollback; sin migración implícita.",
       "evidence": "docs/product/execution/f19/acceptance.md"
     }
@@ -168,7 +168,7 @@
       "id": "D01",
       "title": "Concurrencia OneDrive",
       "owner": "Arquitectura + Alan",
-      "closure": "Elegir protocolo verificable para múltiples escritores de issues/projects/team y misma cuenta en dos equipos. Append-only y rename local no garantizan convergencia. Eventos inmutables/proyección o escritor único son alternativas, no cambios ya autorizados.",
+      "closure": "Confirmado para proyectos: único Supervisor activo escritor, Admin gestiona cuentas y consulta; una sesión por cuenta. Sigue pendiente protocolo verificable para incidencias compartidas. Append-only y rename local no garantizan convergencia ni exclusión distribuida.",
       "status": "pending"
     },
     {
@@ -182,7 +182,7 @@
       "id": "D03",
       "title": "Carpetas y evidencias",
       "owner": "Alan + Arquitectura",
-      "closure": "Aprobar layout por usuario, contrato de adjuntos, tipos/tamaños/retención y migración con rollback antes de sustituir engineers/<id>.json.",
+      "closure": "Layout 2 y selección única por manifiesto implementados en PLAN-013; layout 1 se conserva hasta mantenimiento explícito. Siguen pendientes aceptación completa, contrato operativo de adjuntos, tipos/tamaños/retención y recuperación. Ver execution/f02/acceptance.md y execution/f01/propuesta-d03.md.",
       "status": "pending"
     },
     {

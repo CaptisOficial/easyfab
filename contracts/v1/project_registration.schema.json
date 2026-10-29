@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB project registration IPC v1",
-  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project. Errors are strings. Both require a revalidated normal Admin/Supervisor session and the active workspace; no caller-supplied paths or identity. Creation additionally requires compiled single-writer authorization.",
+  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project. Errors are strings. Overview requires a revalidated normal Admin/Supervisor session and the active workspace. Creation requires the sole active Supervisor account in the confirmed four-account workflow; Admin manages accounts and reads projects. Multiple active Supervisors block creation. No caller-supplied paths or identity; no per-machine or per-user build authorization. One working session per account is an operating precondition, not distributed exclusion guaranteed by OneDrive.",
   "$defs": {
     "new_project": {
       "type": "object", "additionalProperties": false,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB Macro Projects",
-  "description": "Registration: trim text, reject empty/control characters; WBS unique case-insensitively; ID generated from 256 random bits with collision check. Responsible must be an active trusted team member (any published role). Dates are real YYYY-MM-DD, start <= target. Initial state Not Started. Existing unknown properties are preserved; invalid documents are never reset. Historical references may point to subsequently inactive members; new assignments cannot.",
+  "description": "Registration: trim text, reject empty/control characters; WBS unique case-insensitively; ID generated from 256 random bits with collision check. Responsible must be an active trusted Engineer in the confirmed four-account workflow. Dates are real YYYY-MM-DD, start <= target. Initial state Not Started. Existing unknown properties are preserved; invalid documents are never reset. Historical references may point to subsequently inactive members; new assignments cannot.",
   "type": "object",
   "required": ["version", "projects"],
   "properties": {

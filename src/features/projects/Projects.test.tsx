@@ -6,7 +6,7 @@ import { Projects } from "./Projects";
 import * as api from "../../lib/api";
 vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn() }));
 afterEach(cleanup);
-const overview: api.ProjectsOverview = { projects: [], leads: [{ id: "eng", name: "Engineer Test" }], can_create: true, write_message: "Piloto autorizado" };
+const overview: api.ProjectsOverview = { projects: [], leads: [{ id: "eng", name: "Engineer Test" }], can_create: true, write_message: "Registro disponible" };
 const project: api.Project = { id: "PRJ-test", wbs: "FAB-1", name: "Fixture project", process_area: "FAB", lead_engineer_id: "eng", start_date: "2026-10-28", target_date: "2026-11-01", status: "Not Started" };
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.projectsOverview).mockResolvedValue(overview); });
 it("muestra carga, vacío, guarda una sola vez y vuelve a consultar al montar", async () => {
@@ -40,12 +40,12 @@ it("presenta error de lectura y permite reintentar", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Actualizar proyectos" }));
   await screen.findByText("No hay proyectos registrados.");
 });
-it("bloquea formulario cuando Rust no autoriza el escritor", async () => {
+it("muestra solo consulta cuando Rust no autoriza registrar", async () => {
   vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, can_create: false, write_message: "Alta bloqueada" });
   render(<Projects />);
   await screen.findByText("Alta bloqueada");
-  expect(screen.getByLabelText("Código WBS").closest("fieldset")?.disabled).toBe(true);
-  fireEvent.submit(screen.getByRole("button", { name: "Guardar proyecto" }).closest("form")!);
+  expect(screen.queryByLabelText("Código WBS")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Guardar proyecto" })).toBeNull();
   expect(api.createProject).not.toHaveBeenCalled();
 });
 it("conserva captura y muestra rechazo de guardado sin anunciar éxito", async () => {

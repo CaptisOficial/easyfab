@@ -54,7 +54,7 @@ export function Projects() {
           <p>Inicio: {p.start_date} · Objetivo: {p.target_date}</p>
         </li>)}
       </ul>}
-      <form onSubmit={submit} className="space-y-3">
+      {data.can_create && <form onSubmit={submit} className="space-y-3">
         <h4 className="font-bold">Registrar proyecto</h4>
         <fieldset disabled={saving || !data.can_create} className="space-y-3">
           {field("wbs", "Código WBS")}{field("name", "Título del proyecto")}{field("process_area", "Área de proceso")}
@@ -66,7 +66,7 @@ export function Projects() {
           <p className="text-sm">Estado inicial: Sin iniciar</p>
           <button disabled={!data.leads.length} className="bg-kmx-carbon px-4 py-2 text-white disabled:opacity-50">{saving ? "Guardando…" : "Guardar proyecto"}</button>
         </fieldset>
-      </form>
+      </form>}
     </>}
   </section>;
 }

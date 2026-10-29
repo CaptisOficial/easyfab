@@ -1,11 +1,12 @@
 //! Minimal project creation/listing; no capacity, scheduling or approval rules.
 mod models;
 mod storage;
-mod writer;
+
 use crate::{auth, workspace};
 pub use models::{NewProject, Overview, Project};
 use std::path::Path;
-use writer::{Writer, WRITE_MESSAGE};
+const WRITE_MESSAGE: &str =
+    "El Supervisor registra los proyectos. Admin administra las cuentas y consulta los proyectos.";
 
 fn context(dir: &Path, session: &auth::Session) -> Result<Vec<models::Lead>, String> {
     if session.user.must_change_password
@@ -23,14 +24,35 @@ fn context(dir: &Path, session: &auth::Session) -> Result<Vec<models::Lead>, Str
             if !auth::trusted(&member, &key) {
                 return Err("Directorio con roles alterados.".into());
             }
-            // Contract names a responsible person, not a new role restriction.
-            leads.push(models::Lead {
-                id: member.id,
-                name: member.name,
-            });
+            if member.role == "engineer" {
+                leads.push(models::Lead {
+                    id: member.id,
+                    name: member.name,
+                });
+            }
         }
     }
     Ok(leads)
+}
+// The confirmed team has one Supervisor. Fail closed if the directory no longer
+// matches that operating scope instead of enabling several shared-file writers.
+fn require_supervisor(dir: &Path, session: &auth::Session) -> Result<(), String> {
+    context(dir, session)?;
+    let team = auth::team(dir)?;
+    let supervisors: Vec<_> = team
+        .members
+        .iter()
+        .filter(|m| m.status == "active" && m.role == "supervisor")
+        .collect();
+    if session.user.role != "supervisor"
+        || supervisors.len() != 1
+        || supervisors[0].id != session.user.id
+    {
+        return Err(
+            "El registro corresponde a la única cuenta Supervisor activa del equipo.".into(),
+        );
+    }
+    Ok(())
 }
 fn active(dir: &Path, expected: &str) -> Result<(), String> {
     let root = dir
@@ -55,14 +77,16 @@ pub fn overview(
     active(dir, workspace_id)?;
     let leads = context(dir, session)?;
     let (doc, _) = storage::read(dir)?;
-    let host = std::env::var("COMPUTERNAME").unwrap_or_default();
-    let can_create = Writer::compiled().allows(workspace_id, session, &host);
+
     Ok(Overview {
         projects: doc.projects,
         leads,
-        can_create,
-        write_message: if can_create {
-            "Piloto: altas autorizadas únicamente desde este equipo y usuario.".into()
+        can_create: require_supervisor(dir, session).is_ok(),
+        write_message: if session.user.role == "supervisor" {
+            match require_supervisor(dir, session) {
+                Ok(()) => "Registra el proyecto y selecciona al ingeniero responsable.".into(),
+                Err(error) => error,
+            }
         } else {
             WRITE_MESSAGE.into()
         },
@@ -74,28 +98,9 @@ pub fn create(
     workspace_id: &str,
     input: NewProject,
 ) -> Result<Project, String> {
-    create_with_writer(
-        dir,
-        session,
-        workspace_id,
-        input,
-        &Writer::compiled(),
-        &std::env::var("COMPUTERNAME").unwrap_or_default(),
-    )
-}
-fn create_with_writer(
-    dir: &Path,
-    session: &auth::Session,
-    workspace_id: &str,
-    input: NewProject,
-    writer: &Writer<'_>,
-    host: &str,
-) -> Result<Project, String> {
     active(dir, workspace_id)?;
+    require_supervisor(dir, session)?;
     let leads = context(dir, session)?;
-    if !writer.allows(workspace_id, session, host) {
-        return Err(WRITE_MESSAGE.into());
-    }
     if !leads.iter().any(|m| m.id == input.lead_engineer_id) {
         return Err("Selecciona un responsable activo del equipo.".into());
     }
@@ -126,13 +131,14 @@ fn create_with_writer(
     if doc
         .projects
         .iter()
-        .any(|p| p.wbs.trim().eq_ignore_ascii_case(&project.wbs))
+        .any(|p| p.wbs.trim().to_lowercase() == project.wbs.to_lowercase())
     {
         return Err("La WBS ya está registrada.".into());
     }
     doc.projects.push(project.clone());
     storage::save(dir, &doc, &previous, || {
         active(dir, workspace_id)?;
+        require_supervisor(dir, session)?;
         let leads = context(dir, session)?;
         if !leads.iter().any(|m| m.id == project.lead_engineer_id) {
             return Err("El responsable ya no está activo.".into());

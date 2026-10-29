@@ -1,16 +1,21 @@
 # Status de Planes de Desarrollo - EasyFAB
 
-PLAN-014: Alta y consulta mínima de proyectos — `in_progress`, 2026-10-28.
-[Plan](PLAN_014_PROJECT_REGISTRATION.md). Recorrido acotado F04; escritura real
-pendiente de decisión de escritor único. No cierra F01/F03/F04.
+PLAN-016: Navegación y catálogo funcional — `complete`, 2026-10-29.
+[Plan](PLAN_016_NAVIGATION_CATALOG.md). Estándar documental y fichas ágiles; sin cambios de código.
+npm test (25 frontend + 29 Rust), Gate 0 con PowerShell 7 y enlaces aprobados.
 
-Última actualización: 2026-10-28 (America/Mexico_City)
+PLAN-015: Configuración en navegación superior — `complete`, 2026-10-29. [Plan](PLAN_015_TOPNAV_SETTINGS.md). Tuerca/panel, nombre/rol, fecha y salida con puerta. Gate 0 (25 frontend + 29 Rust y PowerShell), build release y comprobación nativa de barra/panel aprobados. Sin cambios de datos/permisos ni publicación del portable compartido.
+
+PLAN-014: Alta y consulta mínima de proyectos — `complete`, 2026-10-28.
+[Plan](PLAN_014_PROJECT_REGISTRATION.md). Flujo confirmado: cuatro cuentas, un ejecutable; Admin administra cuentas, Supervisor registra proyectos. Sin modo especial ni migración; Gate 0 aprobado (18 frontend + 29 Rust y PowerShell); build release aprobado y candidato local preparado; aceptación nativa pendiente. Avances y cierres siguen pendientes; no cierra F01/F03/F04.
+
+Última actualización: 2026-10-29 (America/Mexico_City)
 
 ---
 
-## Planes Activos y Ejecutados
+## Registro histórico de planes
 
-Entrada canónica al alcance completo: [Plan maestro](../../product/plan-maestro.md), con veinte entregables, dependencias y aceptación. Los planes siguientes documentan entregas parciales.
+Entrada vigente: [Plan maestro](../../product/plan-maestro.md). Este índice conserva estados reportados en cada fecha; no es una cola activa ni acredita aceptación actual. Los pendientes antiguos (incluido PLAN-001 in_progress) no deben ejecutarse automáticamente. complete se refiere al alcance histórico y puede conservar límites nativos pendientes explícitos.
 
 PLAN-013: Carpetas personales — `complete`, 2026-10-28. [Plan](PLAN_013_PROFILE_FOLDERS.md). 7 frontend + 24 Rust, Gate 0 con suite de cambio/rollback y release aprobados. Layout 2 aplicado al espacio activo; 2 perfiles y team.json preservados por huella. Portable/contratos publicados y pantalla nativa de acceso comprobada. Reingreso manual tras cambio pendiente; evidence vacía, subida de adjuntos/F02 completo pendientes.
 

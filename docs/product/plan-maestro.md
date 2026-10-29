@@ -1,101 +1,203 @@
 # Plan maestro de EasyFAB
 
-Fecha de corte: 2026-10-28 · Responsable de producto: Alan · Estado: planificación completa; ejecución del backlog pendiente.
+Corte: 2026-10-29 · Responsable de producto: Alan.
 
-## Objetivo y autoridad
+Este documento es la única fuente del orden de construcción, alcance de las seis
+entregas, criterios de aceptación y decisiones pendientes. El diagrama resume las
+mismas seis entregas de la tabla; no es otro plan. Las fichas describen funciones,
+los contratos definen datos y la evidencia acredita resultados, sin otra secuencia.
 
-Sistema de escritorio Tauri v2, Rust y React para captura, consolidación y reporte FAB, local-first en la carpeta corporativa seleccionada. AGENTS.md y contracts/v1 son autoridad. La ruta inicial OneDrive es propuesta; todos los módulos usan el mismo espacio validado y fallan si no está disponible. Cambiar raíz cierra sesión y no migra datos.
+## Cómo construiremos EasyFAB
 
-## Base real
+Construiremos el recorrido de trabajo de FAB por partes utilizables. Cada entrega
+se conecta a la aplicación existente y se prueba antes de ampliar el recorrido.
+Este es el orden de construcción propuesto; no son estados del sistema ni una
+asignación de agentes. No implica ejecutar todas las entregas sin una solicitud.
 
-Existen selección de espacio, acceso independiente de Windows, Argon2id/HMAC, contraseña de 8 caracteres, temporal con cambio obligatorio, directorio Admin y portable 0.1.0. Evidencia histórica: 21 pruebas Rust y 4 frontend; las pruebas IPC simuladas y el arranque de ventana no acreditan flujos nativos completos. Los módulos FAB y las preferencias locales persistentes siguen pendientes. Ver [revisión técnica](planning/reviews/baseline.md) y [brechas de dominio](planning/reviews/domain-gaps.md).
+```mermaid
+flowchart TD
+    A["1. Entrar y crear proyectos<br/>Base implementada; aceptación nativa pendiente"]
+    B["2. Registrar trabajo diario<br/>El ingeniero guarda actividades y avances propios"]
+    C["3. Demostrar y validar el cierre<br/>El ingeniero adjunta evidencia; Supervisor revisa"]
+    D["4. Ver la situación del área<br/>Incidencias, carga del equipo y calendario"]
+    E["5. Obtener el reporte semanal<br/>Exportar a la plantilla oficial Excel"]
+    F["6. Usarlo con el equipo<br/>Recuperación, piloto y portable validado"]
+    A -->|próxima entrega propuesta| B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+```
 
-## Fuentes únicas del plan
+Lectura textual: entrar y crear un proyecto → registrar el trabajo → demostrar y
+validar su cierre → consultar el área → producir el reporte → validar el uso real.
+Las flechas indican prioridad del recorrido principal; investigar la plantilla o
+preparar recuperación puede avanzar antes si sus entradas están disponibles.
+Respaldo y manejo de errores se incorporan con cada escritura, no hasta el piloto.
 
-- [DAG canónico](planning/easyfab.strategy.json): dependencias, interfaces, propietarios de escritura y límites.
-- [Catálogo de entregables](planning/roadmap.json): estado observado, DoR, DoD, evidencia y decisiones; no es un registro de ejecución.
-- [Contrato de misión](planning/mission-contract.md): reglas de ejecución y aceptación.
-- [DAG generado](planning/easyfab-dag.mmd) y [FSM de ejecución generada](planning/easyfab-fsm.mmd).
-- [Revisiones](planning/reviews/): evidencia de alcance y brechas.
+| Entrega | Qué podrá hacer la persona | Cómo sabremos que funciona | Decisiones aplicables |
+|---|---|---|---|
+| 1. Base disponible | Admin administra usuarios; Supervisor registra proyectos; Admin consulta. Cada usuario entra con su cuenta y carpeta validada. | Ver evidencia por alcance más abajo; completar comprobaciones nativas pendientes. No se declara lista toda la base. | Validación nativa de la base; ver evidencia |
+| 2. Trabajo diario | El ingeniero abre un proyecto autorizado, registra una actividad y actualiza su avance. | Guarda, cierra y vuelve a entrar: conserva la actividad. Otra cuenta no puede modificarla. El avance no concede cierre aprobado. | Consulta/asignación y contrato de actividad por concretar |
+| 3. Cierre verificable | El ingeniero entrega evidencia y solicita revisión; Supervisor acepta o devuelve para corrección. | La evidencia se recupera; la decisión corresponde a esa revisión. Una solicitud a 100% no se convierte por sí sola en aprobación. | D02/D03 |
+| 4. Panorama del área | Se consultan incidencias, avances y capacidad del equipo en calendario. | Los totales coinciden con registros sintéticos conocidos; falta de información se muestra explícitamente. | D01/D05 |
+| 5. Reporte semanal | Supervisor/Admin obtiene el reporte del periodo en el Excel oficial, según permisos definidos. | El archivo conserva plantilla, valores y presentación acordados y coincide con los datos del periodo. | D06 |
+| 6. Uso validado | El equipo usa el portable y se comprueba recuperación y operación en condiciones reales. | Piloto de roles y dos equipos, recuperación y distribución con evidencia. Publicar requiere autorización concreta. | D04 y autorización de publicación |
 
-## Entregas de producto
+**Siguiente entrega propuesta: trabajo diario de un ingeniero en un proyecto.**
+Antes de implementarla se concreta quién ve qué proyectos, cómo se vincula una
+actividad al proyecto y qué datos guarda el avance en la partición del usuario.
+Se define el contrato, se conecta guardado y lectura, se incorpora la pantalla y
+se prueba el recorrido completo. Las políticas de adjuntos y aprobación se
+resuelven antes de añadir esas funciones en la entrega siguiente.
 
-| Hito | Resultado aceptable | Entregables |
+Ejemplo ilustrativo: Supervisor crea «Mejora de estación» → el ingeniero autorizado
+registra «Preparar instrucción» y su avance → adjunta la evidencia cuando esa
+función esté disponible → Supervisor valida el cierre → el resultado aparece en
+las vistas y el reporte cuando se implementen. No son funciones ya entregadas.
+
+## Cómo se construye cada entrega
+
+```mermaid
+flowchart LR
+    N["Acordar una acción y su resultado"] --> G["Definir datos y permisos"]
+    G --> C["Conectar guardado y pantalla"]
+    C --> P["Probar el recorrido con datos sintéticos"]
+    P --> V["Revisar resultado y pendientes"]
+```
+
+Las pruebas se incorporan al implementar; la comprobación del recorrido confirma
+que las piezas funcionan juntas. Todos los módulos usan el mismo espacio activo.
+Los ingenieros escriben su partición; Supervisor registra proyectos y valida
+cierres; Admin administra usuarios y consulta. Rust aplica permisos y persistencia;
+React permite capturar y consultar. Se entrega una función utilizable por vez.
+
+## Referencias para implementar
+
+Este documento es la entrada al trabajo vigente. Elegir una historia solicitada,
+consultar su ficha y leer únicamente sus contratos, implementación y evidencia.
+No iniciar automáticamente el backlog completo.
+
+| Pregunta | Fuente única | Regla |
 |---|---|---|
-| M0 | Base existente revalidada | F00 |
-| M1 | Contratos, carpetas y confianza | F01–F03 |
-| M2 | Primer recorrido: proyecto → actividad → evidencia → aprobación | F04–F07, integración parcial controlada |
-| M3 | Incidencias, métricas y vistas de roles/Gantt | F08–F12 |
-| M4 | Excel oficial reproducible | F13–F14 |
-| M5 | Recuperación, integración, piloto y distribución | F15–F19 |
+| ¿Qué límites debe respetar el agente? | [AGENTS.md](../../AGENTS.md) | Invariantes y método de trabajo. |
+| ¿Qué funcionalidad y permisos se esperan? | [Catálogo funcional](catalogo-modulos.md) | Fichas por superficie; la matriz de capacidades enlaza cobertura. |
+| ¿Qué datos se permiten? | [Contratos v1](../../contracts/v1/) | Autoridad estructural; Rust aplica reglas y RBAC. |
+| ¿Qué se construye, en qué orden y qué falta decidir? | Este plan: seis entregas y decisiones al final | Única planificación activa. |
+| ¿Cómo ejecutar y cerrar una historia? | [Contrato de trabajo](planning/mission-contract.md) | Flujo breve, dependencias aplicables y verificación. |
+| ¿Qué se comprobó realmente? | [Evidencia](execution/) | Resultados por alcance, fecha y límites; prevalecen sobre resúmenes antiguos. |
 
-Los hitos expresan resultados, no fechas ni porcentajes inventados. F13 puede avanzar junto con el backend; las vistas de roles pueden desarrollarse en paralelo cuando sus contratos estén aceptados. Las modificaciones del registro Rust se serializan explícitamente. Cada entrega mantiene funciones y archivos por responsabilidad.
+Una propuesta o documento completo no acredita implementación. Ante contradicción,
+comparar el alcance y la fecha con la instrucción vigente de Alan; actualizar la
+fuente correspondiente y enlazarla, sin inventar permisos ni declarar aceptación.
+Si el comportamiento difiere del contrato, registrar deriva y corregirla; el código
+no redefine por sí solo el contrato.
 
-## Decisiones de entrada
+## Estrategia vigente
 
-| ID | Decisión | Responsable | Cierre requerido |
+Entregar recorridos verticales pequeños con backend, UI y pruebas cuando apliquen.
+Las seis entregas anteriores organizan el producto; cada una se implementa mediante
+historias pequeñas con aceptación verificable.
+Una historia usa solo las decisiones y contratos que consume. Recuperación D04
+completo o el módulo de incidencias no son requisitos universales para cualquier cambio.
+La dependencia técnica concreta debe quedar citada en la historia.
+
+Integrar cada historia en la aplicación para poder revisarla. La entrega 6 comprueba
+el recorrido completo y las condiciones del piloto. Serializar las ediciones de archivos compartidos
+durante la integración, sin encadenar módulos completos por ese motivo.
+El modo normal es secuencial. Si la tarea justifica especialistas concurrentes,
+crear un DAG acotado con escrituras disjuntas y una sola evaluación de su DoD.
+El cierre de esa historia no equivale a aceptar ni publicar todo EasyFAB.
+
+## Base y siguiente selección
+
+- Acceso y directorio: [recorrido y límites de aceptación](execution/f01/acceptance.md).
+  Espacio configurable: [arquitectura vigente](../architecture/espacio-de-trabajo.md).
+- Carpetas personales: [aceptación de carpetas](execution/f02/acceptance.md), layout decidido por manifiesto.
+- Proyectos: [aceptación de proyectos](execution/f04/acceptance.md) y [flujo confirmado](execution/f04/flujo-confirmado.md).
+  Admin administra cuentas y consulta; el único Supervisor activo registra;
+  cada ingeniero escribe su partición. Avances y validación de cierre siguen pendientes.
+- Navegación: [aceptación](execution/navigation-acceptance.md) y
+  [estándar](../architecture/navegacion.md).
+- Preferencias: [contrato y límites](execution/preferences-contract-acceptance.md),
+  [política](../architecture/preferencias.md); persistencia y UI pendientes.
+- Evidencias: [propuesta D03](execution/f01/propuesta-d03.md), todavía sin aceptación
+  completa; no inferir aprobación de políticas de adjuntos.
+
+La prioridad propuesta es la entrega 2, trabajo diario; la solicitud vigente define
+la historia que se ejecuta. Las decisiones de otras entregas no son barreras globales. Para avances, resolver contratos de actividad y
+escritura propietaria; para cierre, D02; para incidencias compartidas, D01;
+para capacidad, D05; para exportación oficial, D06. D04 mantiene su alcance de
+confianza y recuperación. La publicación requiere autorización concreta de destino,
+versión y respaldo; esta revisión documental no publica ni migra datos.
+
+## Criterios completos por entrega
+
+La tabla anterior resume el resultado visible. Los criterios siguientes desarrollan
+esas mismas entregas; no forman otra cola ni repiten estados de ejecución.
+
+### Controles comunes
+
+Revalidar código, contratos y evidencia del alcance; distinguir pruebas simuladas
+de validación nativa. Resolver decisiones antes de sus consumidores, versionar
+contratos y autorizar cualquier cambio de invariante. Incorporar pruebas y manejo
+de errores desde cada implementación. Estado y resultados se acreditan en la
+evidencia enlazada, sin mantener otro porcentaje o estado paralelo.
+
+### 1. Base disponible
+
+- **Carpetas y migración:** Validar el subalcance de layout ya implementado: cambio explícito reversible e idempotente, credenciales preservadas y una sola fuente activa. Las políticas de adjuntos pendientes de D03 pertenecen a la entrega 3.
+- **Proyectos y catálogos:** RBAC real, asignaciones válidas, fechas, líneas, máquinas, fallas y referencias consistentes.
+
+### 2. Trabajo diario
+
+- **Actividades e hitos:** Escritura por sesión propietaria; hitos 0/25/50/75; 100 solicitado no equivale a aprobado.
+- **Vista Engineer:** Proyectos autorizados, captura diaria e hitos; objetivo de captura diaria <60 s medido en piloto. Adjuntos se añaden en la entrega 3 e incidencias en la 4, sin bloquear este primer recorrido.
+
+### 3. Cierre verificable
+
+- **Evidencias:** Adjuntos múltiples con ID/revisión, límites acordados, referencias relativas y rechazo de rutas fuera del espacio; recuperación de copia interrumpida.
+- **Aprobación y retrabajo:** D02 resuelta para la historia; autoridad del único Supervisor activo separada del perfil del ingeniero y ligada a revisión/evidencia; rechazo, reapertura e historial. Admin consulta, sin aprobación por rol.
+
+### 4. Panorama del área
+
+- **Incidencias de piso:** Resolver el protocolo pendiente de D01 para este alcance; append-only, deduplicación, correcciones como eventos, horas no negativas y scrap entero no negativo; prueba de reconexión y objetivo de captura <30 s medido en piloto.
+- **Lecturas y métricas:** D05 aprobada; calendario, esfuerzo, capacidad neta, pesos y línea base explícitos; avance declarado/aprobado y datos faltantes diferenciados.
+- **Vistas por rol:** Supervisor registra/asigna proyectos y aprueba o rechaza cierres; Admin administra usuarios/catálogos y consulta. Ambos consultan desviaciones según contrato; estados vacíos y errores accesibles. No conceder aprobación ni alta de proyectos a Admin.
+- **Gantt y capacidad:** Ventana 21 días W-1/W0/W+1, zona America/Mexico_City; calendario FAB confirmado y capacidad basada en esfuerzo, no conteo de tareas.
+
+### 5. Reporte semanal
+
+- **Plantilla oficial Excel:** D06: Alan selecciona versión oficial; inspeccionar hojas, tablas, fórmulas, estilos e impresión y fijar fixture autorizado.
+- **Exportación KMX-FW:** Snapshot consistente, plantilla oficial preservada y comparación de valores, tablas, fórmulas e impresión; salida en exports del espacio activo.
+
+### 6. Uso validado
+
+- **Confianza, recuperación y preferencias:** D04 aprobada; recuperación del único Admin, provisión de equipos y rotación; llave siempre local. Contraseña de 8 caracteres, temporal de 24 h y cambio obligatorio. Implementar preferencias locales por espacio/usuario, UI y pruebas; reset no modifica referencia, llave ni permisos.
+- **Resiliencia y respaldo:** Respaldo de datos/evidencias/manifest sin master.key; restauración validada, compatibilidad de versiones, disco lleno y JSON inválido sin reinicializar datos.
+- **Integración completa:** Proyecto → actividad → evidencia → aprobación → reporte, roles reales y sesiones restringidas probados en backend y UI.
+- **Piloto y aceptación:** Preparar portable de piloto con hash antes de pruebas nativas. Pruebas sintéticas aisladas, roles, dos equipos, desconexión/reconexión, ausencia de pérdida/duplicación, tiempos de captura y evidencia nativa separada de mocks.
+- **Candidato portable:** Build reproducible, hash, documentos/contratos, compatibilidad y rollback; portable único sin Node/Rust ni instalador obligatorio.
+- **Publicación controlada:** Aprobación explícita futura, raíz resuelta y validada, backup, aceptación FAB y evidencia de publicación/rollback; sin migración implícita.
+
+Preferencias personales son una historia de Configuración dentro de esta entrega.
+No bloquean trabajo diario, evidencia ni reportes. Recuperación y respaldo se
+preparan desde las escrituras que los necesitan; el piloto comprueba su conjunto.
+
+## Decisiones pendientes
+
+Abiertas para su alcance restante. Los subalcances confirmados no se reabren ni
+se consideran aceptación de todo el tema. Cada decisión bloquea solo su consumidor.
+
+| ID | Tema / responsable | Qué falta resolver o comprobar |
 |---|---|---|
-| D01 | Concurrencia OneDrive | Arquitectura + Alan | Elegir protocolo verificable para múltiples escritores de issues/projects/team y misma cuenta en dos equipos. Append-only y rename local no garantizan convergencia. Eventos inmutables/proyección o escritor único son alternativas, no cambios ya autorizados. |
-| D02 | Autoridad de aprobación | Supervisor + Arquitectura | Elegir registro autoritativo separado del JSON propiedad del ingeniero, unido a revisión y huella de evidencias. Un booleano escrito por el ingeniero no concede aprobación. |
-| D03 | Carpetas y evidencias | Alan + Arquitectura | Aprobar layout por usuario, contrato de adjuntos, tipos/tamaños/retención y migración con rollback antes de sustituir engineers/<id>.json. |
-| D04 | Confianza y recuperación | Alan | Definir custodio, provisión, rotación y recuperación del único Admin. HMAC compartido con un verificador permite firmar; no sincronizar master.key ni prometer revocación instantánea sin conexión. Otro esquema criptográfico requiere cambio explícito de invariante. |
-| D05 | Reglas FAB | Supervisor | Confirmar calendario, semanas, turnos, esfuerzo, capacidad, pesos, unidades y línea base para desviaciones. Datos insuficientes se muestran como desconocidos. |
-| D06 | Excel oficial | Alan + Supervisor | Seleccionar e inspeccionar plantilla oficial EN o EN-R2; el sufijo R2 no acredita autoridad. Las hojas/tablas del brief siguen por verificar. |
+| D01 | Concurrencia OneDrive · Arquitectura + Alan | Confirmado para proyectos: único Supervisor activo escritor, Admin gestiona cuentas y consulta; una sesión por cuenta. Sigue pendiente protocolo verificable para incidencias compartidas. Append-only y rename local no garantizan convergencia ni exclusión distribuida. |
+| D02 | Autoridad de aprobación · Supervisor + Arquitectura | Elegir registro autoritativo separado del JSON propiedad del ingeniero, unido a revisión y huella de evidencias. Un booleano escrito por el ingeniero no concede aprobación. |
+| D03 | Carpetas y evidencias · Arquitectura | Layout 2 y selección única por manifiesto implementados en PLAN-013; layout 1 se conserva hasta mantenimiento explícito. Siguen pendientes aceptación completa, contrato operativo de adjuntos, tipos/tamaños/retención y recuperación. Ver execution/f02/acceptance.md y execution/f01/propuesta-d03.md. |
+| D04 | Confianza y recuperación  | Definir custodio, provisión, rotación y recuperación del único Admin. HMAC compartido con un verificador permite firmar; no sincronizar master.key ni prometer revocación instantánea sin conexión. Otro esquema criptográfico requiere cambio explícito de invariante. |
+| D05 | Reglas FAB · Supervisor | Confirmar calendario, semanas, turnos, esfuerzo, capacidad, pesos, unidades y línea base para desviaciones. Datos insuficientes se muestran como desconocidos. |
+| D06 | Excel oficial ·  Supervisor | Seleccionar e inspeccionar plantilla oficial EN o EN-R2; el sufijo R2 no acredita autoridad. Las hojas/tablas del brief siguen por verificar. |
 
-## Espacio y ciclo de datos
+## Revisión del método
 
-PLAN-013 implementa el subalcance de carpetas de D03: espacios nuevos usan `<raíz>/easy-fab/data/engineers/<id>/profile.json` y preparan `evidence/`. Los anteriores mantienen `<id>.json` hasta mantenimiento explícito, con respaldo/rollback y credenciales preservadas. El manifiesto decide la única ruta activa. [Evidencia y alcance](execution/f02/acceptance.md). La subida de adjuntos, sus políticas y D03 completo siguen pendientes; no se cierra F01 ni se ejecuta automáticamente todo F02.
-
-Desarrollo de D03 para revisión de Alan: [propuesta concreta](execution/f01/propuesta-d03.md) y [revalidación de base](execution/f01/acceptance.md), 2026-10-28. Define contratos candidatos, política inicial de adjuntos y transición recuperable; todavía no cierra F01 ni habilita F02.
-
-Compartido: usuarios, roles, credenciales protegidas, configuración FAB, proyectos, avances y evidencias. Local: installation.json, master.key y futuras preferencias por espacio/usuario; preferencias no conceden permisos. Documentación en docs/, contratos en contracts/v1/, exportaciones en exports/, portable en software/easyfab.exe. Plantillas versionadas requieren aprobar su ubicación en el layout.
-
-Estados de acceso: sin espacio → espacio validado → sin sesión → credencial temporal válida → sesión restringida → cambio obligatorio → sesión normal → cierre. Temporal vencida exige nueva temporal del Admin. Recuperar contraseña vuelve a restringir el acceso; ninguna operación FAB se permite antes del cambio. Cuenta deshabilitada o firma inválida bloquea acceso. Las reglas de recuperación del único Admin se cierran en D04.
-
-Estados de actividad propuestos: borrador → en curso → revisión solicitada → aprobada; rechazo devuelve a retrabajo. Cambiar revisión o evidencia invalida/reabre la aprobación según D02. Llegar a 100 requiere autorización y documento OS/WI cuando aplique. Estos estados de negocio son distintos de la FSM del ejecutor del DAG.
-
-## Desglose ejecutable
-
-| ID | Entregable / responsable | Depende de | Criterio de aceptación |
-|---|---|---|
-| F00 | Base verificada · Arquitectura | Misión | Auditar código, contratos y evidencia nativa; distinguir pruebas de mocks. |
-| F01 | Decisiones y contratos · Arquitectura + Alan | F00 | Resolver D01–D05; contratos versionados, pruebas y autorización de cambios de invariantes antes de consumidores. |
-| F02 | Carpetas y migración · Rust almacenamiento | F01 | D03 aprobada; migración reversible e idempotente, credenciales preservadas y una sola fuente activa. |
-| F03 | Confianza, recuperación y preferencias · Rust acceso | F02, F01 | D04 aprobada; recuperación del único Admin, provisión de equipos y rotación; llave siempre local. Contraseña de 8 caracteres, temporal de 24 h y cambio obligatorio. Implementar preferencias locales por espacio/usuario, UI y pruebas; reset no modifica referencia, llave ni permisos. |
-| F04 | Proyectos y catálogos · Rust dominio | F03, F01 | RBAC real, asignaciones válidas, fechas, líneas, máquinas, fallas y referencias consistentes. |
-| F05 | Actividades e hitos · Rust dominio | F04, F02, F03, F01 | Escritura por sesión propietaria; hitos 0/25/50/75; 100 solicitado no equivale a aprobado. |
-| F06 | Evidencias · Rust archivos | F05, F02, F03, F01 | Adjuntos múltiples con ID/revisión, límites acordados, referencias relativas y rechazo de rutas fuera del espacio; recuperación de copia interrumpida. |
-| F07 | Aprobación y retrabajo · Rust dominio | F06, F05, F04, F03, F01 | D02 aprobada; autoridad Supervisor/Admin separada del perfil del ingeniero, ligada a revisión y evidencia; rechazo, reapertura e historial. |
-| F08 | Incidencias de piso · Rust dominio | F07, F04, F03, F02, F01 | D01 aprobada; append-only, deduplicación, correcciones como eventos, horas no negativas y scrap entero no negativo; prueba de reconexión. |
-| F09 | Lecturas y métricas · Rust analítica | F08, F07, F06, F05, F04, F01 | D05 aprobada; calendario, esfuerzo, capacidad neta, pesos y línea base explícitos; avance declarado/aprobado y datos faltantes diferenciados. |
-| F10 | Vista Engineer · React | F08, F06, F05, F03, F01 | Proyectos asignados, captura diaria, hitos y adjuntos; objetivo de captura diaria <60 s e incidencia <30 s medido en piloto. |
-| F11 | Vistas Supervisor y Admin · React | F09, F07, F04, F03, F01 | Asignar proyectos, mantener catálogos, revisar evidencias, aprobar/rechazar y consultar desviaciones; estados vacíos y errores accesibles. |
-| F12 | Gantt y capacidad · React | F09, F01 | Ventana 21 días W-1/W0/W+1, zona America/Mexico_City; calendario FAB confirmado y capacidad basada en esfuerzo, no conteo de tareas. |
-| F13 | Plantilla oficial Excel · Especialista Excel | F01 | D06: Alan selecciona versión oficial; inspeccionar hojas, tablas, fórmulas, estilos e impresión y fijar fixture autorizado. |
-| F14 | Exportación KMX-FW · Rust reportes | F09, F13, F03, F01 | Snapshot consistente, plantilla oficial preservada y comparación de valores, tablas, fórmulas e impresión; salida en exports del espacio activo. |
-| F15 | Resiliencia y respaldo · Rust almacenamiento | F14, F02, F03, F01 | Respaldo de datos/evidencias/manifest sin master.key; restauración validada, compatibilidad de versiones, disco lleno y JSON inválido sin reinicializar datos. |
-| F16 | Integración completa · Integrador | F10, F11, F12, F14, F15, F09, F01 | Proyecto → actividad → evidencia → aprobación → reporte, roles reales y sesiones restringidas probados en backend y UI. |
-| F17 | Piloto y aceptación · QA + FAB | F16, F01 | Preparar portable de piloto con hash antes de pruebas nativas. Pruebas sintéticas aisladas, roles, dos equipos, desconexión/reconexión, ausencia de pérdida/duplicación, tiempos de captura y evidencia nativa separada de mocks. |
-| F18 | Candidato portable · Release | F17, F16, F01 | Build reproducible, hash, documentos/contratos, compatibilidad y rollback; portable único sin Node/Rust ni instalador obligatorio. |
-| F19 | Publicación controlada · Operador + Alan | F18, F17 | Aprobación explícita futura, raíz resuelta y validada, backup, aceptación FAB y evidencia de publicación/rollback; sin migración implícita. |
-
-## Cobertura del sistema
-
-| Capacidad | Entregables |
-|---|---|
-| Espacio, identidad, usuarios, recuperación y preferencias locales | F01–F03, F15–F16 |
-| Catálogos FAB y proyectos/asignación | F04, F11 |
-| Actividades, hitos, avances y evidencia | F05–F07, F10 |
-| Downtime, scrap e historial | F08, F10 |
-| Calendario, carga, desviaciones y Gantt 21 días | F09, F11–F12 |
-| Reporte KMX-FW y exportaciones | F13–F14 |
-| Respaldo, restauración, portable, documentación y soporte | F15–F19 |
-| Pruebas de contratos, unitarias, integración y nativas | Cada nodo + F17 |
-
-## Control y próximo paso
-
-La solicitud actual autoriza estructurar el plan. No inicia automáticamente sus veinte entregables. El siguiente trabajo concreto es F01: resolver contratos y D03 para la carpeta de usuario/evidencias, manteniendo las otras decisiones que bloquean consumidores. Preferencias locales requieren contrato propio antes de persistirlas.
-
-Cada cierre exige npm test y scripts/verify_contracts.ps1, más pruebas del comportamiento modificado. Los datos de prueba son sintéticos y aislados. El piloto de dos equipos se prepara con espacio de prueba autorizado y no usa producción. La aceptación final exige además resultados nativos, prueba de concurrencia, plantilla oficial y aprobación FAB. Ningún mock sustituye esa evidencia.
-
-Los planes históricos son evidencia de entregas parciales; este documento es la entrada al alcance completo. Cambiar decisiones actualiza primero contratos/DAG y sus vistas, luego código. No se certifica hoy la ausencia de conflictos OneDrive.
+Diagnóstico, sustituciones de estados y riesgos: [revisión de simplificación](planning/reviews/workflow-simplification.md).

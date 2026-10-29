@@ -10,10 +10,11 @@
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "npm run test:frontend && npm run test:rust",
+    "test": "npm run test:contracts && npm run test:frontend && npm run test:rust",
     "test:frontend": "vitest run",
     "test:watch": "vitest",
-    "test:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_rust.ps1"
+    "test:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_rust.ps1",
+    "test:contracts": "pwsh -NoProfile -File scripts/test_preferences_contract.ps1"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

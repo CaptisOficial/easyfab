@@ -1,5 +1,7 @@
 # Contrato de preferencias · aceptación y checkpoint
 
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
 2026-10-29 · subalcance F01/F03 autorizado al continuar la historia recomendada.
 Objetivo: contrato personal local verificable antes de consumidores; sin UI,
 persistencia, IPC, publicación ni cambios a datos corporativos.

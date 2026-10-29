@@ -1,12 +1,8 @@
-# Acceso y recuperación de contraseña — fase 2
+# Acceso, cuentas y confianza
 
-Recorrido inicial actualizado en PLAN-012: [guía de primer acceso](../product/execution/f01/first-access.md).
-Alan confirmó que los usuarios actuales son de prueba y autorizó limpiar ese directorio
-para crear el Admin desde la app. Después confirmó registro y acceso nativo de Alan.
-PLAN-013 conserva esas nuevas cuentas al preparar carpetas personales; no se vuelven
-a limpiar usuarios. El backend elige el perfil por versión explícita del espacio.
+Política de acceso EasyFAB. Disponibilidad y comprobaciones pendientes: [plan](../product/plan-maestro.md). Evidencia de acceso inicial: [primer acceso](../product/execution/f01/first-access.md).
 
-Estado de implementación: verificado localmente el 2026-10-28; Gate 0, build frontend y 13 pruebas Rust aprobados (incluye directorio administrativo). El usuario confirmó el acceso nativo del administrador y el cambio obligatorio de contraseña. La sincronización y el acceso de ingenieros entre equipos siguen pendientes de prueba. Política acordada: exactamente **8 caracteres** para la contraseña definitiva y la temporal. No se exige una mezcla artificial de símbolos. Temporal aleatoria de 8 caracteres sin letras ambiguas, vigencia de 24 horas.
+La contraseña definitiva y la temporal tienen exactamente **8 caracteres**. Temporal aleatoria sin letras ambiguas, vigencia de 24 horas y cambio obligatorio. No se exige mezcla artificial de símbolos.
 
 ## Máquina de estados
 
@@ -14,7 +10,7 @@ Estado de implementación: verificado localmente el 2026-10-28; Gate 0, build fr
 stateDiagram-v2
     [*] --> SinSesion
     SinSesion --> CambioObligatorio: temporal válida y rol firmado activo
-    CambioObligatorio --> SinSesion: guardar contraseña distinta de 8 caracteres
+    CambioObligatorio --> SinSesion: guardar contraseña nueva de 8 caracteres
     SinSesion --> Normal: contraseña definitiva válida
     Normal --> SinSesion: cerrar aplicación o sesión
     Normal --> TemporalPendiente: Admin emite temporal
@@ -54,7 +50,7 @@ Contratos canónicos: [directorio](../../contracts/v1/team.schema.json), [perfil
 3. La temporal se muestra en la pantalla administrativa hasta ocultarla o salir. Se entrega por un canal corporativo autorizado; no se envía ni registra automáticamente.
 4. Tras sincronizar `team.json`, la contraseña y las sesiones anteriores quedan rechazadas en la siguiente operación protegida. El titular usa la temporal y cambia obligatoriamente su contraseña.
 
-No hay restablecimiento público por correo ni preguntas secretas. Si el único administrador pierde el acceso, requiere recuperación operativa del responsable custodio de confianza: no existe una puerta trasera automática. El directorio de altas/bajas está disponible para ingenieros y supervisores. Un procedimiento de contingencia con un segundo administrador sigue pendiente.
+No hay restablecimiento público por correo ni preguntas secretas. Si el único administrador pierde el acceso, requiere recuperación operativa del responsable custodio de confianza: no existe una puerta trasera automática. Solo Admin administra altas/bajas de Engineer y Supervisor. La recuperación del único Admin se concreta en D04 del plan; no se habilita otro administrador por esta previsión.
 
 ## Alta inicial y confianza entre equipos
 
@@ -108,3 +104,9 @@ OneDrive mantiene sincronización eventual. La partición sigue siendo por usuar
 ## Resolución del espacio
 
 Todas las operaciones resuelven data desde el espacio activo y verifican su identidad antes de leer credenciales. La instalación/configuración y el acceso son estados separados; ver [espacio canónico](espacio-de-trabajo.md). No se acepta data_dir desde React. Cambiar espacio cancela accesos en curso y exige no tener sesión.
+
+## Autoridad de operación por cuenta
+
+Admin administra team.json y catálogos; consulta proyectos. El único Supervisor activo escribe projects.json y valida cierres cuando esa capacidad esté disponible. Engineer escribe actividades y avances propios. El cierre autoritativo pertenece al dominio Supervisor, ligado a revisión y evidencia; nunca concede aprobación un booleano escrito por el ingeniero.
+
+Una sesión de trabajo por cuenta. Completar sincronización antes de cambiar de equipo; no escribir simultáneamente con la misma cuenta. El mismo portable sirve a todos los roles, sin nombres ni equipos fijados al compilar. El acuerdo de equipo de 2026-10-28 considera un Admin, un Supervisor y dos ingenieros; no impone un límite de licencias ni autoriza borrar cuentas.

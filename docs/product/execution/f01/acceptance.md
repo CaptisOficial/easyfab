@@ -1,5 +1,7 @@
 # Evidencia parcial F01 — propuesta D03
 
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
 Fecha: 2026-10-28. Entrega documental completada; aceptación de Alan pendiente.
 
 Actualización posterior: Alan autorizó descartar usuarios/datos de prueba y regenerar

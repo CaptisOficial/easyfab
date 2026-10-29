@@ -75,6 +75,21 @@ pub fn overview(
     workspace_id: &str,
 ) -> Result<Overview, String> {
     active(dir, workspace_id)?;
+    if session.user.role == "engineer" {
+        if session.user.must_change_password {
+            return Err("Se requiere sesión normal de Engineer.".into());
+        }
+        auth::revalidate(dir, session)?;
+        let (doc, _) = storage::read(dir)?;
+        return Ok(Overview {
+            projects: doc.projects.into_iter()
+                .filter(|project| project.lead_engineer_id == session.user.id)
+                .collect(),
+            leads: vec![models::Lead { id: session.user.id.clone(), name: session.user.name.clone() }],
+            can_create: false,
+            write_message: "Consulta los proyectos donde eres el ingeniero responsable.".into(),
+        });
+    }
     let leads = context(dir, session)?;
     let (doc, _) = storage::read(dir)?;
 

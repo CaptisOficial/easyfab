@@ -1,5 +1,7 @@
 # Primer acceso y prueba de perfiles
 
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
 Fecha: 2026-10-28 · PLAN-012 · Alcance: acceso y directorio de usuarios.
 
 ## Recorrido para Alan

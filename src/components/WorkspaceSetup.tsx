@@ -44,7 +44,7 @@ export function WorkspaceSetup() {
   }
 
   return <div className="flex min-h-full flex-col">
-    <TopNav user={session} logoutDisabled={sessionBusy} onLogout={() => { void loginRef.current?.logout(); }} settings={<WorkspaceMenu open={settingsOpen} onOpenChange={setSettingsOpen} destination={destination} onNavigate={navigate} projectsAvailable={!!session && !session.must_change_password && session.role !== "engineer"}>
+    <TopNav user={session} logoutDisabled={sessionBusy} onLogout={() => { void loginRef.current?.logout(); }} settings={<WorkspaceMenu open={settingsOpen} onOpenChange={setSettingsOpen} destination={destination} onNavigate={navigate} projectsAvailable={!!session && !session.must_change_password}>
     </WorkspaceMenu>} />
     <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6">
       <h2 ref={heading} tabIndex={-1} className="mb-4 font-bold outline-none">{destination === "settings" ? "Configuración" : destination === "projects" ? "Proyectos" : "Inicio"}</h2>

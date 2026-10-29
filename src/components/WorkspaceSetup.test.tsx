@@ -26,6 +26,26 @@ beforeEach(() => {
   vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [engineer], requires_admin: false });
   vi.mocked(api.login).mockResolvedValue(engineer);
   vi.mocked(api.logout).mockResolvedValue();
+  vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta los proyectos donde eres el ingeniero responsable." });
+});
+
+it("Engineer navega a sus proyectos en consulta y cierra sesión sin conservar la lista", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [{ id: "PRJ-own", wbs: "FAB-OWN", name: "Asignado", process_area: "FAB", lead_engineer_id: engineer.id, start_date: "2026-10-29", target_date: "2026-11-01", status: "Not Started" }], leads: [{ id: engineer.id, name: engineer.name }], can_create: false, write_message: "Consulta los proyectos donde eres el ingeniero responsable." });
+  render(<WorkspaceSetup />);
+  await user.type(await screen.findByLabelText("Contraseña (8 caracteres)"), "User1234");
+  await user.click(screen.getByRole("button", { name: "Ingresar" }));
+  await screen.findByText(engineer.name);
+  await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+  await user.click(screen.getByRole("button", { name: "Proyectos", exact: true }));
+  expect(await screen.findByText("FAB-OWN · Asignado")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Guardar proyecto" })).toBeNull();
+  expect(api.createProject).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  await screen.findByLabelText("Contraseña (8 caracteres)");
+  expect(screen.queryByText("FAB-OWN · Asignado")).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+  expect(screen.queryByRole("button", { name: "Proyectos", exact: true })).toBeNull();
 });
 
 it("deja la carpeta fuera del área central y abre/cierra configuración sin reiniciar la captura", async () => {

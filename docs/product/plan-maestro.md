@@ -1,148 +1,37 @@
-# Plan maestro de EasyFAB
+# Plan e historias de EasyFAB
 
-Corte: 2026-10-29 · Responsable de producto: Alan.
+Corte: 2026-10-29 · Responsable de producto: Alan · [Índice](../indice.md).
 
-Este documento es la única fuente del orden de construcción, alcance de las seis
-entregas, criterios de aceptación y decisiones pendientes. El diagrama resume las
-mismas seis entregas de la tabla; no es otro plan. Las fichas describen funciones,
-los contratos definen datos y la evidencia acredita resultados, sin otra secuencia.
+Este archivo concentra el orden de construcción, la aceptación y el estado del trabajo. El catálogo define funciones y arquitectura/contratos desarrolla sus reglas. Método y significado de estados: [guía de desarrollo](../desarrollo.md).
 
-## Cómo construiremos EasyFAB
+## Trabajo por hito
 
-Construiremos el recorrido de trabajo de FAB por partes utilizables. Cada entrega
-se conecta a la aplicación existente y se prueba antes de ampliar el recorrido.
-Este es el orden de construcción propuesto; no son estados del sistema ni una
-asignación de agentes. No implica ejecutar todas las entregas sin una solicitud.
+Cada fila es un alcance verificable. Los hitos agrupan historias, sin otro estado manual. Las filas terminadas acreditan únicamente el resultado indicado; las comprobaciones nativas pendientes se mantienen separadas. Los IDs Fxx/PLAN anteriores sirven para consultar evidencia, no para ordenar otro backlog.
 
-```mermaid
-flowchart TD
-    A["1. Entrar y crear proyectos<br/>Base implementada; aceptación nativa pendiente"]
-    B["2. Registrar trabajo diario<br/>El ingeniero guarda actividades y avances propios"]
-    C["3. Demostrar y validar el cierre<br/>El ingeniero adjunta evidencia; Supervisor revisa"]
-    D["4. Ver la situación del área<br/>Incidencias, carga del equipo y calendario"]
-    E["5. Obtener el reporte semanal<br/>Exportar a la plantilla oficial Excel"]
-    F["6. Usarlo con el equipo<br/>Recuperación, piloto y portable validado"]
-    A -->|próxima entrega propuesta| B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-```
+| Hito / historia | Resultado y aceptación | Estado | Pendiente o impedimento | Evidencia |
+|---|---|---|---|---|
+| 1 · Acceso y cuentas: base | Espacio, acceso propio y directorio Admin implementados y comprobados localmente | terminada | Validaciones adicionales en fila siguiente | [Primer acceso](execution/f01/first-access.md) |
+| 1 · Carpetas personales | Layout elegido por manifiesto; cambio explícito reversible e idempotente, preservando credenciales | terminada | Adjuntos pertenecen al hito 3 | [Carpetas](execution/f02/acceptance.md) |
+| 1 · Proyectos: alta y consulta | Supervisor guarda y recupera proyectos; Admin consulta; backend rechaza altas no autorizadas | terminada | Validación WebView en fila siguiente | [Proyectos](execution/f04/acceptance.md) |
+| 1 · Navegación contextual | Menú, foco, roles y preservación de borradores comprobados con pruebas DOM | terminada | Validación visual nativa en fila siguiente | [Navegación](execution/navigation-acceptance.md) |
+| 1 · Comprobar la base en escritorio | Acceso/reingreso por roles, carpetas, proyectos y navegación funcionan con datos sintéticos; comprobar uso entre equipos autorizados | pendiente | Ejecutar recorridos nativos descritos en evidencia, sin confundir mocks con escritorio | Evidencias anteriores |
+| 1 · Catálogos FAB | Admin mantiene equipos y configuración general con referencias consistentes | pendiente | Concretar detalle y validaciones de ADM-02 | — |
+| 2 · Trabajo diario del ingeniero | Engineer abre proyecto autorizado, guarda actividad/avance propio y lo recupera al volver a entrar; otra cuenta no lo modifica | pendiente | Definir consulta/asignación y contrato de actividad; no requiere adjuntos ni cierre aprobado | — |
+| 3 · Evidencias | Adjuntos recuperables por actividad/revisión, referencias relativas y rechazo de rutas fuera del espacio | pendiente | Resolver restante D03 | [Antecedente D03](execution/f01/propuesta-d03.md) |
+| 3 · Validar cierre | Supervisor acepta/devuelve una revisión con evidencia; 100 solicitado no equivale a aprobación | pendiente | D02 | — |
+| 4 · Incidencias | Registrar paro/scrap sin pérdida ni duplicación; correcciones como eventos | pendiente | D01 para archivo compartido; confirmar nombre FAB de la superficie | — |
+| 4 · Panorama y capacidad | Totales y calendario coinciden con fixtures; datos faltantes explícitos | pendiente | Reglas FAB D05 | — |
+| 5 · Reporte semanal | Exportar periodo a Excel oficial preservando datos, fórmulas, tablas, estilos e impresión | pendiente | Seleccionar e inspeccionar plantilla D06 | — |
+| 6 · Contrato de preferencias | Esquema local cerrado y defaults comprobados; sin persistencia ni UI | terminada | Consumidores en fila siguiente | [Contrato](execution/preferences-contract-acceptance.md) |
+| 6 · Preferencias persistentes | Aislar opciones por espacio/usuario, recuperar inválidas y restablecer sin tocar referencia, llave ni datos | pendiente | Implementar persistencia, IPC y controles según arquitectura | [Política](../architecture/preferencias.md) |
+| 6 · Confianza y recuperación | Provisión, rotación y recuperación del único Admin; restauración comprobada | pendiente | D04 | — |
+| 6 · Validación con equipo y distribución | Recorrido completo, dos equipos, reconexión, respaldo/rollback y portable reproducible comprobados | pendiente | Completar capacidades consumidas; publicación requiere destino, versión y autorización concreta | — |
 
-Lectura textual: entrar y crear un proyecto → registrar el trabajo → demostrar y
-validar su cierre → consultar el área → producir el reporte → validar el uso real.
-Las flechas indican prioridad del recorrido principal; investigar la plantilla o
-preparar recuperación puede avanzar antes si sus entradas están disponibles.
-Respaldo y manejo de errores se incorporan con cada escritura, no hasta el piloto.
+**Siguiente historia propuesta:** trabajo diario del ingeniero. La solicitud vigente selecciona el alcance que se ejecuta; esta prioridad no inicia automáticamente todas las filas.
 
-| Entrega | Qué podrá hacer la persona | Cómo sabremos que funciona | Decisiones aplicables |
-|---|---|---|---|
-| 1. Base disponible | Admin administra usuarios; Supervisor registra proyectos; Admin consulta. Cada usuario entra con su cuenta y carpeta validada. | Ver evidencia por alcance más abajo; completar comprobaciones nativas pendientes. No se declara lista toda la base. | Validación nativa de la base; ver evidencia |
-| 2. Trabajo diario | El ingeniero abre un proyecto autorizado, registra una actividad y actualiza su avance. | Guarda, cierra y vuelve a entrar: conserva la actividad. Otra cuenta no puede modificarla. El avance no concede cierre aprobado. | Consulta/asignación y contrato de actividad por concretar |
-| 3. Cierre verificable | El ingeniero entrega evidencia y solicita revisión; Supervisor acepta o devuelve para corrección. | La evidencia se recupera; la decisión corresponde a esa revisión. Una solicitud a 100% no se convierte por sí sola en aprobación. | D02/D03 |
-| 4. Panorama del área | Se consultan incidencias, avances y capacidad del equipo en calendario. | Los totales coinciden con registros sintéticos conocidos; falta de información se muestra explícitamente. | D01/D05 |
-| 5. Reporte semanal | Supervisor/Admin obtiene el reporte del periodo en el Excel oficial, según permisos definidos. | El archivo conserva plantilla, valores y presentación acordados y coincide con los datos del periodo. | D06 |
-| 6. Uso validado | El equipo usa el portable y se comprueba recuperación y operación en condiciones reales. | Piloto de roles y dos equipos, recuperación y distribución con evidencia. Publicar requiere autorización concreta. | D04 y autorización de publicación |
+## Aceptación de los hitos
 
-**Siguiente entrega propuesta: trabajo diario de un ingeniero en un proyecto.**
-Antes de implementarla se concreta quién ve qué proyectos, cómo se vincula una
-actividad al proyecto y qué datos guarda el avance en la partición del usuario.
-Se define el contrato, se conecta guardado y lectura, se incorpora la pantalla y
-se prueba el recorrido completo. Las políticas de adjuntos y aprobación se
-resuelven antes de añadir esas funciones en la entrega siguiente.
-
-Ejemplo ilustrativo: Supervisor crea «Mejora de estación» → el ingeniero autorizado
-registra «Preparar instrucción» y su avance → adjunta la evidencia cuando esa
-función esté disponible → Supervisor valida el cierre → el resultado aparece en
-las vistas y el reporte cuando se implementen. No son funciones ya entregadas.
-
-## Cómo se construye cada entrega
-
-```mermaid
-flowchart LR
-    N["Acordar una acción y su resultado"] --> G["Definir datos y permisos"]
-    G --> C["Conectar guardado y pantalla"]
-    C --> P["Probar el recorrido con datos sintéticos"]
-    P --> V["Revisar resultado y pendientes"]
-```
-
-Las pruebas se incorporan al implementar; la comprobación del recorrido confirma
-que las piezas funcionan juntas. Todos los módulos usan el mismo espacio activo.
-Los ingenieros escriben su partición; Supervisor registra proyectos y valida
-cierres; Admin administra usuarios y consulta. Rust aplica permisos y persistencia;
-React permite capturar y consultar. Se entrega una función utilizable por vez.
-
-## Referencias para implementar
-
-Este documento es la entrada al trabajo vigente. Elegir una historia solicitada,
-consultar su ficha y leer únicamente sus contratos, implementación y evidencia.
-No iniciar automáticamente el backlog completo.
-
-| Pregunta | Fuente única | Regla |
-|---|---|---|
-| ¿Qué límites debe respetar el agente? | [AGENTS.md](../../AGENTS.md) | Invariantes y método de trabajo. |
-| ¿Qué funcionalidad y permisos se esperan? | [Catálogo funcional](catalogo-modulos.md) | Fichas por superficie; la matriz de capacidades enlaza cobertura. |
-| ¿Qué datos se permiten? | [Contratos v1](../../contracts/v1/) | Autoridad estructural; Rust aplica reglas y RBAC. |
-| ¿Qué se construye, en qué orden y qué falta decidir? | Este plan: seis entregas y decisiones al final | Única planificación activa. |
-| ¿Cómo ejecutar y cerrar una historia? | [Contrato de trabajo](planning/mission-contract.md) | Flujo breve, dependencias aplicables y verificación. |
-| ¿Qué se comprobó realmente? | [Evidencia](execution/) | Resultados por alcance, fecha y límites; prevalecen sobre resúmenes antiguos. |
-
-Una propuesta o documento completo no acredita implementación. Ante contradicción,
-comparar el alcance y la fecha con la instrucción vigente de Alan; actualizar la
-fuente correspondiente y enlazarla, sin inventar permisos ni declarar aceptación.
-Si el comportamiento difiere del contrato, registrar deriva y corregirla; el código
-no redefine por sí solo el contrato.
-
-## Estrategia vigente
-
-Entregar recorridos verticales pequeños con backend, UI y pruebas cuando apliquen.
-Las seis entregas anteriores organizan el producto; cada una se implementa mediante
-historias pequeñas con aceptación verificable.
-Una historia usa solo las decisiones y contratos que consume. Recuperación D04
-completo o el módulo de incidencias no son requisitos universales para cualquier cambio.
-La dependencia técnica concreta debe quedar citada en la historia.
-
-Integrar cada historia en la aplicación para poder revisarla. La entrega 6 comprueba
-el recorrido completo y las condiciones del piloto. Serializar las ediciones de archivos compartidos
-durante la integración, sin encadenar módulos completos por ese motivo.
-El modo normal es secuencial. Si la tarea justifica especialistas concurrentes,
-crear un DAG acotado con escrituras disjuntas y una sola evaluación de su DoD.
-El cierre de esa historia no equivale a aceptar ni publicar todo EasyFAB.
-
-## Base y siguiente selección
-
-- Acceso y directorio: [recorrido y límites de aceptación](execution/f01/acceptance.md).
-  Espacio configurable: [arquitectura vigente](../architecture/espacio-de-trabajo.md).
-- Carpetas personales: [aceptación de carpetas](execution/f02/acceptance.md), layout decidido por manifiesto.
-- Proyectos: [aceptación de proyectos](execution/f04/acceptance.md) y [flujo confirmado](execution/f04/flujo-confirmado.md).
-  Admin administra cuentas y consulta; el único Supervisor activo registra;
-  cada ingeniero escribe su partición. Avances y validación de cierre siguen pendientes.
-- Navegación: [aceptación](execution/navigation-acceptance.md) y
-  [estándar](../architecture/navegacion.md).
-- Preferencias: [contrato y límites](execution/preferences-contract-acceptance.md),
-  [política](../architecture/preferencias.md); persistencia y UI pendientes.
-- Evidencias: [propuesta D03](execution/f01/propuesta-d03.md), todavía sin aceptación
-  completa; no inferir aprobación de políticas de adjuntos.
-
-La prioridad propuesta es la entrega 2, trabajo diario; la solicitud vigente define
-la historia que se ejecuta. Las decisiones de otras entregas no son barreras globales. Para avances, resolver contratos de actividad y
-escritura propietaria; para cierre, D02; para incidencias compartidas, D01;
-para capacidad, D05; para exportación oficial, D06. D04 mantiene su alcance de
-confianza y recuperación. La publicación requiere autorización concreta de destino,
-versión y respaldo; esta revisión documental no publica ni migra datos.
-
-## Criterios completos por entrega
-
-La tabla anterior resume el resultado visible. Los criterios siguientes desarrollan
-esas mismas entregas; no forman otra cola ni repiten estados de ejecución.
-
-### Controles comunes
-
-Revalidar código, contratos y evidencia del alcance; distinguir pruebas simuladas
-de validación nativa. Resolver decisiones antes de sus consumidores, versionar
-contratos y autorizar cualquier cambio de invariante. Incorporar pruebas y manejo
-de errores desde cada implementación. Estado y resultados se acreditan en la
-evidencia enlazada, sin mantener otro porcentaje o estado paralelo.
+Los siguientes criterios desarrollan las filas anteriores; no constituyen otra lista de estados. Pruebas, manejo de errores, respaldo e integridad se incorporan desde cada escritura. Las decisiones bloquean solo sus consumidores.
 
 ### 1. Base disponible
 
@@ -193,11 +82,7 @@ se consideran aceptación de todo el tema. Cada decisión bloquea solo su consum
 |---|---|---|
 | D01 | Concurrencia OneDrive · Arquitectura + Alan | Confirmado para proyectos: único Supervisor activo escritor, Admin gestiona cuentas y consulta; una sesión por cuenta. Sigue pendiente protocolo verificable para incidencias compartidas. Append-only y rename local no garantizan convergencia ni exclusión distribuida. |
 | D02 | Autoridad de aprobación · Supervisor + Arquitectura | Elegir registro autoritativo separado del JSON propiedad del ingeniero, unido a revisión y huella de evidencias. Un booleano escrito por el ingeniero no concede aprobación. |
-| D03 | Carpetas y evidencias · Arquitectura | Layout 2 y selección única por manifiesto implementados en PLAN-013; layout 1 se conserva hasta mantenimiento explícito. Siguen pendientes aceptación completa, contrato operativo de adjuntos, tipos/tamaños/retención y recuperación. Ver execution/f02/acceptance.md y execution/f01/propuesta-d03.md. |
+| D03 | Carpetas y evidencias · Arquitectura | Layout 2 y selección única por manifiesto implementados en PLAN-013; layout 1 se conserva hasta mantenimiento explícito. Siguen pendientes aceptación completa, contrato operativo de adjuntos, tipos/tamaños/retención y recuperación. Ver [carpetas](execution/f02/acceptance.md) y [antecedente de adjuntos](execution/f01/propuesta-d03.md). |
 | D04 | Confianza y recuperación  | Definir custodio, provisión, rotación y recuperación del único Admin. HMAC compartido con un verificador permite firmar; no sincronizar master.key ni prometer revocación instantánea sin conexión. Otro esquema criptográfico requiere cambio explícito de invariante. |
 | D05 | Reglas FAB · Supervisor | Confirmar calendario, semanas, turnos, esfuerzo, capacidad, pesos, unidades y línea base para desviaciones. Datos insuficientes se muestran como desconocidos. |
 | D06 | Excel oficial ·  Supervisor | Seleccionar e inspeccionar plantilla oficial EN o EN-R2; el sufijo R2 no acredita autoridad. Las hojas/tablas del brief siguen por verificar. |
-
-## Revisión del método
-
-Diagnóstico, sustituciones de estados y riesgos: [revisión de simplificación](planning/reviews/workflow-simplification.md).

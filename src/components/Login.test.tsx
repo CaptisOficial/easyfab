@@ -99,7 +99,7 @@ describe("primer recorrido de acceso", () => {
 
 it.each([
   ["admin", false, true], ["supervisor", false, true],
-  ["engineer", false, false], ["admin", true, false], ["supervisor", true, false],
+  ["engineer", false, true], ["engineer", true, false], ["admin", true, false], ["supervisor", true, false],
 ] as const)("acceso proyectos: rol %s, restringida %s", async (role, restricted, visible) => {
   vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [{ id: "fixture", name: "Fixture" }], requires_admin: false });
   vi.mocked(api.login).mockResolvedValue({ id: "fixture", name: "Fixture", role, must_change_password: restricted });

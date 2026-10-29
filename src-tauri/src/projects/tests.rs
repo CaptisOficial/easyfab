@@ -90,7 +90,8 @@ fn isolated_project_journey() {
     assert!(overview(&dir, &sessions[1], &info.id).unwrap().can_create);
     let original = fs::read(dir.join("projects.json")).unwrap();
     let key = fs::read(base.join("local/EasyFAB/master.key")).unwrap();
-    assert!(overview(&dir, &sessions[0], &info.id).is_err());
+    assert!(overview(&dir, &sessions[0], &info.id).unwrap().projects.is_empty());
+    assert!(overview(&dir, &sessions[0], "wrong-workspace").is_err());
     assert!(create(&dir, &sessions[0], &info.id, input())
         .unwrap_err()
         .contains("sesión normal"));
@@ -141,8 +142,19 @@ fn isolated_project_journey() {
     fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
     let mut second = input();
     second.wbs = "FAB-02".into();
+    second.lead_engineer_id = "engineer2".into();
     let second = create(&dir, &sessions[1], &info.id, second).unwrap();
     assert_ne!(first.id, second.id);
+    let own = overview(&dir, &sessions[0], &info.id).unwrap();
+    assert_eq!(own.projects.len(), 1);
+    assert_eq!(own.projects[0].id, first.id);
+    assert!(!own.can_create);
+    assert_eq!(own.leads.len(), 1);
+    assert_eq!(own.leads[0].id, "engineer");
+    let fresh_engineer = auth::authenticate(&dir, "engineer2", "User5678").unwrap();
+    let own = overview(&dir, &fresh_engineer, &info.id).unwrap();
+    assert_eq!(own.projects.len(), 1);
+    assert_eq!(own.projects[0].id, second.id);
     // Fresh authentication and workspace opening model restart, no cached list.
     let reopened = workspace::open(&root, Some(&info.id)).unwrap();
     let fresh = auth::authenticate(&dir, "admin", "Admin123").unwrap();
@@ -187,6 +199,7 @@ fn isolated_project_journey() {
     }
     fs::write(&path, b"{broken").unwrap();
     assert!(overview(&dir, &admin, &info.id).is_err());
+    assert!(overview(&dir, &sessions[0], &info.id).is_err());
     let mut third = input();
     third.wbs = "FAB-03".into();
     assert!(create(&dir, &sessions[1], &info.id, third.clone()).is_err());
@@ -210,6 +223,9 @@ fn isolated_project_journey() {
     }
     fs::write(&path, &saved).unwrap();
     auth::set_user_active(&dir, &admin, "engineer", false).unwrap();
+    assert!(overview(&dir, &sessions[0], &info.id).is_err());
+    auth::reset_password(&dir, &admin, "engineer2").unwrap();
+    assert!(overview(&dir, &fresh_engineer, &info.id).is_err());
     assert!(create(&dir, &sessions[1], &info.id, third.clone()).is_err());
     auth::create_user(
         &dir,

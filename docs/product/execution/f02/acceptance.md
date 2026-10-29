@@ -1,5 +1,7 @@
 # Carpetas personales — entrega acotada PLAN-013
 
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
 Fecha: 2026-10-28. Entrega acotada implementada, probada y aplicada.
 
 Alan confirmó el registro/acceso nativo con su perfil y autorizó continuar conservando

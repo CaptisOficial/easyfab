@@ -1,6 +1,8 @@
 # Alta y consulta de proyectos — PLAN-014
 
-Alcance confirmado: [cuatro cuentas y un ejecutable](flujo-confirmado.md).
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
+Alcance confirmado: [cuentas y autoridad de operación](../../../architecture/auth.md#autoridad-de-operación-por-cuenta).
 Admin administra cuentas y consulta; Supervisor registra proyectos; los ingenieros
 registrarán avances propios y Supervisor validará cierres en los siguientes pasos.
 
@@ -54,3 +56,5 @@ entrega. La aceptación nativa, incluido reingreso posterior a PLAN-013, está p
 Candidato local: src-tauri/target/release/easyfab.exe (3567104 bytes).
 SHA-256: 9B5CEDDCE8BCF14675CDB22DB14368B3A704132B16A35A09A54D3137C0091362.
 No se publicó en la carpeta compartida. El build tardó 5m05s y no abrió la aplicación.
+
+Nota de consolidación documental (2026-10-29): se retiró la propuesta de archivos por proyecto; no fue aprobada ni aplicada. Se conserva projects.json escrito por el único Supervisor activo. Los permisos vigentes se describen en arquitectura/catálogo y el trabajo pendiente en el plan.

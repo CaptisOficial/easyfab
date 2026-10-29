@@ -1,5 +1,7 @@
 # Navegación contextual · evidencia y checkpoint
 
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
 Fecha: 2026-10-29. Alcance: NAV-01/CFG-01/ADM-01/PRO-01 existentes, enlazados al
 plan maestro (F03/F04/F11). Sin contratos, datos corporativos, migración ni portable.
 

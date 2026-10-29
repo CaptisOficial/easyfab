@@ -76,7 +76,7 @@ export function Login({ onSessionChange, onBusyChange, headerInTopNav = false, r
             : user.role === "supervisor" ? "Registra los proyectos del equipo."
             : "Tu perfil está listo. El registro de avances se incorporará en el siguiente paso."}</p>
           {user.role === "admin" && <div hidden={destination !== undefined && destination !== "settings"}><h3 className="font-bold">Administración del sistema</h3><UserDirectory /></div>}
-          {user.role !== "engineer" && <div hidden={destination !== undefined && destination !== "projects"}><Projects /></div>}
+          <div hidden={destination !== undefined && destination !== "projects"}><Projects /></div>
         </>}
       {!headerInTopNav && <button disabled={busy} onClick={exit} className="border px-4 py-2">Cerrar sesión</button>}
     </div> : !busy && requiresAdmin && !error ? <InitialAdminForm onReady={async () => {

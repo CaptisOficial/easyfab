@@ -1,8 +1,6 @@
 # Estándar de navegación de EasyFAB
 
-Decisión de producto: 2026-10-29, Alan. Estado: estándar aplicado al alcance existente; ver
-[evidencia de navegación](../product/execution/navigation-acceptance.md). Sustituye la ubicación de Configuración en Top Nav de PLAN-015,
-que permanece como evidencia histórica de lo implementado.
+Decisión de producto: 2026-10-29, Alan. Disponibilidad y evidencia: [plan](../product/plan-maestro.md).
 
 ## Estructura
 
@@ -53,7 +51,7 @@ no migra datos ni recurre a otra raíz si la guardada falla. Ver
 
 El [catálogo funcional](../product/catalogo-modulos.md) define componentes, ventanas,
 responsabilidades y alcance. Antes de añadir un módulo, ventana o destino se
-actualiza su ficha y su vínculo con la matriz de capacidades. Un documento describe
+actualiza su ficha; la historia se registra en el plan. Un documento describe
 comportamiento esperado; no concede permisos ni sustituye contratos de datos.
 Las pruebas de implementación cubrirán apertura/cierre, foco, teclado, grid estable,
 captura conservada, destinos por rol y restricciones de carpeta.

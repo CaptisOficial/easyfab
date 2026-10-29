@@ -77,7 +77,7 @@ Las preferencias locales solo personalizan la experiencia; no otorgan permisos, 
 
 Restablecer preferencias conserva `installation.json`, `master.key` y todos los datos compartidos. Una preferencia ausente o inválida permite recuperar valores de interfaz predeterminados; una referencia de espacio inválida o no disponible sigue bloqueando el acceso. Las preferencias nunca habilitan una fuente local alternativa de datos.
 
-**Estado de implementación:** la referencia local, la llave y los datos compartidos ya existen. La persistencia de preferencias queda definida como decisión de arquitectura; todavía no se implementa. El [contrato local v1 y su política](preferencias.md) están definidos y probados como esquema. Antes de persistirlos faltan pruebas de aislamiento real por espacio/usuario, recuperación de preferencias inválidas y preservación de referencia, llave y datos. No se añaden campos de preferencias a `installation.json` sin actualizar su contrato.
+La [política de preferencias](preferencias.md) desarrolla aislamiento, recuperación y preservación de referencia, llave y datos. No añadir campos a `installation.json` sin actualizar su contrato. Estado de implementación y verificación: [plan](../product/plan-maestro.md).
 
 ## Arranque e instanciación
 
@@ -118,7 +118,7 @@ Cambiar carpeta exige cerrar sesión y cancela accesos en curso. Conecta el espa
 | Primer alta Admin | `data/team.json` vacío y llave local, mediante acción explícita |
 | Alta/baja/reactivación/recuperación | `data/team.json`, solo sesión normal Admin |
 | Cambiar contraseña y actividades propias | Partición propia según manifiesto: `data/engineers/<id>/profile.json` (2) o `<id>.json` (1) |
-| Proyectos | `data/projects.json`, Supervisor/Admin |
+| Proyectos | `data/projects.json`, único Supervisor activo; Admin consulta |
 | Incidencias | `data/issues.json`, append-only según contrato |
 | Exportación | `exports/`; no implementada todavía |
 | Publicación portable/documentos | `software/`, `docs/`, `contracts/`; distribución controlada |

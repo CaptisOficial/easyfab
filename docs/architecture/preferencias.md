@@ -1,9 +1,7 @@
 # Preferencias personales locales v1
 
 Fecha: 2026-10-29. Autoridad estructural: [user_preferences.schema.json](../../contracts/v1/user_preferences.schema.json).
-Alcance F01/F03 autorizado: contrato y pruebas de contrato. Persistencia, IPC y UI
-siguen pendientes; este documento especifica el comportamiento requerido para esa
-entrega y no acredita aislamiento real en disco ni un recorrido nativo.
+Este documento especifica el comportamiento requerido. Disponibilidad, pruebas realizadas y trabajo restante: [plan](../product/plan-maestro.md).
 
 ## Propiedad y ubicación
 
@@ -69,7 +67,3 @@ Comparar bytes de referencia, llave y datos sintéticos antes/después. Probar s
 restringida/cerrada y espacio inaccesible; IPC no acepta identidad del cliente.
 Después: DOM del recorrido editar → guardar/error → reintentar → restablecer;
 validación nativa separada para apariencia, tamaños y reinicio real.
-
-HSS: dos opciones de presentación, ningún dato operativo recapturado. No se ha
-medido ahorro ni implementado persistencia. Manpower: sin indicadores de capacidad;
-calendario/esfuerzo/disponibilidad siguen sujetos a D05.

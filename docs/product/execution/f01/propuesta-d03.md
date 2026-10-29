@@ -1,5 +1,7 @@
 # F01 / D03 — Carpetas personales y evidencias
 
+> Evidencia o propuesta fechada. Sus pendientes y referencias de método describen ese momento; consultar el plan vigente desde el índice para continuar el desarrollo.
+
 Fecha: 2026-10-28. Estado: propuesta pendiente de aceptación de Alan.
 
 Actualización posterior de Alan (PLAN-012): solo existen usuarios/datos de prueba;

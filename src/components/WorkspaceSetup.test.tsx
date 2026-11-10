@@ -9,7 +9,8 @@ vi.mock("../lib/api", () => ({
   workspaceStatus: vi.fn(), configureWorkspace: vi.fn(), runningInTauri: vi.fn(),
   listLoginUsers: vi.fn(), login: vi.fn(), logout: vi.fn(), changePassword: vi.fn(),
   provisionInitialAdmin: vi.fn(), listUsers: vi.fn(), createUser: vi.fn(),
-  setUserActive: vi.fn(), resetPassword: vi.fn(), projectsOverview: vi.fn(), createProject: vi.fn(),
+  setUserActive: vi.fn(), resetPassword: vi.fn(), projectsOverview: vi.fn(), createProject: vi.fn(), plantCatalogs: vi.fn(),
+  userPreferences: vi.fn(),
 }));
 const workspace: api.WorkspaceInfo = {
   id: "synthetic", root: "C:\\synthetic\\FAB", path: "C:\\synthetic\\FAB\\easy-fab",
@@ -26,18 +27,22 @@ beforeEach(() => {
   vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [engineer], requires_admin: false });
   vi.mocked(api.login).mockResolvedValue(engineer);
   vi.mocked(api.logout).mockResolvedValue();
+  vi.mocked(api.userPreferences).mockResolvedValue({ preferences: { version: 1, workspace_id: "fixture", user_id: "fixture", theme: "light", ui_scale: "standard" }, revision: null, warning: null });
+  vi.mocked(api.plantCatalogs).mockResolvedValue({ config: { version: 1, lines: [], machines: [], failure_types: [] }, revision: "fixture", can_edit: true });
   vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta los proyectos donde eres el ingeniero responsable." });
 });
 
 it("Engineer navega a sus proyectos en consulta y cierra sesión sin conservar la lista", async () => {
   const user = userEvent.setup();
-  vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [{ id: "PRJ-own", wbs: "FAB-OWN", name: "Asignado", process_area: "FAB", lead_engineer_id: engineer.id, start_date: "2026-10-29", target_date: "2026-11-01", status: "Not Started" }], leads: [{ id: engineer.id, name: engineer.name }], can_create: false, write_message: "Consulta los proyectos donde eres el ingeniero responsable." });
+  vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [{ id: "PRJ-own", wbs: "FAB-OWN", name: "Asignado", process_area: "FAB", engineer_ids: [engineer.id], start_date: "2026-10-29", target_date: "2026-11-30", status: "Not Started" }], leads: [{ id: engineer.id, name: engineer.name }], can_create: false, write_message: "Consulta los proyectos donde eres el ingeniero responsable." });
   render(<WorkspaceSetup />);
-  await user.type(await screen.findByLabelText("Contraseña (8 caracteres)"), "User1234");
+  const password = await screen.findByLabelText("Contraseña (8 caracteres)");
+  await waitFor(() => expect((password as HTMLInputElement).disabled).toBe(false));
+  await user.type(password, "User1234");
   await user.click(screen.getByRole("button", { name: "Ingresar" }));
   await screen.findByText(engineer.name);
   await user.click(screen.getByRole("button", { name: "Abrir menú" }));
-  await user.click(screen.getByRole("button", { name: "Proyectos", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Proyectos" }));
   expect(await screen.findByText("FAB-OWN · Asignado")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Guardar proyecto" })).toBeNull();
   expect(api.createProject).not.toHaveBeenCalled();
@@ -45,7 +50,7 @@ it("Engineer navega a sus proyectos en consulta y cierra sesión sin conservar l
   await screen.findByLabelText("Contraseña (8 caracteres)");
   expect(screen.queryByText("FAB-OWN · Asignado")).toBeNull();
   await user.click(screen.getByRole("button", { name: "Abrir menú" }));
-  expect(screen.queryByRole("button", { name: "Proyectos", exact: true })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Proyectos" })).toBeNull();
 });
 
 it("deja la carpeta fuera del área central y abre/cierra configuración sin reiniciar la captura", async () => {
@@ -69,6 +74,26 @@ it("deja la carpeta fuera del área central y abre/cierra configuración sin rei
   await user.click(gear);
   await user.click(screen.getByRole("dialog").parentElement!);
   expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("oculta el acceso en Configuración y lo recupera al volver a Inicio", async () => {
+  const user = userEvent.setup();
+  render(<WorkspaceSetup />);
+  const password = await screen.findByLabelText("Contraseña (8 caracteres)");
+  await waitFor(() => expect((password as HTMLInputElement).disabled).toBe(false));
+  await user.type(password, "draft");
+  await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+  await user.click(screen.getByRole("button", { name: "Configuración" }));
+  expect(screen.getByRole("heading", { name: "Carpeta activa" })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Acceso a EasyFAB" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Ingresar" })).toBeNull();
+  expect(password.closest("[hidden]")).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+  await user.click(screen.getByRole("button", { name: "Inicio" }));
+  expect(screen.getByRole("button", { name: "Ingresar" })).toBeTruthy();
+  expect(password.closest("[hidden]")).toBeNull();
+  expect((password as HTMLInputElement).value).toBe("draft");
+  expect(api.listLoginUsers).toHaveBeenCalledTimes(1);
 });
 
 it("muestra usuario y salida en topnav, consulta carpeta autenticado y conserva bloqueo de cambio", async () => {
@@ -163,7 +188,7 @@ it("espera confirmación del backend al salir y conserva la sesión si el cierre
   expect((screen.getByRole("button", { name: "Cambiar carpeta compartida" }) as HTMLButtonElement).disabled).toBe(true);
 });
 
-it("Admin encuentra Usuarios en Configuración y Proyectos en su destino sin recapturar acceso", async () => {
+it("Admin encuentra Usuarios en su módulo y Proyectos en su destino sin recapturar acceso", async () => {
   const user = userEvent.setup();
   const admin: api.SessionUser = { ...engineer, id: "admin", role: "admin" };
   vi.mocked(api.login).mockResolvedValue(admin);
@@ -176,13 +201,21 @@ it("Admin encuentra Usuarios en Configuración y Proyectos en su destino sin rec
   await within(screen.getByRole("banner")).findByText(admin.name);
   expect(screen.queryByRole("heading", { name: "Proyectos FAB" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Abrir menú" }));
-  await user.click(screen.getByRole("button", { name: "Configuración" }));
-  expect(screen.getByRole("heading", { name: "Administración del sistema" })).toBeTruthy();
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Configuración" })));
+  await user.click(screen.getByRole("button", { name: "Usuarios" }));
+  expect(screen.getByRole("heading", { name: "Gestión de usuarios" })).toBeTruthy();
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Usuarios" })));
   await user.click(screen.getByRole("button", { name: "Abrir menú" }));
   await user.click(screen.getByRole("button", { name: "Proyectos" }));
   expect(await screen.findByRole("heading", { name: "Proyectos FAB" })).toBeTruthy();
-  expect(screen.queryByRole("heading", { name: "Administración del sistema" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Gestión de usuarios" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+  await user.click(screen.getByRole("button", { name: "Catálogos" }));
+  expect(await screen.findByRole("heading", { name: "Catálogos FAB" })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Gestión de usuarios" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+  await user.click(screen.getByRole("button", { name: "Configuración" }));
+  expect(screen.queryByRole("heading", { name: "Catálogos FAB" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Gestión de usuarios" })).toBeNull();
   expect(api.login).toHaveBeenCalledTimes(1);
   expect(api.projectsOverview).toHaveBeenCalledTimes(1);
 });
@@ -202,6 +235,8 @@ it("Supervisor conserva el borrador del proyecto al visitar Configuración y vol
     await user.click(screen.getByRole("button", { name }));
   }
   await go("Proyectos");
+  // Open the creation modal before typing the new project name
+  await user.click(screen.getByRole("button", { name: "Nuevo proyecto" }));
   await user.type(await screen.findByLabelText("Título del proyecto"), "Mejora fixture");
   await go("Configuración");
   expect(screen.queryByRole("heading", { name: "Administración del sistema" })).toBeNull();

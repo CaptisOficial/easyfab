@@ -24,6 +24,10 @@ $requiredContracts = @(
     "team.schema.json",
     "projects.schema.json",
     "project_registration.schema.json",
+    "project_results.schema.json",
+    "project_results_operations.schema.json",
+    "project_results_storage.schema.json",
+    "activity_operations.schema.json",
     "engineer_tasks.schema.json",
     "issues.schema.json",
     "auth.schema.json",
@@ -74,7 +78,7 @@ if (Test-Path $cargo) {
 Write-Host "`n[4/4] Ejecutando pruebas frontend y Rust..." -ForegroundColor Yellow
 & npm.cmd run test:contracts
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Fallo en pruebas de contratos de preferencias."
+    Write-Error "Fallo en pruebas de contratos."
 }
 & npm.cmd run test:frontend
 if ($LASTEXITCODE -ne 0) {

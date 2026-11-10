@@ -35,7 +35,9 @@ export function UserDirectory() {
   }
 
   return <section className="space-y-4 border-t pt-4" aria-labelledby="directory-title">
-    <h2 id="directory-title" className="font-bold">Gestión de usuarios</h2>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="directory-title" className="font-bold">Gestión de usuarios</h2>
+      <div className="ml-auto"><NewUserForm onCreated={refresh} /></div>
+    </div>
     {busy && <p role="status">Actualizando directorio…</p>}
     {error && <p role="alert" className="text-kmx-red">{error}</p>}
     {notice && <p role="status">{notice}</p>}
@@ -43,7 +45,7 @@ export function UserDirectory() {
       <button type="button" onClick={() => setTemporary("")} className="ml-3 border px-3 py-1">Ocultar temporal</button></div>}
     <div className="overflow-x-auto"><table className="w-full text-left text-sm">
       <caption className="sr-only">Directorio de usuarios y estado de acceso</caption>
-      <thead><tr>{["Nombre / ID", "Rol", "Estado", "Acción"].map(label => <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
+      <thead><tr>{["Nombre / ID", "Rol", "Estado", "Acción", "Recuperación de contraseña"].map(label => <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
       <tbody>{users.map(user => <tr key={user.id} className="border-t">
         <th scope="row" className="p-2 font-normal">{user.name}<span className="block text-xs">{user.id}</span></th>
         <td className="p-2">{roleNames[user.role]}</td>
@@ -52,11 +54,11 @@ export function UserDirectory() {
           ? <><p>¿Desactivar a {user.name}?</p><button disabled={busy} onClick={() => changeStatus(user)} className="border p-1">Confirmar</button>
             <button disabled={busy} onClick={() => setConfirmation("")} className="ml-2 border p-1">Cancelar</button></>
           : <button disabled={busy} className="border p-1" onClick={() => user.status === "active" ? setConfirmation(user.id) : changeStatus(user)}>
-            {user.status === "active" ? "Desactivar" : "Activar y generar temporal"}</button>}</td>
+            {user.status === "active" ? "Desactivar" : "Activar y generar temporal"}</button>}
+        </td>
+        <td className="p-2">{user.status === "active" ? <RecoveryForm user={user} /> : "Requiere reactivación"}</td>
       </tr>)}</tbody>
     </table></div>
     <p className="text-sm">Desactivar conserva el historial. Reactivar exige nueva contraseña. Los cambios de acceso llegan a otros equipos al sincronizar OneDrive.</p>
-    <NewUserForm onCreated={refresh} />
-    <RecoveryForm users={users.filter(user => user.status === "active")} />
   </section>;
 }

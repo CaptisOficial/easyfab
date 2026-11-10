@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB immutable results storage v1",
+  "description": "Authority is selected by workspace.project_results_version=1 and signed per-project storage.json; signed immutable per-entity events. Schema shape is necessary but not proof of signature, authorization, ancestry or evidence integrity. See project_results.md.",
+  "$defs": {
+    "activity_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "created_by",
+        "activity",
+        "evidence"
+      ],
+      "properties": {
+        "created_by": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "activity": {
+          "$ref": "project_results.schema.json#/$defs/activity"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "activity_operations.schema.json#/$defs/evidence"
+          }
+        }
+      }
+    },
+    "blocker_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reported_by",
+        "blocker"
+      ],
+      "properties": {
+        "reported_by": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "blocker": {
+          "$ref": "project_results.schema.json#/$defs/blocker"
+        }
+      }
+    },
+    "review_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deliverable_id",
+        "commitment_revision",
+        "status",
+        "submission",
+        "decision"
+      ],
+      "properties": {
+        "deliverable_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "commitment_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "status": {
+          "$ref": "project_results.schema.json#/$defs/review_status"
+        },
+        "submission": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/submission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/decision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "closure_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "closed",
+        "commitment_revision",
+        "review_revisions",
+        "comment"
+      ],
+      "properties": {
+        "closed": {
+          "type": "boolean"
+        },
+        "commitment_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "review_revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "project_results.schema.json#/$defs/revision"
+          }
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "payload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "commitment"
+            },
+            "value": {
+              "$ref": "project_results.schema.json#/$defs/commitment"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "activity"
+            },
+            "value": {
+              "$ref": "#/$defs/activity_data"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "blocker"
+            },
+            "value": {
+              "$ref": "#/$defs/blocker_data"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "review"
+            },
+            "value": {
+              "$ref": "#/$defs/review_data"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "closure"
+            },
+            "value": {
+              "$ref": "#/$defs/closure_data"
+            }
+          }
+        }
+      ]
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "id",
+        "project_id",
+        "stream",
+        "parents",
+        "author_id",
+        "author_role",
+        "recorded_at",
+        "action",
+        "comment",
+        "base_commitment",
+        "payload",
+        "signature"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "stream": {
+          "type": "string",
+          "pattern": "^(commitment|closure|activity/[A-Za-z0-9_-]+|blocker/[A-Za-z0-9_-]+|review/[A-Za-z0-9_-]+)$"
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "$ref": "project_results.schema.json#/$defs/revision"
+          },
+          "uniqueItems": true
+        },
+        "author_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "author_role": {
+          "enum": [
+            "engineer",
+            "supervisor"
+          ]
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "enum": [
+            "activate",
+            "migrate",
+            "change_commitment",
+            "save_activity",
+            "attach",
+            "report",
+            "attend",
+            "resolve_blocker",
+            "submit",
+            "withdraw",
+            "accept",
+            "return",
+            "revise",
+            "close",
+            "reopen",
+            "resolve"
+          ]
+        },
+        "comment": {
+          "type": "string"
+        },
+        "base_commitment": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/revision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payload": {
+          "$ref": "#/$defs/payload"
+        },
+        "signature": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "project_id",
+        "legacy_sha256",
+        "signature"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "legacy_sha256": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "signature": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,369 @@
+import { useState } from "react";
+import type { ResultsDeliverable } from "../../lib/results-api";
+
+export interface ActivityRow {
+  id: string;
+  wbs: string;
+  title: string;
+  deliverable_id: string;
+  criterion?: string;
+  evidence_required?: boolean;
+  start_date: string;
+  due_date: string;
+  status: "not_started" | "in_progress" | "done";
+  at_risk: boolean;
+}
+
+export function autoGenerateWbs(
+  index: number,
+  deliverableId: string,
+  deliverables?: ResultsDeliverable[]
+): string {
+  if (deliverables && deliverables.length > 0 && deliverableId) {
+    const dIdx = deliverables.findIndex(d => d.id === deliverableId);
+    if (dIdx >= 0) {
+      return `${dIdx + 1}.${index + 1}`;
+    }
+  }
+  return `${index + 1}`;
+}
+
+export function refreshRowWbs(
+  rows: ActivityRow[],
+  deliverables?: ResultsDeliverable[],
+  embedDeliverable = false
+): ActivityRow[] {
+  if (embedDeliverable || !deliverables || deliverables.length === 0) {
+    return rows.map((row, idx) => ({ ...row, wbs: `${idx + 1}` }));
+  }
+  const deliverableCounts: Record<string, number> = {};
+  return rows.map((row, idx) => {
+    let wbs: string;
+    if (row.deliverable_id) {
+      const dIdx = deliverables.findIndex(d => d.id === row.deliverable_id);
+      if (dIdx >= 0) {
+        const count = (deliverableCounts[row.deliverable_id] || 0) + 1;
+        deliverableCounts[row.deliverable_id] = count;
+        wbs = `${dIdx + 1}.${count}`;
+      } else {
+        wbs = `${idx + 1}`;
+      }
+    } else {
+      wbs = `${idx + 1}`;
+    }
+    return { ...row, wbs };
+  });
+}
+
+export const emptyRow = (
+  deliverableId = "",
+  defaultStartDate = "",
+  defaultDueDate = ""
+): ActivityRow => ({
+  id: `act_${crypto.randomUUID().replaceAll("-", "")}`,
+  wbs: "1",
+  title: "",
+  deliverable_id: deliverableId,
+  criterion: "",
+  evidence_required: true,
+  start_date: defaultStartDate,
+  due_date: defaultDueDate,
+  status: "not_started",
+  at_risk: false,
+});
+
+export function ActivityGrid({
+  rows,
+  onChange,
+  disabled = false,
+  deliverables = [],
+  embedDeliverable = false,
+  defaultStartDate = "",
+  defaultDueDate = "",
+}: {
+  rows: ActivityRow[];
+  onChange: (rows: ActivityRow[]) => void;
+  disabled?: boolean;
+  deliverables?: ResultsDeliverable[];
+  embedDeliverable?: boolean;
+  defaultStartDate?: string;
+  defaultDueDate?: string;
+}) {
+  const [pasteBuffer, setPasteBuffer] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+
+  function updateRow(index: number, patch: Partial<ActivityRow>) {
+    const updated = rows.map((r, i) => (i === index ? { ...r, ...patch } : r));
+    onChange(refreshRowWbs(updated, deliverables, embedDeliverable));
+  }
+
+  function addRow() {
+    const defaultDeliv = deliverables[0]?.id ?? "";
+    const created = emptyRow(defaultDeliv, defaultStartDate, defaultDueDate);
+    onChange(refreshRowWbs([...rows, created], deliverables, embedDeliverable));
+  }
+
+  function removeRow(index: number) {
+    const next = rows.filter((_, i) => i !== index);
+    onChange(refreshRowWbs(next.length ? next : [emptyRow(deliverables[0]?.id ?? "", defaultStartDate, defaultDueDate)], deliverables, embedDeliverable));
+  }
+
+  function handlePasteText(text: string) {
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (!lines.length) return;
+
+    const defaultDeliv = deliverables[0]?.id ?? "";
+    const newRows: ActivityRow[] = lines.map(line => {
+      const parts = line.split("\t").map(p => p.trim());
+      let title = parts[0] || "";
+      let start = defaultStartDate;
+      let due = defaultDueDate;
+      let criterion = "";
+
+      // Si la primera columna parece un número o código WBS previo (ej: "1", "1.1", "WBS-1"), usar la segunda como título
+      if (/^(\d+(\.\d+)*|[A-Z]+-\d+)$/i.test(parts[0]) && parts.length > 1) {
+        title = parts[1] || "";
+        if (parts[2]) start = parts[2];
+        if (parts[3]) due = parts[3];
+        if (parts[4]) criterion = parts[4];
+      } else {
+        if (parts[1]) start = parts[1];
+        if (parts[2]) due = parts[2];
+        if (parts[3]) criterion = parts[3];
+      }
+
+      return {
+        id: `act_${crypto.randomUUID().replaceAll("-", "")}`,
+        wbs: "",
+        title,
+        deliverable_id: defaultDeliv,
+        criterion,
+        evidence_required: true,
+        start_date: start,
+        due_date: due,
+        status: "not_started",
+        at_risk: false,
+      };
+    });
+
+    const combined = rows.length === 1 && !rows[0].title.trim() ? newRows : [...rows, ...newRows];
+    onChange(refreshRowWbs(combined, deliverables, embedDeliverable));
+    setPasteBuffer("");
+    setShowPaste(false);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-kmx-gray-500">
+            {embedDeliverable ? `Subactividades y entregables (${rows.length})` : `Subactividades (${rows.length})`}
+          </span>
+          <p className="results-help">
+            {embedDeliverable
+              ? "Cada fila representa un sprint o historia de trabajo y embebe su condición de cierre verificable (entregable) para el supervisor."
+              : "La numeración (#) y la asignación entre los ingenieros responsables se generan automáticamente."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="action text-xs"
+            disabled={disabled}
+            onClick={() => setShowPaste(open => !open)}
+          >
+            {showPaste ? "Ocultar pegado" : "Pegar desde Excel…"}
+          </button>
+          <button
+            type="button"
+            className="btn-primary text-xs px-3 py-1.5"
+            disabled={disabled}
+            onClick={addRow}
+          >
+            + Añadir subactividad
+          </button>
+        </div>
+      </div>
+
+      {showPaste && (
+        <div className="p-3 bg-kmx-gray-50 border border-kmx-gray-300 rounded space-y-2">
+          <label className="text-xs font-semibold block text-kmx-carbon">
+            Pegar filas desde Excel (separadas por Tabulador)
+            <textarea
+              className="mt-1 border p-2 w-full text-xs font-mono rounded"
+              rows={3}
+              value={pasteBuffer}
+              onChange={e => setPasteBuffer(e.target.value)}
+              placeholder="Pega aquí las filas copiadas desde Excel (Título [Tab] Fecha inicio [Tab] Fecha fin [Tab] Criterio)..."
+              disabled={disabled}
+            />
+          </label>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="action text-xs"
+              onClick={() => { setPasteBuffer(""); setShowPaste(false); }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary text-xs px-3 py-1"
+              disabled={disabled || !pasteBuffer.trim()}
+              onClick={() => handlePasteText(pasteBuffer)}
+            >
+              Importar filas
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="border border-kmx-gray-200 rounded overflow-x-auto shadow-sm">
+        <table className="results-table w-full">
+          <thead>
+            <tr className="bg-kmx-gray-50 text-left text-xs font-semibold text-kmx-gray-600 border-b">
+              <th className="p-2 w-12 text-center" title="Número autogenerado">#</th>
+              <th className="p-2 min-w-[200px]">{embedDeliverable ? "Subactividad / Entregable (Sprint o Historia)" : "Título de la subactividad"}</th>
+              {embedDeliverable ? (
+                <th className="p-2 min-w-[240px]">Condición de cierre / Criterio</th>
+              ) : (
+                deliverables.length > 0 && <th className="p-2 min-w-[180px]">Entregable asociado</th>
+              )}
+              <th className="p-2 min-w-[220px]">Fechas (Inicio → Fin)</th>
+              <th className="p-2 w-28">Estado</th>
+              <th className="p-2 w-20 text-center">Riesgo</th>
+              <th className="p-2 w-16 text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={row.id} className="border-b last:border-b-0 hover:bg-kmx-gray-50/50 align-top">
+                <td className="p-2 text-center align-middle">
+                  <span
+                    className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-kmx-gray-100 text-kmx-carbon border"
+                    title={`Número: ${row.wbs}`}
+                  >
+                    {row.wbs}
+                  </span>
+                </td>
+                <td className="p-2 align-middle">
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    required
+                    aria-label={`Nombre del entregable ${idx + 1}`}
+                    className="w-full p-1.5 border rounded text-xs"
+                    placeholder={embedDeliverable ? "Título de la subactividad o entregable..." : "Descripción de la subactividad..."}
+                    value={row.title}
+                    onChange={e => updateRow(idx, { title: e.target.value })}
+                  />
+                </td>
+                {embedDeliverable ? (
+                  <td className="p-2 align-middle">
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        disabled={disabled}
+                        aria-label={`Criterio ${idx + 1}.1`}
+                        className="w-full p-1.5 border rounded text-xs"
+                        placeholder="Criterio verificable (opcional; si se omite usa el título)..."
+                        value={row.criterion ?? ""}
+                        onChange={e => updateRow(idx, { criterion: e.target.value })}
+                      />
+                      <label className="inline-flex items-center gap-1 text-[11px] cursor-pointer text-kmx-gray-600 select-none">
+                        <input
+                          type="checkbox"
+                          disabled={disabled}
+                          aria-label={`Evidencia requerida para criterio ${idx + 1}.1`}
+                          checked={row.evidence_required ?? true}
+                          onChange={e => updateRow(idx, { evidence_required: e.target.checked })}
+                        />
+                        <span>Evidencia requerida</span>
+                      </label>
+                    </div>
+                  </td>
+                ) : (
+                  deliverables.length > 0 && (
+                    <td className="p-2 align-middle">
+                      <select
+                        disabled={disabled}
+                        className="w-full p-1.5 border rounded text-xs"
+                        value={row.deliverable_id}
+                        onChange={e => updateRow(idx, { deliverable_id: e.target.value })}
+                      >
+                        <option value="">Selecciona entregable...</option>
+                        {deliverables.map((d, dIdx) => (
+                          <option key={d.id} value={d.id}>
+                            Entregable {dIdx + 1}: {d.title || "(Sin título)"}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  )
+                )}
+                <td className="p-2 align-middle">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      disabled={disabled}
+                      className="p-1 border rounded text-xs w-full"
+                      value={row.start_date || defaultStartDate}
+                      title="Fecha inicio prevista"
+                      onChange={e => updateRow(idx, { start_date: e.target.value })}
+                    />
+                    <span className="text-kmx-gray-400 text-xs">→</span>
+                    <input
+                      type="date"
+                      disabled={disabled}
+                      required
+                      aria-label={`Fecha del entregable ${idx + 1}`}
+                      className="p-1 border rounded text-xs w-full"
+                      value={row.due_date || defaultDueDate}
+                      title="Fecha fin / entrega"
+                      onChange={e => updateRow(idx, { due_date: e.target.value })}
+                    />
+                  </div>
+                </td>
+                <td className="p-2 align-middle">
+                  <select
+                    disabled={disabled}
+                    className="w-full p-1.5 border rounded text-xs"
+                    value={row.status}
+                    onChange={e => updateRow(idx, { status: e.target.value as ActivityRow["status"] })}
+                  >
+                    <option value="not_started">Sin iniciar</option>
+                    <option value="in_progress">En curso</option>
+                  </select>
+                </td>
+                <td className="p-2 text-center align-middle">
+                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={row.at_risk}
+                      onChange={e => updateRow(idx, { at_risk: e.target.checked })}
+                    />
+                    <span className={row.at_risk ? "text-kmx-red font-semibold" : "text-kmx-gray-600"}>
+                      Riesgo
+                    </span>
+                  </label>
+                </td>
+                <td className="p-2 text-center align-middle">
+                  <button
+                    type="button"
+                    disabled={disabled || rows.length <= 1}
+                    className="text-kmx-red hover:underline text-xs disabled:opacity-30 disabled:no-underline"
+                    onClick={() => removeRow(idx)}
+                    title="Quitar subactividad"
+                  >
+                    Quitar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

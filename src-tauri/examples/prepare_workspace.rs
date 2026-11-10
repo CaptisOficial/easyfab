@@ -1,5 +1,11 @@
 #[path = "../src/bootstrap.rs"]
 mod bootstrap;
+#[path = "../src/auth.rs"]
+#[allow(dead_code, unused_imports)]
+mod auth;
+#[path = "../src/data_store.rs"]
+#[allow(dead_code)]
+mod data_store;
 #[path = "../src/workspace.rs"]
 #[allow(dead_code)]
 mod workspace;

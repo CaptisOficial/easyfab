@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "project_id": "project_1",
+  "commitment": {
+    "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "final_outcome": "Station available for production",
+    "scope": "Install and validate synthetic station",
+    "start_date": "2026-10-29",
+    "target_date": "2026-11-30",
+    "engineer_ids": [
+      "engineer",
+      "engineer2"
+    ],
+    "deliverables": [
+      {
+        "id": "delivery_1",
+        "title": "Validated station",
+        "due_date": "2026-11-30",
+        "criteria": [
+          {
+            "id": "capacity",
+            "description": "Meet the agreed synthetic capacity",
+            "evidence_required": true
+          }
+        ]
+      }
+    ]
+  },
+  "activities": [
+    {
+      "id": "task_1",
+      "deliverable_id": "delivery_1",
+      "title": "Install station",
+      "responsible_id": "engineer",
+      "forecast_start": "2026-10-29",
+      "forecast_due": "2026-11-10",
+      "dependency_ids": [],
+      "status": "in_progress",
+      "progress": 25,
+      "at_risk": false,
+      "hours_spent": 2.5,
+      "note": null
+    },
+    {
+      "id": "task_2",
+      "deliverable_id": "delivery_1",
+      "title": "Validate station",
+      "responsible_id": "engineer2",
+      "forecast_start": "2026-11-10",
+      "forecast_due": "2026-11-30",
+      "dependency_ids": [
+        "task_1"
+      ],
+      "status": "not_started",
+      "progress": 0,
+      "at_risk": false,
+      "hours_spent": null,
+      "note": null
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+import { invoke } from "@tauri-apps/api/core";
+import type * as Ops from "./project-results-operations.generated";
+export type * from "./project-results.generated";
+export type * from "./project-results-operations.generated";
+export type ResultsDetail = Ops.OperationsDetail;
+export const resultsDetail = (projectId: string) => invoke<ResultsDetail>("results_detail", { projectId });
+export const saveResultsCommitment = (input: Ops.OperationsCommitmentInput) => invoke<ResultsDetail>("results_save_commitment", { input });
+export const saveResultsActivity = (input: Ops.OperationsActivityInput) => invoke<ResultsDetail>("results_save_activity", { input });
+export const saveResultsBlocker = (input: Ops.OperationsBlockerInput) => invoke<ResultsDetail>("results_save_blocker", { input });
+export const reviewResultsDeliverable = (input: Ops.OperationsReviewInput) => invoke<ResultsDetail>("results_review", { input });
+export const setResultsClosure = (input: Ops.OperationsClosureInput) => invoke<ResultsDetail>("results_set_closure", { input });
+export const resolveResultsConflict = (input: Ops.OperationsResolveInput) => invoke<ResultsDetail>("results_resolve", { input });
+export const attachResultsEvidence = (input: Ops.OperationsAttachmentInput) => invoke<ResultsDetail>("results_attach_evidence", { input });
+export const readResultsEvidence = (projectId: string, evidenceId: string) => invoke<number[]>("results_read_evidence", { projectId, evidenceId });

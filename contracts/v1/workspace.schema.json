@@ -10,7 +10,10 @@
   "properties": {
     "profile_layout_version": {
       "type": "integer",
-      "enum": [1, 2],
+      "enum": [
+        1,
+        2
+      ],
       "default": 1,
       "description": "Ausente significa perfil legacy <id>.json; 2 usa <id>/profile.json. Espacios nuevos usan 2."
     },
@@ -25,6 +28,10 @@
     "id": {
       "type": "string",
       "pattern": "^[0-9a-f]{32}$"
+    },
+    "project_results_version": {
+      "const": 1,
+      "description": "Present only after explicit activation of result-oriented work. Older binaries reject this unknown field. Per-project manifest selects authority; no path fallback."
     }
   },
   "$defs": {

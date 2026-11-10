@@ -4,14 +4,20 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { Login } from "./Login";
 import * as api from "../lib/api";
+import * as resultsApi from "../lib/results-api";
+
+vi.mock("../lib/results-api", async importOriginal => ({
+  ...await importOriginal<typeof import("../lib/results-api")>(), saveResultsCommitment: vi.fn(),
+}));
 
 vi.mock("../lib/api", () => ({
   listLoginUsers: vi.fn(), login: vi.fn(), logout: vi.fn(), changePassword: vi.fn(),
   provisionInitialAdmin: vi.fn(), listUsers: vi.fn(), createUser: vi.fn(),
+  userPreferences: vi.fn(), plantCatalogs: vi.fn(),
   setUserActive: vi.fn(), resetPassword: vi.fn(), projectsOverview: vi.fn().mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta de proyectos" }), createProject: vi.fn(),
 }));
 afterEach(cleanup);
-beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta de proyectos" }); });
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.userPreferences).mockResolvedValue({ preferences: { version: 1, workspace_id: "fixture", user_id: "fixture", theme: "light", ui_scale: "standard" }, revision: null, warning: null }); vi.mocked(api.plantCatalogs).mockResolvedValue({ config: { version: 1, lines: [{ id: "line-fab", name: "FAB", active: true }], machines: [], failure_types: [] }, revision: "fixture", can_edit: false }); vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta de proyectos" }); });
 
 describe("primer recorrido de acceso", () => {
   it("crea Admin, cambia contraseña, registra usuario y permite probar su acceso", async () => {
@@ -56,21 +62,23 @@ describe("primer recorrido de acceso", () => {
     await changePassword("Admin123");
     await signIn("Admin123");
     await screen.findByRole("heading", { name: "Gestión de usuarios" });
+    await actor.click(screen.getByRole("button", { name: "Nuevo usuario" }));
     await actor.type(screen.getByLabelText("ID de usuario"), "engineer");
     await actor.type(screen.getByLabelText("Nombre completo"), "Engineer Test");
     await actor.click(screen.getByRole("button", { name: "Crear y generar temporal" }));
     await screen.findByText("USER1234");
+    if (screen.queryByRole("dialog", { name: "Crear usuario" })) await actor.click(screen.getByRole("button", { name: "Cerrar alta de usuario" }));
     await actor.click(screen.getByRole("button", { name: "Cerrar sesión" }));
     await actor.selectOptions(await screen.findByLabelText("Usuario"), "engineer");
     await signIn("USER1234");
     expect(screen.queryByRole("heading", { name: "Gestión de usuarios" })).toBeNull();
     await changePassword("User1234");
     await signIn("User1234");
-    await screen.findByText("Acceso confirmado con tu contraseña personal.");
+    await screen.findByText("Usuario EasyFAB: engineer");
     expect(screen.getByText("Usuario EasyFAB: engineer")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Gestión de usuarios" })).toBeNull();
     expect(api.login).toHaveBeenLastCalledWith("engineer", "User1234");
-  });
+  }, 15000); // Multi-role DOM journey; this timeout is not an application latency target.
 
   it("una falla al leer el directorio no ofrece crear otro Admin", async () => {
     vi.mocked(api.listLoginUsers).mockRejectedValue("Directorio inválido");
@@ -96,6 +104,20 @@ describe("primer recorrido de acceso", () => {
   });
 });
 
+
+it("muestra los proyectos sin textos redundantes de acceso en el área de trabajo", async () => {
+  vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [{ id: "fixture", name: "Fixture" }], requires_admin: false });
+  vi.mocked(api.login).mockResolvedValue({ id: "fixture", name: "Fixture", role: "supervisor", must_change_password: false });
+  const { rerender } = render(<Login headerInTopNav destination="home" />);
+  await userEvent.type(await screen.findByLabelText("Contraseña (8 caracteres)"), "User1234");
+  await userEvent.click(screen.getByRole("button", { name: "Ingresar" }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Ingresar" })).toBeNull());
+  rerender(<Login headerInTopNav destination="projects" />);
+  expect(await screen.findByRole("heading", { name: "Proyectos FAB" })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Área de trabajo" })).toBeNull();
+  expect(screen.queryByText("Acceso confirmado con tu contraseña personal.")).toBeNull();
+  expect(screen.queryByText("Registra los proyectos del equipo.")).toBeNull();
+});
 
 it.each([
   ["admin", false, true], ["supervisor", false, true],
@@ -137,6 +159,7 @@ it("Admin crea Supervisor; Supervisor cambia contraseña, registra y encuentra e
     const project: api.Project = { ...input, id: "PRJ-fixture", status: "Not Started" };
     saved.push(project); return project;
   });
+  vi.mocked(resultsApi.saveResultsCommitment).mockResolvedValue({} as resultsApi.ResultsDetail);
   render(<Login />);
   async function enter(id: string, pin: string) {
     await actor.selectOptions(await screen.findByLabelText("Usuario"), id);
@@ -144,29 +167,40 @@ it("Admin crea Supervisor; Supervisor cambia contraseña, registra y encuentra e
     await actor.click(screen.getByRole("button", { name: "Ingresar" }));
   }
   await enter("admin", "Admin123");
-  await actor.type(await screen.findByLabelText("ID de usuario"), "supervisor");
+  await actor.click(await screen.findByRole("button", { name: "Nuevo usuario" }));
+  await actor.type(screen.getByLabelText("ID de usuario"), "supervisor");
   await actor.type(screen.getByLabelText("Nombre completo"), supervisor.name);
   await actor.selectOptions(screen.getByLabelText("Rol"), "supervisor");
   await actor.click(screen.getByRole("button", { name: "Crear y generar temporal" }));
   await screen.findByText("SUP12345");
   expect(api.createUser).toHaveBeenCalledWith({ id: "supervisor", name: supervisor.name, role: "supervisor" });
   expect(screen.queryByRole("button", { name: "Guardar proyecto" })).toBeNull();
-  await actor.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  if (screen.queryByRole("dialog", { name: "Crear usuario" })) await actor.click(screen.getByRole("button", { name: "Cerrar alta de usuario" }));
+    await actor.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   await enter("supervisor", "SUP12345");
   await actor.type(await screen.findByLabelText("Nueva contraseña (8 caracteres)"), "Super123");
   await actor.type(screen.getByLabelText("Confirmar contraseña"), "Super123");
   await actor.click(screen.getByRole("button", { name: "Guardar y volver a ingresar" }));
   await enter("supervisor", "Super123");
-  await actor.type(await screen.findByLabelText("Código WBS"), "FAB-1");
+  // Open the creation modal for the supervisor
+  await actor.click(await screen.findByRole("button", { name: "Nuevo proyecto" }));
+  // Create a project without supplying WBS (auto‑generated).
   await actor.type(screen.getByLabelText("Título del proyecto"), "Proyecto de prueba");
-  await actor.type(screen.getByLabelText("Área de proceso"), "FAB");
-  await actor.selectOptions(screen.getByLabelText("Responsable"), "engineer");
+  fireEvent.change(screen.getByLabelText("Área de proceso"), { target: { value: "FAB" } });
+  await actor.click(screen.getByLabelText("Engineer Test · engineer"));
   fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-10-28" } });
-  fireEvent.change(screen.getByLabelText("Fecha objetivo"), { target: { value: "2026-11-01" } });
+  fireEvent.change(screen.getByLabelText("Fecha objetivo"), { target: { value: "2026-11-30" } });
+  await actor.type(screen.getByLabelText("Resultado esperado y alcance"), "Estación disponible");
+
+  await actor.type(screen.getByLabelText("Nombre del entregable 1"), "Equipo validado");
+  await actor.type(screen.getByLabelText("Criterio 1.1"), "Prueba de capacidad acordada");
   await actor.click(screen.getByRole("button", { name: "Guardar proyecto" }));
-  await screen.findByText("Proyecto FAB-1 guardado.");
-  await actor.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  await screen.findByText("Proyecto guardado con condiciones de cierre.");
+  expect(resultsApi.saveResultsCommitment).toHaveBeenCalledTimes(1);
+  if (screen.queryByRole("dialog", { name: "Crear usuario" })) await actor.click(screen.getByRole("button", { name: "Cerrar alta de usuario" }));
+    await actor.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   await enter("supervisor", "Super123");
-  await screen.findByText("FAB-1 · Proyecto de prueba");
+  // Verify the created project appears (name only).
+  await screen.findByText(/Proyecto de prueba/);
   expect(api.createProject).toHaveBeenCalledTimes(1);
 }, 15000);

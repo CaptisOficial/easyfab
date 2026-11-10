@@ -74,7 +74,27 @@
             ]
           },
           "supervisor_approved": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Legacy informational field; never authority. Effective approval is projected from a signed Supervisor decision bound to the activity content hash and evidence. Engineer writes false."
+          },
+          "revision_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Fresh random edit identity, included in the content hash."
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "activity_operations.schema.json#/$defs/evidence"
+            },
+            "description": "Immutable PDF/PNG/JPG attachments, at most 20 MiB each, no automatic deletion. Missing on legacy activities means no attachments."
+          },
+          "hours_spent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
           }
         }
       }
@@ -99,6 +119,13 @@
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
         }
+      }
+    },
+    "started_projects": {
+      "type": "object",
+      "description": "Monotonic start markers written atomically with responsible Engineer work. True once a positive activity milestone, worked hours, or declared project progress is saved. Reads never persist markers.",
+      "additionalProperties": {
+        "const": true
       }
     }
   }

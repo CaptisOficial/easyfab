@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type Ref } from "react";
 import { LogOut } from "lucide-react";
 import type { SessionUser } from "../lib/api";
 import { KawasakiLogo } from "./branding/KawasakiLogo";
@@ -7,11 +7,13 @@ const roles = { admin: "Administrador", supervisor: "Supervisor", engineer: "Ing
 const dateFormat = new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Mexico_City" });
 interface Props {
   settings: ReactNode;
+  pageTitle?: string;
+  headingRef?: Ref<HTMLHeadingElement>;
   user: SessionUser | null;
   logoutDisabled: boolean;
   onLogout: () => void;
 }
-export function TopNav({ settings, user, logoutDisabled, onLogout }: Props) {
+export function TopNav({ settings, user, logoutDisabled, onLogout, pageTitle, headingRef }: Props) {
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setToday(new Date()), 60_000);
@@ -23,6 +25,7 @@ export function TopNav({ settings, user, logoutDisabled, onLogout }: Props) {
     <KawasakiLogo className="h-8 w-auto" theme="dark" />
     <div aria-hidden="true" className="h-6 w-px bg-kmx-border-dark" />
     <h1 className="text-sm font-extrabold uppercase tracking-wider">Easy<span className="text-kmx-lime">FAB</span></h1>
+    {pageTitle && <h2 ref={headingRef} tabIndex={-1} className="min-w-0 border-l border-kmx-border-dark pl-4 text-sm font-bold outline-none" aria-live="polite">{pageTitle}</h2>}
     <time dateTime={today.toISOString()} className="ml-auto whitespace-nowrap text-xs text-kmx-gray-300">{dateFormat.format(today)}</time>
     {user && <div className="flex min-w-0 items-center gap-3 border-l border-kmx-border-dark pl-4">
       <div className="min-w-0"><p className="max-w-52 truncate text-sm font-bold" title={user.name}>{user.name}</p>

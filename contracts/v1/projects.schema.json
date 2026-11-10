@@ -1,27 +1,107 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB Macro Projects",
-  "description": "Registration: trim text, reject empty/control characters; WBS unique case-insensitively; ID generated from 256 random bits with collision check. Responsible must be an active trusted Engineer in the confirmed four-account workflow. Dates are real YYYY-MM-DD, start <= target. Initial state Not Started. Existing unknown properties are preserved; invalid documents are never reset. Historical references may point to subsequently inactive members; new assignments cannot.",
+  "description": "Projects have one or more equally responsible Engineers in engineer_ids. Legacy stored lead_engineer_id is read as a single-member assignment; dual assignment fields are rejected. New assignments require active trusted Engineers without duplicates. Existing unknown fields are preserved. A positive contribution from any assigned Engineer starts the project; queries have no write effects and preserve On Hold/Completed. No location migration is implied. For explicitly activated result-oriented projects, projects.json retains identity/name/WBS/area; current dates, engineer_ids and status in overview are projected from signed project results. Historical index values are not dual-written. Engineer filtering uses the current projected assignments.",
   "type": "object",
-  "required": ["version", "projects"],
+  "required": [
+    "version",
+    "projects"
+  ],
   "properties": {
-    "version": {"type": "integer", "const": 1},
-    "projects": {"type": "array", "items": {"$ref": "#/$defs/project"}}
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    }
   },
   "$defs": {
     "project": {
       "type": "object",
-      "required": ["id", "wbs", "name", "process_area", "lead_engineer_id", "start_date", "target_date", "status"],
+      "required": [
+        "id",
+        "wbs",
+        "name",
+        "process_area",
+        "start_date",
+        "target_date",
+        "status"
+      ],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "wbs": {"type": "string", "minLength": 1},
-        "name": {"type": "string", "minLength": 1},
-        "process_area": {"type": "string", "minLength": 1},
-        "lead_engineer_id": {"type": "string", "minLength": 1},
-        "start_date": {"type": "string", "format": "date"},
-        "target_date": {"type": "string", "format": "date"},
-        "status": {"type": "string", "enum": ["Not Started", "In Progress", "Completed", "On Hold"]}
-      }
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "wbs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "process_area": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "target_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Not Started",
+            "In Progress",
+            "Completed",
+            "On Hold"
+          ]
+        },
+        "engineer_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "lead_engineer_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Legacy persisted assignment, read as a one-person engineer_ids list. Never emitted by the current API."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "engineer_ids"
+          ],
+          "not": {
+            "required": [
+              "lead_engineer_id"
+            ]
+          }
+        },
+        {
+          "required": [
+            "lead_engineer_id"
+          ],
+          "not": {
+            "required": [
+              "engineer_ids"
+            ]
+          }
+        }
+      ]
     }
   }
 }

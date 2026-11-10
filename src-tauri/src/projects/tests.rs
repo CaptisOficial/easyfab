@@ -30,7 +30,7 @@ fn input() -> NewProject {
         wbs: " FÁB-01 ".into(),
         name: " Synthetic project ".into(),
         process_area: " FAB ".into(),
-        lead_engineer_id: "engineer".into(),
+        engineer_ids: vec!["engineer".into()],
         start_date: "2026-10-28".into(),
         target_date: "2026-11-01".into(),
     }
@@ -90,7 +90,10 @@ fn isolated_project_journey() {
     assert!(overview(&dir, &sessions[1], &info.id).unwrap().can_create);
     let original = fs::read(dir.join("projects.json")).unwrap();
     let key = fs::read(base.join("local/EasyFAB/master.key")).unwrap();
-    assert!(overview(&dir, &sessions[0], &info.id).unwrap().projects.is_empty());
+    assert!(overview(&dir, &sessions[0], &info.id)
+        .unwrap()
+        .projects
+        .is_empty());
     assert!(overview(&dir, &sessions[0], "wrong-workspace").is_err());
     assert!(create(&dir, &sessions[0], &info.id, input())
         .unwrap_err()
@@ -114,9 +117,9 @@ fn isolated_project_journey() {
     ] {
         let mut bad = input();
         match field {
-            "lead" => bad.lead_engineer_id = "missing".into(),
-            "supervisor" => bad.lead_engineer_id = "supervisor".into(),
-            "admin" => bad.lead_engineer_id = "admin".into(),
+            "lead" => bad.engineer_ids = vec!["missing".into()],
+            "supervisor" => bad.engineer_ids = vec!["supervisor".into()],
+            "admin" => bad.engineer_ids = vec!["admin".into()],
             "date" => bad.start_date = "2026-02-30".into(),
             "order" => bad.target_date = "2026-01-01".into(),
             "name" => bad.name = "  ".into(),
@@ -130,6 +133,25 @@ fn isolated_project_journey() {
     assert_eq!(first.name, "Synthetic project");
     assert_eq!(first.status, "Not Started");
     assert_eq!(first.id.len(), 68);
+    // The new policy is resolved from real sessions and does not mutate the plan.
+    let before_policy = fs::read(dir.join("projects.json")).unwrap();
+    let policy = crate::project_results::capabilities;
+    let engineer_policy = policy(&dir, &sessions[0], &info.id, &first.id).unwrap();
+    assert!(engineer_policy.can_plan_activities);
+    assert!(!engineer_policy.can_change_commitment);
+    assert!(!engineer_policy.can_review_deliverables);
+    assert!(!engineer_policy.can_resolve_blockers);
+    let supervisor_policy = policy(&dir, &sessions[1], &info.id, &first.id).unwrap();
+    assert!(supervisor_policy.can_change_commitment && supervisor_policy.can_review_deliverables && supervisor_policy.can_resolve_blockers);
+    assert!(!supervisor_policy.can_plan_activities);
+    let admin_policy = policy(&dir, &admin, &info.id, &first.id).unwrap();
+    assert!(!admin_policy.can_plan_activities && !admin_policy.can_review_deliverables && !admin_policy.can_change_commitment && !admin_policy.can_resolve_blockers);
+    assert!(policy(&dir, &second_engineer, &info.id, &first.id).is_err()); // stale credential
+    let unassigned = auth::authenticate(&dir, "engineer2", "User5678").unwrap();
+    assert!(policy(&dir, &unassigned, &info.id, &first.id).is_err());
+    assert!(policy(&dir, &sessions[0], "wrong-workspace", &first.id).is_err());
+    assert!(policy(&dir, &sessions[0], &info.id, "missing").is_err());
+    assert_eq!(fs::read(dir.join("projects.json")).unwrap(), before_policy);
     assert!(create(&dir, &sessions[1], &info.id, input()).is_err());
     let mut duplicate = input();
     duplicate.wbs = "fáb-01".into();
@@ -142,7 +164,7 @@ fn isolated_project_journey() {
     fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
     let mut second = input();
     second.wbs = "FAB-02".into();
-    second.lead_engineer_id = "engineer2".into();
+    second.engineer_ids = vec!["engineer2".into()];
     let second = create(&dir, &sessions[1], &info.id, second).unwrap();
     assert_ne!(first.id, second.id);
     let own = overview(&dir, &sessions[0], &info.id).unwrap();
@@ -166,6 +188,29 @@ fn isolated_project_journey() {
     let value: serde_json::Value = serde_json::from_slice(&saved).unwrap();
     assert_eq!(value["legacy_metadata"]["keep"], true);
     assert_eq!(value["projects"][0]["legacy_note"], "keep");
+    // Equal responsibility: every assigned engineer sees the same project after re-entry.
+    {
+        for ids in [vec![], vec!["engineer", "engineer"], vec!["engineer", "missing"], vec!["engineer", "admin"]] {
+            let mut invalid = input(); invalid.wbs = "MULTI-BAD".into();
+            invalid.engineer_ids = ids.into_iter().map(String::from).collect();
+            assert!(create(&dir, &sessions[1], &info.id, invalid).is_err());
+            assert_eq!(fs::read(&path).unwrap(), saved);
+        }
+        let mut shared = input(); shared.wbs = "MULTI".into();
+        shared.engineer_ids = vec!["engineer".into(), "engineer2".into()];
+        let shared = create(&dir, &sessions[1], &info.id, shared).unwrap();
+        for id in ["engineer", "engineer2"] {
+            let password = if id == "engineer" { "User1234" } else { "User5678" };
+            let fresh = auth::authenticate(&dir, id, password).unwrap();
+            let own = overview(&dir, &fresh, &info.id).unwrap();
+            assert!(own.projects.iter().any(|p| p.id == shared.id && p.engineer_ids.len() == 2));
+            assert!(!own.can_create);
+            assert!(set_target(&dir, &fresh, &info.id, TargetInput {
+                project_id: shared.id.clone(), target_hours: 5.0, expected_target_hours: None,
+            }).is_err());
+        }
+        fs::write(&path, &saved).unwrap();
+    }
     // Fault at publication boundary preserves original bytes and cleans staging.
     let (doc, bytes) = storage::read(&dir).unwrap();
     // A locally observed intervening change must never be overwritten.
@@ -223,6 +268,7 @@ fn isolated_project_journey() {
     }
     fs::write(&path, &saved).unwrap();
     auth::set_user_active(&dir, &admin, "engineer", false).unwrap();
+    assert!(policy(&dir, &sessions[0], &info.id, &first.id).is_err());
     assert!(overview(&dir, &sessions[0], &info.id).is_err());
     auth::reset_password(&dir, &admin, "engineer2").unwrap();
     assert!(overview(&dir, &fresh_engineer, &info.id).is_err());
@@ -238,6 +284,8 @@ fn isolated_project_journey() {
     )
     .unwrap();
     assert!(!overview(&dir, &sessions[1], &info.id).unwrap().can_create);
+    let ambiguous_policy = policy(&dir, &sessions[1], &info.id, &first.id).unwrap();
+    assert!(!ambiguous_policy.can_change_commitment && !ambiguous_policy.can_review_deliverables && !ambiguous_policy.can_resolve_blockers);
     assert!(create(&dir, &sessions[1], &info.id, third.clone()).is_err());
     auth::set_user_active(&dir, &admin, "extra_supervisor", false).unwrap();
     auth::reset_password(&dir, &admin, "supervisor").unwrap();
@@ -263,6 +311,22 @@ fn dates_and_contract_input_are_strict() {
     let mut value = serde_json::to_value(input()).unwrap();
     value["status"] = "Completed".into();
     assert!(serde_json::from_value::<NewProject>(value).is_err());
+}
+
+#[test]
+fn legacy_assignment_is_read_without_a_second_assignment_source() {
+    let mut value = serde_json::to_value(input()).unwrap();
+    value["id"] = "PRJ-legacy".into(); value["status"] = "Not Started".into();
+    value.as_object_mut().unwrap().remove("engineer_ids");
+    value["lead_engineer_id"] = "engineer".into();
+    let project: Project = serde_json::from_value(value.clone()).unwrap();
+    assert_eq!(project.engineer_ids, vec!["engineer"]);
+    storage::validate(&project).unwrap();
+    let output = serde_json::to_value(project).unwrap();
+    assert!(output.get("lead_engineer_id").is_none());
+    assert_eq!(output["engineer_ids"], serde_json::json!(["engineer"]));
+    value["engineer_ids"] = serde_json::json!(["engineer2"]);
+    assert!(serde_json::from_value::<Project>(value).is_err());
 }
 
 #[test]

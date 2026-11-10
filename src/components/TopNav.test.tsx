@@ -14,3 +14,15 @@ it("muestra fecha de México y la actualiza al cambiar de día sin recargar", ()
   expect(time.textContent).toBe(format.format(new Date("2026-10-29T12:00:00Z")));
   expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull();
 });
+
+it("identifica la página activa en la barra superior y actualiza el encabezado", () => {
+  const props = { user: null, logoutDisabled: false, onLogout: () => {}, settings: null };
+  const view = render(<TopNav {...props} pageTitle="Inicio" />);
+  const header = screen.getByRole("banner");
+  expect(header.contains(screen.getByRole("heading", { name: "Inicio" }))).toBe(true);
+  view.rerender(<TopNav {...props} pageTitle="Proyectos" />);
+  const heading = screen.getByRole("heading", { name: "Proyectos" });
+  expect(header.contains(heading)).toBe(true);
+  expect(heading.getAttribute("tabindex")).toBe("-1");
+  expect(screen.queryByRole("heading", { name: "Inicio" })).toBeNull();
+});

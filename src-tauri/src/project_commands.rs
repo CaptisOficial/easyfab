@@ -1,7 +1,20 @@
 //! IPC keeps the session locked through the operation, serializing local creates.
 use crate::{auth_commands::data_path, projects, AppState};
 use tauri::State;
-fn workspace_id(state: &AppState) -> Result<String, String> {
+#[tauri::command]
+pub(crate) fn set_project_target(
+    state: State<'_, AppState>,
+    input: projects::TargetInput,
+) -> Result<projects::Project, String> {
+    let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    projects::set_target(
+        &data_path(&state)?,
+        guard.as_ref().ok_or("Ingresa primero.")?,
+        &workspace_id(&state)?,
+        input,
+    )
+}
+pub(crate) fn workspace_id(state: &AppState) -> Result<String, String> {
     state
         .workspace
         .lock()
@@ -15,6 +28,20 @@ pub(crate) fn projects_overview(state: State<'_, AppState>) -> Result<projects::
     let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
     let session = guard.as_ref().ok_or("Ingresa primero.")?;
     projects::overview(&data_path(&state)?, session, &workspace_id(&state)?)
+}
+#[tauri::command]
+pub(crate) fn project_results_capabilities(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<crate::project_results::Capabilities, String> {
+    let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    let session = guard.as_ref().ok_or("Ingresa primero.")?;
+    crate::project_results::capabilities(
+        &data_path(&state)?,
+        session,
+        &workspace_id(&state)?,
+        &project_id,
+    )
 }
 #[tauri::command]
 pub(crate) fn create_project(
@@ -53,7 +80,11 @@ mod tests {
         };
         let read = call("projects_overview", serde_json::json!({}));
         assert_eq!(read.err().unwrap(), serde_json::json!("Ingresa primero."));
-        let input = serde_json::json!({"wbs":"FAB-1","name":"Fixture","process_area":"FAB","lead_engineer_id":"eng","start_date":"2026-10-28","target_date":"2026-10-29"});
+        assert_eq!(call("project_results_capabilities", serde_json::json!({"projectId":"fixture"}))
+            .err().unwrap(), serde_json::json!("Ingresa primero."));
+        assert!(call("project_results_capabilities", serde_json::json!({}))
+            .err().unwrap().as_str().unwrap().contains("invalid args"));
+        let input = serde_json::json!({"wbs":"FAB-1","name":"Fixture","process_area":"FAB","engineer_ids":["eng"],"start_date":"2026-10-28","target_date":"2026-10-29"});
         assert_eq!(
             call("create_project", serde_json::json!({"input":input}))
                 .err()

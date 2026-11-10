@@ -50,6 +50,33 @@ fn manifest_identity_and_missing_data_fail_closed() {
     assert!(initialize(&root, &local).is_err());
     assert!(!issues.exists());
 }
+
+#[test]
+fn explicit_results_feature_preserves_manifest_and_rejects_unknown_versions() {
+    let (root, local) = fixture();
+    let info = initialize(&root, &local).unwrap();
+    let data = Path::new(&info.data_dir);
+    let path = Path::new(&info.path).join("workspace.json");
+    let original = fs::read(&path).unwrap();
+    assert!(enable_results_version(data, &info.id, || Err("revoked".into())).is_err());
+    assert_eq!(fs::read(&path).unwrap(), original);
+    assert!(!results_path(data, "project_1").unwrap().exists());
+    assert!(results_path(data, "../escape").is_err());
+    enable_results_version(data, &info.id, || Ok(())).unwrap();
+    let current = fs::read(&path).unwrap();
+    let manifest: serde_json::Value = serde_json::from_slice(&current).unwrap();
+    assert_eq!(manifest["project_results_version"], 1);
+    let backups: Vec<_> = fs::read_dir(Path::new(&info.backups_dir)).unwrap().filter_map(Result::ok).collect();
+    assert_eq!(backups.len(), 1);
+    assert_eq!(fs::read(backups[0].path().join("workspace.json")).unwrap(), original);
+    enable_results_version(data, &info.id, || Ok(())).unwrap();
+    assert_eq!(fs::read(&path).unwrap(), current);
+    let mut unknown = manifest.clone(); unknown["project_results_version"] = 2.into();
+    fs::write(&path, serde_json::to_vec(&unknown).unwrap()).unwrap();
+    assert!(open(&root, Some(&info.id)).is_err());
+    fs::write(&path, current).unwrap();
+    assert_eq!(open(&root, Some(&info.id)).unwrap().id, info.id);
+}
 #[test]
 fn legacy_data_requires_explicit_transfer() {
     let (root, local) = fixture();

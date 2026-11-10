@@ -1,11 +1,11 @@
 //! Validates the whole document before appending; never resets invalid data.
 use super::models::{Project, Projects};
-use std::{collections::HashSet, fs, io::Write, path::Path};
+use std::{collections::HashSet, fs, path::Path};
 
 pub(super) fn text(value: &str) -> bool {
     !value.trim().is_empty() && !value.chars().any(char::is_control)
 }
-pub(super) fn dates(start: &str, target: &str) -> Result<(), String> {
+pub(crate) fn dates(start: &str, target: &str) -> Result<(), String> {
     fn parse(value: &str) -> Result<chrono::NaiveDate, String> {
         let date = chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
             .map_err(|_| "Usa fechas válidas con formato AAAA-MM-DD.".to_string())?;
@@ -20,12 +20,20 @@ pub(super) fn dates(start: &str, target: &str) -> Result<(), String> {
     Ok(())
 }
 pub(super) fn validate(project: &Project) -> Result<(), String> {
+    let mut engineers = HashSet::new();
+    if project.engineer_ids.is_empty() || project.engineer_ids.iter().any(|id| !text(id) || !engineers.insert(id)) {
+        return Err("Selecciona ingenieros sin duplicados para el proyecto.".into());
+    }
+    if let Some(value) = project.extra.get("target_hours") {
+        if !value.as_f64().is_some_and(|v| v.is_finite() && v > 0.0) {
+            return Err("Objetivo de horas de proyecto inválido.".into());
+        }
+    }
     if [
         &project.id,
         &project.wbs,
         &project.name,
         &project.process_area,
-        &project.lead_engineer_id,
     ]
     .iter()
     .any(|v| !text(v))
@@ -70,26 +78,12 @@ pub(super) fn save(
     before_publish: impl FnOnce() -> Result<(), String>,
 ) -> Result<(), String> {
     let path = dir.join("projects.json");
-    let tmp = dir.join(format!("projects.{}.tmp", crate::auth::revision()));
-    let result = (|| {
-        let bytes = serde_json::to_vec_pretty(doc).map_err(|e| e.to_string())?;
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&tmp)
-            .map_err(|e| format!("No se pudo preparar el guardado: {e}"))?;
-        file.write_all(&bytes)
-            .and_then(|_| file.sync_all())
-            .map_err(|e| format!("No se pudo guardar: {e}"))?;
-        drop(file);
+    let bytes = serde_json::to_vec_pretty(doc).map_err(|e| e.to_string())?;
+    crate::data_store::publish(&path, &bytes, Some(previous), || {
         before_publish()?;
         if read(dir)?.1 != previous {
             return Err("Los proyectos cambiaron. Actualiza antes de reintentar.".into());
         }
-        fs::rename(&tmp, &path).map_err(|e| format!("No se pudo publicar el proyecto: {e}"))
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&tmp);
-    }
-    result
+        Ok(())
+    })
 }

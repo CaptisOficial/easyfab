@@ -23,6 +23,7 @@ struct Layout {
     profiles: String,
     profile: String,
     evidence: String,
+    project_results: String,
 }
 fn layout() -> Result<Layout, String> {
     let value: Layout =
@@ -41,6 +42,7 @@ fn layout() -> Result<Layout, String> {
         &value.profiles,
         &value.profile,
         &value.evidence,
+        &value.project_results,
     ] {
         if path.is_empty()
             || !Path::new(path)
@@ -64,6 +66,8 @@ struct Manifest {
     profile_layout_version: u32,
     #[serde(default)]
     maintenance: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    project_results_version: Option<u32>,
 }
 fn legacy_profile_layout() -> u32 {
     1
@@ -72,6 +76,7 @@ fn validate_manifest(manifest: &Manifest) -> Result<(), String> {
     if manifest.version != 1
         || !valid_id(&manifest.id)
         || ![1, 2].contains(&manifest.profile_layout_version)
+        || manifest.project_results_version.is_some_and(|v| v != 1)
     {
         return Err("Versión o identidad del espacio incompatible.".into());
     }
@@ -79,6 +84,49 @@ fn validate_manifest(manifest: &Manifest) -> Result<(), String> {
         return Err("Espacio en mantenimiento. No se permite acceder.".into());
     }
     Ok(())
+}
+
+/// Canonical new-domain path. No directory is created by this query.
+pub(crate) fn results_path(data: &Path, project_id: &str) -> Result<PathBuf, String> {
+    if project_id.is_empty() || !project_id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-') {
+        return Err("ID de proyecto inválido.".into());
+    }
+    let path = data.join(layout()?.project_results).join(project_id);
+    crate::data_store::contained(data, &path)?;
+    let manifest: Manifest = read_json(&data.parent().ok_or("Espacio inválido.")?.join(layout()?.manifest))?;
+    validate_manifest(&manifest)?;
+    if path.exists() && manifest.project_results_version != Some(1) {
+        return Err("Hay datos de resultados sin su versión activa. Restaura el manifiesto; no se usará el historial como alternativa.".into());
+    }
+    Ok(path)
+}
+
+/// Explicit feature activation makes older binaries fail closed on the new field.
+/// The original manifest is backed up. Operational profiles are never migrated here.
+pub(crate) fn enable_results_version(
+    data: &Path,
+    workspace_id: &str,
+    check: impl Fn() -> Result<(), String>,
+) -> Result<(), String> {
+    let space = data.parent().ok_or("Espacio inválido.")?;
+    let l = layout()?;
+    let path = space.join(l.manifest);
+    crate::data_store::contained(space, &path)?;
+    let previous = fs::read(&path).map_err(|e| e.to_string())?;
+    let mut manifest: Manifest = serde_json::from_slice(&previous).map_err(|e| e.to_string())?;
+    validate_manifest(&manifest)?;
+    if manifest.id != workspace_id { return Err("Identidad del espacio distinta.".into()); }
+    check()?;
+    if manifest.project_results_version == Some(1) { return Ok(()); }
+    let backup = space.join(l.backups).join(format!("results-format-{}", crate::auth::revision()));
+    crate::data_store::contained(space, &backup)?;
+    fs::create_dir_all(&backup).map_err(|e| e.to_string())?;
+    crate::data_store::publish(&backup.join("workspace.json"), &previous, None, &check)?;
+    manifest.project_results_version = Some(1);
+    crate::data_store::publish(&path, &serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?, Some(&previous), || {
+        check()?;
+        crate::data_store::contained(space, &path)
+    })
 }
 
 /// El llamador ya validó el espacio activo. Nunca deducir versión de archivos existentes.
@@ -274,6 +322,7 @@ pub fn initialize(root: &Path, local_dir: &Path) -> Result<WorkspaceInfo, String
             id: nonce(),
             profile_layout_version: 2,
             maintenance: false,
+            project_results_version: None,
         };
         write_json(&path.join(&l.manifest), &manifest, false)?;
     }

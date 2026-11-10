@@ -14,6 +14,7 @@ pub use models::{Choice, Session, User};
 // API exclusiva de la herramienta local de provision, nunca expuesta por IPC.
 #[allow(unused_imports)]
 pub use credentials::seal_temporary;
+pub(crate) use crypto::verify_role;
 #[allow(unused_imports)]
 pub use crypto::{hash_password, revision, sign_role};
 #[allow(unused_imports)]

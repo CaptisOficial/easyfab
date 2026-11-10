@@ -1,33 +1,95 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB project registration IPC v1",
-  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project. Errors are strings. Overview requires a revalidated normal Admin/Supervisor session and the active workspace. Creation requires the sole active Supervisor account in the confirmed four-account workflow; Admin manages accounts and reads projects. Multiple active Supervisors block creation. No caller-supplied paths or identity; no per-machine or per-user build authorization. One working session per account is an operating precondition, not distributed exclusion guaranteed by OneDrive.",
+  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project. Errors are strings. Overview requires a revalidated normal session and the active workspace. Admin/Supervisor read all projects and active Engineer assignment choices. Engineer receives only projects whose engineer_ids contains the authenticated session ID, only their own identity in leads, and can_create=false; the client supplies no identity or project filter. Creation requires the sole active Supervisor account in the confirmed four-account workflow; Admin manages accounts and reads projects. Multiple active Supervisors block creation. No caller-supplied paths or identity; no per-machine or per-user build authorization. One working session per account is an operating precondition, not distributed exclusion guaranteed by OneDrive. New projects require one or more unique active trusted Engineer IDs in engineer_ids, all equally responsible; no lead is selected.",
   "$defs": {
     "new_project": {
-      "type": "object", "additionalProperties": false,
-      "required": ["wbs", "name", "process_area", "lead_engineer_id", "start_date", "target_date"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wbs",
+        "name",
+        "process_area",
+        "engineer_ids",
+        "start_date",
+        "target_date"
+      ],
       "properties": {
-        "wbs": {"type": "string", "minLength": 1},
-        "name": {"type": "string", "minLength": 1},
-        "process_area": {"type": "string", "minLength": 1},
-        "lead_engineer_id": {"type": "string", "minLength": 1},
-        "start_date": {"type": "string", "format": "date"},
-        "target_date": {"type": "string", "format": "date"}
+        "wbs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "process_area": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "target_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "engineer_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     },
     "lead": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "name"],
-      "properties": {"id": {"type": "string"}, "name": {"type": "string"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
     },
     "overview": {
-      "type": "object", "additionalProperties": false,
-      "required": ["projects", "leads", "can_create", "write_message"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projects",
+        "leads",
+        "can_create",
+        "write_message"
+      ],
       "properties": {
-        "projects": {"type": "array", "items": {"$ref": "projects.schema.json#/$defs/project"}},
-        "leads": {"type": "array", "items": {"$ref": "#/$defs/lead"}},
-        "can_create": {"type": "boolean"},
-        "write_message": {"type": "string"}
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "projects.schema.json#/$defs/project"
+          }
+        },
+        "leads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/lead"
+          }
+        },
+        "can_create": {
+          "type": "boolean"
+        },
+        "write_message": {
+          "type": "string"
+        }
       }
     }
   }

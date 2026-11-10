@@ -12,7 +12,8 @@ Restricciones generales del diseño. [Espacio de trabajo](espacio-de-trabajo.md)
 
 ## Escrituras y sincronización
 
-- Cada cuenta escribe solo su partición: layout 2 `engineers/<id>/profile.json` y `evidence/`; layout 1 conserva `engineers/<id>.json` hasta mantenimiento explícito. El manifiesto selecciona una versión, sin fallback al otro perfil. Ningún rol escribe perfiles ajenos en operación normal.
+- Credenciales y trabajo del formato anterior mantienen su partición: layout 2 `engineers/<id>/profile.json` y `evidence/`; layout 1 conserva `engineers/<id>.json` hasta mantenimiento explícito. El manifiesto selecciona una versión, sin fallback al otro perfil. Ningún rol escribe perfiles ajenos en operación normal.
+- Proyectos activados explícitamente con DoD usan `project_results_version=1` y su manifiesto firmado por proyecto. Sus ingenieros asignados escriben revisiones inmutables de actividades compartidas en la partición del proyecto; solo el Supervisor modifica compromiso, acepta entregables e integra conflictos. Sustituye para ese trabajo la escritura por perfil, sin mover credenciales ni mantener doble escritura. Detalle: [espacio de trabajo](espacio-de-trabajo.md#proyectos-activados-por-resultados).
 - Admin gestiona `team.json` y catálogos; el único Supervisor activo escribe `projects.json`. Autoridad de roles y sesiones: auth. Una sesión de trabajo por cuenta.
 - `issues.json` es append-only: añadir eventos, conservando registros anteriores. Esto no garantiza convergencia de escritores simultáneos en OneDrive; el protocolo compartido debe resolverse antes de implementar su consumidor.
 - OneDrive sincroniza eventualmente. Mutex o rename locales no ofrecen exclusión distribuida ni revocación instantánea sin conexión.
@@ -28,3 +29,12 @@ Restricciones generales del diseño. [Espacio de trabajo](espacio-de-trabajo.md)
 Cambiar raíz exige cerrar sesión y validar la nueva ubicación, sin migración implícita. Mantenimiento, restauración y publicación preservan una sola fuente activa y requieren alcance explícito. Las preferencias personales nunca cambian referencia, llave o permisos.
 
 Las pruebas acompañan cada comportamiento y regresión. [testing.md](testing.md) define comandos, datos sintéticos y límites. Gate 0 verifica contratos, compilación y suites; su aprobación no acredita por sí sola paridad exhaustiva de esquemas, sincronización entre equipos ni aceptación nativa.
+
+En el formato anterior, el inicio automático se registra en `started_projects` del perfil del responsable,
+en la misma publicación que su avance o actividad. Las consultas de proyectos
+proyectan Not Started → In Progress a partir de ese marcador o trabajo positivo
+existente, sin efectos secundarios; projects.json conserva su único escritor.
+En proyectos por resultados, las revisiones históricas con trabajo positivo
+conservan el inicio aunque se corrija después el avance a cero. El cierre procede
+del conjunto aceptado y la declaración firmada del Supervisor, nunca del promedio
+de avances personales o del conteo de actividades.

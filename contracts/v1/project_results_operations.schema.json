@@ -1,0 +1,646 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB result operations v1",
+  "description": "Normal revalidated sessions; workspace/actor derived by Rust. Immutable signed per-entity revisions, no dual writes. All nullable fields are required. See project_results.md.",
+  "$defs": {
+    "commitment_draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "final_outcome",
+        "scope",
+        "start_date",
+        "target_date",
+        "engineer_ids",
+        "deliverables"
+      ],
+      "properties": {
+        "final_outcome": {
+          "$ref": "project_results.schema.json#/$defs/text"
+        },
+        "scope": {
+          "$ref": "project_results.schema.json#/$defs/text"
+        },
+        "start_date": {
+          "$ref": "project_results.schema.json#/$defs/date"
+        },
+        "target_date": {
+          "$ref": "project_results.schema.json#/$defs/date"
+        },
+        "engineer_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "project_results.schema.json#/$defs/id"
+          }
+        },
+        "deliverables": {
+          "type": "array",
+          "items": {
+            "$ref": "project_results.schema.json#/$defs/deliverable"
+          }
+        }
+      }
+    },
+    "commitment_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "expected_revision",
+        "commitment",
+        "change_reason",
+        "legacy_deliverable_id"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "expected_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "commitment": {
+          "$ref": "#/$defs/commitment_draft"
+        },
+        "change_reason": {
+          "type": "string"
+        },
+        "legacy_deliverable_id": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "activity_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "created_by",
+        "edited_by",
+        "recorded_at",
+        "activity",
+        "evidence"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "created_by": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "edited_by": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "activity": {
+          "$ref": "project_results.schema.json#/$defs/activity"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "activity_operations.schema.json#/$defs/evidence"
+          }
+        }
+      }
+    },
+    "blocker_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "reported_by",
+        "edited_by",
+        "recorded_at",
+        "blocker"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "reported_by": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "edited_by": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "blocker": {
+          "$ref": "project_results.schema.json#/$defs/blocker"
+        }
+      }
+    },
+    "review_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "deliverable_id",
+        "commitment_revision",
+        "status",
+        "submission",
+        "decision"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "deliverable_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "commitment_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "status": {
+          "$ref": "project_results.schema.json#/$defs/review_status"
+        },
+        "submission": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/submission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/decision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "closure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "closed",
+        "commitment_revision",
+        "recorded_at",
+        "author_id",
+        "comment"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "closed": {
+          "type": "boolean"
+        },
+        "commitment_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "author_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "history_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "stream",
+        "author_id",
+        "recorded_at",
+        "action",
+        "summary"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "stream": {
+          "type": "string"
+        },
+        "author_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "conflict_variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "author_id",
+        "recorded_at",
+        "summary"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "author_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "recorded_at": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stream",
+        "revisions"
+      ],
+      "properties": {
+        "stream": {
+          "type": "string"
+        },
+        "revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conflict_variant"
+          }
+        }
+      }
+    },
+    "detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "commitment",
+        "baseline",
+        "activities",
+        "blockers",
+        "reviews",
+        "closure",
+        "capabilities",
+        "history",
+        "conflicts",
+        "legacy_entries",
+        "plan_issues"
+      ],
+      "properties": {
+        "project": {
+          "$ref": "projects.schema.json#/$defs/project"
+        },
+        "commitment": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/commitment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/commitment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/activity_entry"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/blocker_entry"
+          }
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/review_entry"
+          }
+        },
+        "closure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/closure"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capabilities": {
+          "$ref": "project_results.schema.json#/$defs/capabilities"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/history_entry"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conflict"
+          }
+        },
+        "legacy_entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/legacy_entry"
+          }
+        },
+        "plan_issues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Aggregate cross-entity planning inconsistencies after eventual merge; authenticated reads remain available for correction. Writes and closure still validate the full proposed plan."
+        }
+      }
+    },
+    "legacy_entry": {
+      "description": "Read-only legacy ActivityEntry compatibility view. Runtime never writes it from the new domain.",
+      "type": "object",
+      "required": [
+        "owner_id",
+        "owner_name",
+        "revision",
+        "activity",
+        "decision"
+      ],
+      "properties": {
+        "owner_id": {
+          "type": "string"
+        },
+        "owner_name": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "activity": {
+          "type": "object"
+        },
+        "decision": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "activity_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "expected_revision",
+        "activity"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "expected_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "activity": {
+          "$ref": "project_results.schema.json#/$defs/activity"
+        }
+      }
+    },
+    "blocker_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "blocker_id",
+        "expected_revision",
+        "activity_id",
+        "reason",
+        "help_needed",
+        "action",
+        "comment"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "blocker_id": {
+          "anyOf": [
+            {
+              "$ref": "project_results.schema.json#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "activity_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "help_needed": {
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "report",
+            "attend",
+            "resolve"
+          ]
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "review_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "deliverable_id",
+        "expected_revision",
+        "action",
+        "criteria",
+        "comment"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "deliverable_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "expected_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "action": {
+          "$ref": "project_results.schema.json#/$defs/review_action"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "project_results.schema.json#/$defs/criterion_result"
+          }
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "closure_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "expected_revision",
+        "closed",
+        "confirm_final_outcome",
+        "comment"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "expected_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "closed": {
+          "type": "boolean"
+        },
+        "confirm_final_outcome": {
+          "type": "boolean"
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "resolve_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "stream",
+        "expected_revisions",
+        "keep_revision",
+        "comment"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "stream": {
+          "type": "string"
+        },
+        "expected_revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "project_results.schema.json#/$defs/revision"
+          }
+        },
+        "keep_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "attachment_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "activity_id",
+        "expected_revision",
+        "name",
+        "bytes"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "activity_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "expected_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "name": {
+          "$ref": "project_results.schema.json#/$defs/text"
+        },
+        "bytes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20971520,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      }
+    }
+  }
+}

@@ -33,7 +33,7 @@ cargo test --manifest-path src-tauri/Cargo.toml -- --list
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_contracts.ps1
 ```
 
-`npm test` ejecuta contratos de preferencias (PowerShell 7), frontend y Rust, deteniéndose si una suite falla. Gate 0 verifica
+`npm test` ejecuta contratos de preferencias y planeación por resultados (PowerShell 7), frontend y Rust, deteniéndose si una suite falla. Gate 0 verifica
 contratos y compilación y después ejecuta ambas suites. Cargo debe estar en PATH
 o en `%USERPROFILE%/.cargo/bin`; el script de pruebas admite ambas instalaciones.
 
@@ -47,6 +47,47 @@ o en `%USERPROFILE%/.cargo/bin`; el script de pruebas admite ambas instalaciones
 - Añadir pruebas de IPC con runtime de prueba Tauri cuando se cambie el registro o comportamiento de comandos. PLAN-014 incorpora estas pruebas para proyectos; el resto de comandos mantiene su cobertura anterior.
 - Una prueba nativa de extremo a extremo requiere la aplicación y WebView; se verifica por separado antes de distribuir.
 - No declarar cobertura total ni un porcentaje mínimo sin medición. La prioridad son RBAC, integridad, persistencia y regresiones.
+
+## Contrato de planeación por resultados
+
+[Contrato y límites](../../contracts/v1/project_results.md). La suite de esquemas
+incluye `test_results_contract.ps1` y comprueba que los tipos TS generados no
+diverjan. `project_results::tests` usa el mismo fixture sintético para validar
+referencias, fechas, dependencias, transiciones, evidencia y cierre sin persistencia.
+El recorrido aislado de proyectos comprueba la consulta de capacidades con sesiones
+reales, roles, asignaciones, revocación y dos Supervisors; la prueba IPC comprueba
+el comando registrado y rechazos. No acreditar R2–R6 por estas pruebas de R1.
+
+La integración añade `test_results_operations_contract.ps1` (entradas, envelopes y
+referencias locales), paridad de serialización Rust, `results_store::tests` con
+almacenamiento/credenciales reales y `ResultsWork.test.tsx` para el flujo de interfaz.
+`results-metrics.test.ts` prueba cortes civiles de México, cohortes/denominadores,
+línea base, ausencia de datos y conflictos. Los escenarios offline son fixtures
+firmados en un solo host; no prueban sincronización OneDrive entre máquinas.
+
+### Piloto nativo aislado por resultados
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build_results_pilot.ps1
+```
+
+Compila una entrada QA separada en `src-tauri/target/results-pilot-dist` y el ejemplo
+`src-tauri/target/debug/examples/results_pilot.exe` con assets embebidos, sin servidor
+localhost. `TAURI_CONFIG` se cambia solo durante ese proceso de compilación y se
+restaura; el build de producto continúa usando su configuración normal. Esta entrada
+no forma parte de `dist/index.html` ni registra un acceso QA en el producto.
+
+Ejecutar el ejemplo con una ruta absoluta directa de `src-tauri/target` cuyo nombre
+sea `results-pilot-<id-único>` y el rol sintético `supervisor`, `engineer`, `engineer2`
+o `admin`. Inicializa exclusivamente ese espacio/local de prueba, prepara dos
+entregables y cuentas sintéticas y usa la autenticación y los servicios reales.
+Una ruta distinta se rechaza. Cada proceso recibe su LocalAppData aislado; no se
+modifican variables de las aplicaciones normales ni credenciales corporativas.
+
+Una segunda ejecución con otro rol sobre el mismo piloto permite comprobar roles
+en ventanas separadas, sin automatizar un diálogo de autenticación. Sigue siendo
+un solo equipo. Cerrar el piloto antes de recompilarlo. No usar el arnés para operar
+datos reales, medir comprensión humana sin participantes ni acreditar dos equipos.
 
 Referencias: [Cargo](https://doc.rust-lang.org/cargo/commands/cargo-test.html),
 [organización Rust](https://doc.rust-lang.org/book/ch11-03-test-organization.html),
@@ -77,7 +118,12 @@ en src-tauri/target. Este comando es adicional a npm test/Gate 0.
 `Projects.test.tsx` y los casos adicionales de Login usan jsdom/IPC simulado.
 `project_commands.rs` usa Tauri MockRuntime con el mismo registro que producción
 para probar comandos y payload; no equivale a WebView nativo. El feature `test` de
-Tauri es dependencia de desarrollo. El recorrido usa cuatro cuentas sintéticas y el comando real de alta Supervisor. Admin consulta, Engineer no opera proyectos y las sesiones restringidas son rechazadas. La UI también recorre Admin crea Supervisor, cambio obligatorio, alta y nuevo acceso. No hay autorización por equipo ni bypass privado para guardar. Ver [estado del recorrido](../product/execution/f04/acceptance.md).
+Tauri es dependencia de desarrollo. El recorrido usa cuatro cuentas sintéticas y el comando real de alta Supervisor. Admin consulta; Engineer consulta solo sus proyectos por `lead_engineer_id` y no registra proyectos. Las sesiones restringidas son rechazadas. La UI también recorre Admin crea Supervisor, cambio obligatorio, alta y nuevo acceso. No hay autorización por equipo ni bypass privado para guardar. Ver [estado del recorrido](../product/execution/f04/acceptance.md).
+
+El incremento de consulta Engineer comprueba aislamiento entre dos responsables,
+reingreso, espacio incorrecto, JSON corrupto y revocación por baja/reset en Rust.
+WorkspaceSetup prueba navegación Engineer, ausencia de alta y retiro de lista/menú
+al salir; Login incluye Engineer normal y restringido. El transporte UI sigue simulado.
 
 ## Barra superior y configuración (PLAN-015)
 
@@ -93,7 +139,7 @@ ni modifica la carpeta corporativa; backend y reglas de espacio no cambian.
 
 WorkspaceMenu.test.tsx prueba cierre, foco circular/restaurado, fondo inert,
 selección y destino activo. WorkspaceSetup.test.tsx recorre Admin y Supervisor,
-ubicación de Usuarios, foco al navegar y borrador real de alta de proyecto conservado
+destinos independientes de Usuarios y Catálogos para Admin, separación respecto de Configuración, foco al navegar y borrador real de alta de proyecto conservado
 al visitar Configuración. Son pruebas DOM/IPC simulado; no acreditan WebView nativo.
 Ver [evidencia del incremento](../product/execution/navigation-acceptance.md).
 
@@ -104,3 +150,19 @@ JSON Schema canónico: 48 documentos sintéticos válidos/inválidos y defaults.
 Está integrado en npm test y Gate 0. No instala validadores ni toca archivos de
 usuarios. Es validación estructural, no prueba de identidad, persistencia, IPC ni
 autorización. Las pruebas de aislamiento/reset siguen pendientes del consumidor.
+
+## Edición de catálogos
+
+`PlantCatalog.test.tsx` comprueba edición de nombres, reasignación y retiro de línea del equipo, conservación de IDs y revisión, recuperación al montar con los datos guardados, borrador ante error y bloqueo de edición según respuesta del servidor. Usa datos sintéticos e IPC simulado; no acredita persistencia Rust ni WebView nativo. Ver estado y límites en el [plan](../product/plan-maestro.md).
+
+## Usuarios: acciones contextualizadas
+
+`UserDirectory.test.tsx` verifica alta en modal, foco/restauración, cierre y borrador, errores, exclusión de envíos duplicados, bloqueo de cierre durante envío, actualización del directorio y recuperación sobre la cuenta seleccionada desde su fila, incluidos errores y ocultación de temporal. `Login.test.tsx` recorre el alta flotante antes del reingreso. Son pruebas DOM con IPC simulado; no acreditan WebView ni permisos Rust.
+
+## Publicación compartida de archivos
+
+`data_store::tests` comprueba creación, reemplazo, rechazo de revisión obsoleta,
+rechazo de creación sobre un destino existente, cambios durante la validación,
+validación fallida sin crear destino y limpieza de temporales. Usa directorios
+sintéticos únicos. Las suites de autenticación y proyectos verifican los consumidores
+reales de esta publicación; estas pruebas locales no acreditan concurrencia OneDrive.

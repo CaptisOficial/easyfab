@@ -1,0 +1,66 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { UserDirectory } from "./UserDirectory";
+import * as api from "../../lib/api";
+vi.mock("../../lib/api", () => ({ listUsers: vi.fn(), createUser: vi.fn(), resetPassword: vi.fn(), setUserActive: vi.fn() }));
+afterEach(cleanup);
+beforeEach(() => {
+ vi.resetAllMocks();
+ vi.mocked(api.listUsers).mockResolvedValue([{ id: "eng-a", name: "Persona A", role: "engineer", status: "active" }, { id: "eng-b", name: "Persona B", role: "engineer", status: "active" }, { id: "inactive", name: "Persona inactiva", role: "engineer", status: "inactive" }]);
+});
+it("abre el alta flotante, contiene foco y conserva borrador al cerrar", async () => {
+ const user = userEvent.setup(); render(<UserDirectory />);
+ expect(screen.queryByLabelText("ID de usuario")).toBeNull();
+ const trigger = screen.getByRole("button", { name: "Nuevo usuario" });
+ await user.click(trigger);
+ const dialog = screen.getByRole("dialog", { name: "Crear usuario" });
+ expect(dialog.getAttribute("aria-modal")).toBe("true");
+ expect(document.activeElement).toBe(screen.getByLabelText("ID de usuario"));
+ await user.type(screen.getByLabelText("ID de usuario"), "nuevo");
+ await user.click(screen.getByRole("button", { name: "Cerrar alta de usuario" }));
+ expect(screen.queryByRole("dialog")).toBeNull(); expect(document.activeElement).toBe(trigger);
+ await user.click(trigger);
+ expect((screen.getByLabelText("ID de usuario") as HTMLInputElement).value).toBe("nuevo");
+ await user.keyboard("{Escape}"); expect(screen.queryByRole("dialog")).toBeNull();
+ await user.click(trigger);
+ await user.click(screen.getByRole("dialog").parentElement!);
+ expect(screen.queryByRole("dialog")).toBeNull();
+});
+it("conserva errores dentro del modal y evita duplicados o cierre durante el alta", async () => {
+ const user = userEvent.setup(); render(<UserDirectory />);
+ await user.click(screen.getByRole("button", { name: "Nuevo usuario" }));
+ await user.type(screen.getByLabelText("ID de usuario"), "nuevo");
+ await user.type(screen.getByLabelText("Nombre completo"), "Nueva persona");
+ vi.mocked(api.createUser).mockRejectedValueOnce("ID ocupado");
+ await user.click(screen.getByRole("button", { name: "Crear y generar temporal" }));
+ expect(await within(screen.getByRole("dialog")).findByRole("alert")).toBeTruthy();
+ let finish!: (value: string) => void;
+ vi.mocked(api.createUser).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+ await user.click(screen.getByRole("button", { name: "Crear y generar temporal" }));
+ fireEvent.submit(screen.getByLabelText("ID de usuario").closest("form")!);
+ await user.keyboard("{Escape}"); expect(screen.getByRole("dialog")).toBeTruthy();
+ expect(api.createUser).toHaveBeenCalledTimes(2);
+ finish("TEMP1234");
+ await screen.findByText("TEMP1234");
+ expect(api.createUser).toHaveBeenLastCalledWith({ id: "nuevo", name: "Nueva persona", role: "engineer" });
+ await waitFor(() => expect(api.listUsers).toHaveBeenCalledTimes(2));
+});
+it("recupera solo la cuenta de la fila elegida y omite cuentas inactivas", async () => {
+ const user = userEvent.setup(); render(<UserDirectory />);
+ const row = (await screen.findByText("Persona B")).closest("tr")!;
+ expect(within((screen.getByText("Persona inactiva")).closest("tr")!).queryByRole("button", { name: "Recuperar contraseña" })).toBeNull();
+ await user.click(within(row).getByRole("button", { name: "Recuperar contraseña" }));
+ expect(screen.queryByLabelText("Recuperación: usuario")).toBeNull();
+ vi.mocked(api.resetPassword).mockRejectedValueOnce("No disponible").mockResolvedValueOnce("RESET123");
+ await user.click(within(row).getByRole("button", { name: "Emitir contraseña temporal" }));
+ await within(row).findByRole("alert");
+ await user.click(within(row).getByRole("button", { name: "Emitir contraseña temporal" }));
+ await within(row).findByText("RESET123");
+ expect(api.resetPassword).toHaveBeenNthCalledWith(1, "eng-b");
+ expect(api.resetPassword).toHaveBeenNthCalledWith(2, "eng-b");
+ expect(within(screen.getByText("Persona A").closest("tr")!).queryByText("RESET123")).toBeNull();
+ await user.click(within(row).getByRole("button", { name: "Ocultar temporal" }));
+ expect(screen.queryByText("RESET123")).toBeNull();
+});

@@ -44,10 +44,9 @@ export function WorkspaceSetup() {
   }
 
   return <div className="flex min-h-full flex-col">
-    <TopNav user={session} logoutDisabled={sessionBusy} onLogout={() => { void loginRef.current?.logout(); }} settings={<WorkspaceMenu open={settingsOpen} onOpenChange={setSettingsOpen} destination={destination} onNavigate={navigate} projectsAvailable={!!session && !session.must_change_password}>
+    <TopNav pageTitle={destination === "users" ? "Usuarios" : destination === "catalogs" ? "Catálogos" : destination === "settings" ? "Configuración" : destination === "projects" ? "Proyectos" : destination === "incidents" ? "Problemas de línea" : "Inicio"} headingRef={heading} user={session} logoutDisabled={sessionBusy} onLogout={() => { void loginRef.current?.logout(); }} settings={<WorkspaceMenu open={settingsOpen} onOpenChange={setSettingsOpen} destination={destination} onNavigate={navigate} adminAvailable={session?.role === "admin" && !session.must_change_password} projectsAvailable={!!session && !session.must_change_password}>
     </WorkspaceMenu>} />
-    <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6">
-      <h2 ref={heading} tabIndex={-1} className="mb-4 font-bold outline-none">{destination === "settings" ? "Configuración" : destination === "projects" ? "Proyectos" : "Inicio"}</h2>
+    <main className={`mx-auto min-w-0 w-full flex-1 p-3 sm:p-4 ${workspace && !editing && !signedIn && destination === "home" ? "flex flex-col justify-center" : ""} ${destination === "projects" ? "max-w-none" : "max-w-6xl"}`}>
       <div hidden={destination !== "settings"}>
       <section className="space-y-4" aria-labelledby="workspace-title">
         <h3 id="workspace-title" className="font-bold">Carpeta activa</h3>

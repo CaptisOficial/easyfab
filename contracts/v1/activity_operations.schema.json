@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EasyFAB activity operations v1",
+  "description": "Normal revalidated sessions only, active workspace derived by Rust. project_detail({projectId}) returns project, entries [{owner_id,owner_name,revision,activity,decision}], can_edit and can_review. revision is SHA256 of the persisted activity with supervisor_approved=false. Engineer reads/writes only own activities on projects where engineer_ids contains session ID. Admin/Supervisor read activities of authorized projects; only the sole active Supervisor reviews. save_activity({input}) creates when id/expected_revision are null, otherwise updates own existing activity only when expected_revision matches. 100 requests review; it does not complete or approve work. attach_evidence({input}) adds immutable bytes and updates own profile only after file publication. Failed profile publication may leave an unreferenced complete file; retries never reuse partial files. read_evidence accepts projectId, ownerId, activityId, evidenceId (not a path), authorizes and verifies size/SHA256. review_activity({input}) appends a signed decision under data/reviews/<id>.json; accepted=true requires gate 100 and all referenced evidence verified. Rejection requires a comment. Decisions apply only to their exact content revision. Any edit changes revision_id. Legacy profile flags cannot grant approval. Layout 1 must be explicitly upgraded before attaching. No automatic layout migration or attachment deletion. Detail includes engineer_progress [{engineer_id,engineer_name,progress}] for assigned Engineers (own declaration only for Engineer sessions). declared_progress is the visible sole declaration, otherwise null; no project aggregate is inferred. Each Engineer writes only their own profile. Activated result-oriented projects use project_results_operations.schema.json. Legacy mutations are rejected after activation. project_detail returns a reporting compatibility projection with can_edit/can_review=false, supervisor_approved=false and no inferred personal progress; 100 percent of an activity is execution only. New acceptance is per deliverable.",
+  "$defs": {
+    "save_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "expected_revision",
+        "project_id",
+        "wbs",
+        "task_title",
+        "start_date",
+        "due_date",
+        "milestone_gate",
+        "at_risk"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "wbs": {
+          "type": "string",
+          "description": "Compatibility input, ignored by Rust; WBS is generated internally. Empty string is accepted."
+        },
+        "task_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "milestone_gate": {
+          "enum": [
+            0,
+            25,
+            50,
+            75,
+            100
+          ]
+        },
+        "at_risk": {
+          "type": "boolean"
+        },
+        "hours_spent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Accumulated worked hours; omitted/null means unknown, never zero by default."
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "relative_path",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relative_path": {
+          "type": "string",
+          "pattern": "^evidence/[0-9a-f]{64}\\.(pdf|png|jpg)$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20971520
+        }
+      }
+    },
+    "attachment_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "activity_id",
+        "revision",
+        "name",
+        "bytes"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20971520,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      }
+    },
+    "review_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "owner_id",
+        "activity_id",
+        "revision",
+        "accepted",
+        "comment"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "owner_id": {
+          "type": "string"
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "project_id",
+        "owner_id",
+        "activity_id",
+        "revision",
+        "accepted",
+        "comment",
+        "supervisor_id",
+        "recorded_at",
+        "signature"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "owner_id": {
+          "type": "string"
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "supervisor_id": {
+          "type": "string"
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

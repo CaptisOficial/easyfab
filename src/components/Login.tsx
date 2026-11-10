@@ -1,4 +1,9 @@
 import { Projects } from "../features/projects/Projects";
+import { PlantCatalog } from "../features/settings/PlantCatalog";
+import { Incidents } from "../features/incidents/Incidents";
+import { Preferences } from "../features/settings/Preferences";
+import { WeeklyReport } from "../features/home/WeeklyReport";
+import type { Destination } from "./WorkspaceMenu";
 import { InitialAdminForm } from "./auth/InitialAdminForm";
 import { useEffect, useImperativeHandle, useState, type FormEvent, type Ref } from "react";
 import { listLoginUsers, login, logout, type LoginChoice, type SessionUser } from "../lib/api";
@@ -11,7 +16,7 @@ interface LoginProps {
   onBusyChange?: (busy: boolean) => void;
   headerInTopNav?: boolean;
   ref?: Ref<LoginHandle>;
-  destination?: "home" | "projects" | "settings";
+  destination?: Destination;
 }
 export function Login({ onSessionChange, onBusyChange, headerInTopNav = false, ref, destination }: LoginProps) {
   const [requiresAdmin, setRequiresAdmin] = useState(false);
@@ -57,8 +62,8 @@ export function Login({ onSessionChange, onBusyChange, headerInTopNav = false, r
   useImperativeHandle(ref, () => ({ logout: exit }));
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
 
-  return <section className="rounded-sm border border-kmx-gray-300 bg-white p-5" aria-labelledby="login-title">
-    <h2 id="login-title" className="mb-4 font-bold">{user && headerInTopNav ? "Área de trabajo" : "Acceso a EasyFAB"}</h2>
+  return <section hidden={!user && destination !== undefined && destination !== "home"} className={`rounded-sm border border-kmx-gray-300 bg-surface p-5 ${!user ? "mx-auto w-full max-w-md" : ""}`} aria-labelledby={user && headerInTopNav ? undefined : "login-title"} aria-label={user && headerInTopNav ? "Área de trabajo" : undefined}>
+    {!(user && headerInTopNav) && <h2 id="login-title" className="mb-4 font-bold">Acceso a EasyFAB</h2>}
     {notice && <p role="status" className="mb-3">{notice}</p>}
     {error && <p role="alert" className="mb-3 text-kmx-red">{error}</p>}
     {user ? <div className="space-y-4">
@@ -70,13 +75,13 @@ export function Login({ onSessionChange, onBusyChange, headerInTopNav = false, r
           setNotice("Contraseña actualizada. Ingresa con tu nueva contraseña.");
         }} />
         : <>
-          <p role="status" className="text-sm">Acceso confirmado con tu contraseña personal.</p>
-          <p className="text-sm">{user.role === "admin"
-            ? "Administra las cuentas del equipo y consulta los proyectos."
-            : user.role === "supervisor" ? "Registra los proyectos del equipo."
-            : "Tu perfil está listo. El registro de avances se incorporará en el siguiente paso."}</p>
-          {user.role === "admin" && <div hidden={destination !== undefined && destination !== "settings"}><h3 className="font-bold">Administración del sistema</h3><UserDirectory /></div>}
+          {user.role === "admin" && <div hidden={destination !== undefined && destination !== "users"}><UserDirectory /></div>}
           <div hidden={destination !== undefined && destination !== "projects"}><Projects /></div>
+          {user.role === "admin" && <div hidden={destination !== undefined && destination !== "catalogs"}><PlantCatalog /></div>}
+          {destination === "incidents" && <Incidents />}
+          <Preferences key={user.id} visible={destination === "settings"} />
+          {destination === "home" && user.role !== "engineer" && <WeeklyReport />}
+          {destination === "home" && user.role === "engineer" && <p className="empty-state">Abre Proyectos desde el menú para consultar tus asignaciones y registrar el trabajo diario.</p>}
         </>}
       {!headerInTopNav && <button disabled={busy} onClick={exit} className="border px-4 py-2">Cerrar sesión</button>}
     </div> : !busy && requiresAdmin && !error ? <InitialAdminForm onReady={async () => {

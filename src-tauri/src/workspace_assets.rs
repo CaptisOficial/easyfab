@@ -77,6 +77,22 @@ pub fn install(docs: &Path, contracts: &Path) -> Result<(), String> {
                 include_str!("../../contracts/v1/engineer_tasks.schema.json"),
             ),
             (
+                "activity_operations.schema.json",
+                include_str!("../../contracts/v1/activity_operations.schema.json"),
+            ),
+            (
+                "project_results.schema.json",
+                include_str!("../../contracts/v1/project_results.schema.json"),
+            ),
+            (
+                "project_results_operations.schema.json",
+                include_str!("../../contracts/v1/project_results_operations.schema.json"),
+            ),
+            (
+                "project_results_storage.schema.json",
+                include_str!("../../contracts/v1/project_results_storage.schema.json"),
+            ),
+            (
                 "issues.schema.json",
                 include_str!("../../contracts/v1/issues.schema.json"),
             ),
@@ -87,4 +103,3 @@ pub fn install(docs: &Path, contracts: &Path) -> Result<(), String> {
         ],
     )
 }
-

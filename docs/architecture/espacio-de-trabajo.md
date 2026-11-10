@@ -36,6 +36,7 @@ Estos criterios son requisitos de comportamiento; la aprobación de pruebas auto
     │   ├── projects.json
     │   ├── issues.json
     │   ├── config_plant.json
+    │   ├── project-results/<id-proyecto>/  Compromiso, revisiones y evidencias al activar DoD
     │   └── engineers/<id-easyfab>/
     │       ├── profile.json
     │       └── evidence/
@@ -124,6 +125,59 @@ Cambiar carpeta exige cerrar sesión y cancela accesos en curso. Conecta el espa
 | Publicación portable/documentos | `software/`, `docs/`, `contracts/`; distribución controlada |
 
 La partición es por usuario EasyFAB. OneDrive sincroniza eventualmente; editar la misma cuenta desde dos equipos a la vez puede producir conflicto. La referencia local no demuestra que OneDrive haya terminado de sincronizar.
+
+### Proyectos activados por resultados
+
+La decisión de producto de 2026-10-30 incorpora una partición de trabajo por proyecto,
+sin trasladar credenciales ni migrar implícitamente todos los proyectos. El nombre
+relativo `project-results` se resuelve desde el layout canónico. Activar DoD añade
+explícitamente `project_results_version=1` al manifiesto del espacio y respalda su
+versión anterior; los binarios anteriores fallan al encontrar ese campo desconocido.
+Cada proyecto activo tiene `storage.json` firmado que selecciona su formato 1,
+`legacy.json` sin credenciales, `events/` y `evidence/`.
+
+En estos proyectos, el índice `projects.json` conserva identidad/nombre/WBS/área;
+las fechas y asignaciones vigentes proceden del compromiso y el estado es una
+proyección del trabajo y cierre firmado. No se actualizan ambos orígenes con la
+misma información. Los perfiles anteriores quedan como historia para ese trabajo;
+sus credenciales mantienen su ciclo normal. Los comandos anteriores rechazan
+editar actividades, avance o aprobaciones de un proyecto activado.
+
+Las actividades compartidas crean revisiones nuevas con autor, editor y padres;
+solo el Supervisor integra alternativas concurrentes. Una referencia todavía
+ausente informa sincronización incompleta; no activa otro perfil ni gana la versión
+con fecha más reciente. La firma inválida o el manifiesto incompatible requieren
+restauración, no reinicialización. Las inconsistencias de fechas entre actividades
+siguen siendo consultables para corregirse, pero impiden consolidar o cerrar.
+
+El [contrato del dominio](../../contracts/v1/project_results.md) define activación,
+respaldo, recuperación y exactitud de firmas/revisiones. El [esquema de almacenamiento](../../contracts/v1/project_results_storage.schema.json)
+es la autoridad estructural. La publicación temporal y rename son locales;
+preservar alternativas no demuestra sincronización completa entre equipos.
+
+## Publicación de archivos
+
+La preparación y publicación de datos usa `src-tauri/src/data_store.rs`: archivo
+temporal único en el mismo directorio, escritura completa, `sync_all`, validación
+previa y comparación de los bytes esperados antes de `rename`. Un error elimina
+el temporal y conserva el destino salvo cambios realizados por otro escritor.
+El código de cada dominio conserva sus validaciones de contrato, propietario,
+permisos y revisión; el almacenamiento compartido no las sustituye.
+
+Proyectos compara contra el documento leído para la operación. El adaptador JSON
+de autenticación toma su referencia al entrar al guardado: detecta cambios durante
+la publicación, pero no acredita exclusión desde la lectura inicial de la operación.
+No hay transacciones entre archivos ni bloqueo distribuido. La comparación y el
+reemplazo son pasos separados; otro escritor o la sincronización de OneDrive puede
+intervenir entre ambos.
+
+Las decisiones de revisión usan `data/reviews/<id>.json`, vinculadas a la revisión
+exacta de la actividad según [el contrato de operaciones](../../contracts/v1/activity_operations.schema.json).
+La implementación de incidencias también contiene `data/issue_events/<autor-codificado>/<id>.json`
+y consulta `issues.json` como registros anteriores. Esa coexistencia debe reconciliarse
+con el contrato y D01 antes de convertirla en el layout operativo aprobado; no autoriza
+migrar ni retirar `issues.json`. El [plan](../product/plan-maestro.md) concentra la
+verificación y las decisiones pendientes de estos consumidores.
 
 ## Dependencias y traslado desde el baseline
 

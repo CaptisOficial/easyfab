@@ -36,7 +36,7 @@ fn context(dir: &Path, session: &auth::Session) -> Result<Vec<models::Lead>, Str
 }
 // The confirmed team has one Supervisor. Fail closed if the directory no longer
 // matches that operating scope instead of enabling several shared-file writers.
-fn require_supervisor(dir: &Path, session: &auth::Session) -> Result<(), String> {
+pub(crate) fn require_supervisor(dir: &Path, session: &auth::Session) -> Result<(), String> {
     context(dir, session)?;
     let team = auth::team(dir)?;
     let supervisors: Vec<_> = team
@@ -54,7 +54,7 @@ fn require_supervisor(dir: &Path, session: &auth::Session) -> Result<(), String>
     }
     Ok(())
 }
-fn active(dir: &Path, expected: &str) -> Result<(), String> {
+pub(crate) fn active(dir: &Path, expected: &str) -> Result<(), String> {
     let root = dir
         .parent()
         .and_then(Path::parent)
@@ -69,6 +69,78 @@ fn active(dir: &Path, expected: &str) -> Result<(), String> {
     }
     Ok(())
 }
+pub(crate) use storage::dates as validate_dates;
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TargetInput {
+    pub project_id: String,
+    pub target_hours: f64,
+    pub expected_target_hours: Option<f64>,
+}
+pub fn set_target(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    input: TargetInput,
+) -> Result<Project, String> {
+    active(dir, workspace_id)?;
+    require_supervisor(dir, session)?;
+    if !input.target_hours.is_finite() || input.target_hours <= 0.0 {
+        return Err("Las horas objetivo deben ser mayores que cero.".into());
+    }
+    let (mut doc, previous) = storage::read(dir)?;
+    let project = doc
+        .projects
+        .iter_mut()
+        .find(|p| p.id == input.project_id)
+        .ok_or("Proyecto no encontrado.")?;
+    if project.extra.get("target_hours").and_then(|v| v.as_f64()) != input.expected_target_hours {
+        return Err("El objetivo cambió. Actualiza el proyecto.".into());
+    }
+    project
+        .extra
+        .insert("target_hours".into(), serde_json::json!(input.target_hours));
+    let project = project.clone();
+    storage::save(dir, &doc, &previous, || {
+        active(dir, workspace_id)?;
+        require_supervisor(dir, session)
+    })?;
+    Ok(project)
+}
+fn with_work_status(dir: &Path, mut project: Project) -> Result<Project, String> {
+    if crate::results_store::is_active(dir, &project.id)? {
+        crate::results_store::project_projection(dir, &mut project)?;
+        return Ok(project);
+    }
+    if project.status == "Not Started" && crate::activities::has_started(dir, &project)? {
+        project.status = "In Progress".into();
+    }
+    Ok(project)
+}
+
+/// Authorize one project without projecting unrelated project histories.
+/// Capturing work must not require reading every other project's event graph.
+pub(crate) fn authorized(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    project_id: &str,
+) -> Result<Project, String> {
+    active(dir, workspace_id)?;
+    if session.user.must_change_password || !["admin", "supervisor", "engineer"].contains(&session.user.role.as_str()) {
+        return Err("Se requiere sesión normal.".into());
+    }
+    auth::revalidate(dir, session)?;
+    let (doc, _) = storage::read(dir)?;
+    let project = doc.projects.into_iter().find(|p| p.id == project_id)
+        .ok_or("Proyecto no autorizado o inexistente.")?;
+    let project = with_work_status(dir, project)?;
+    if session.user.role == "engineer" && !project.engineer_ids.contains(&session.user.id) {
+        return Err("Proyecto no autorizado o inexistente.".into());
+    }
+    Ok(project)
+}
 pub fn overview(
     dir: &Path,
     session: &auth::Session,
@@ -82,24 +154,30 @@ pub fn overview(
         auth::revalidate(dir, session)?;
         let (doc, _) = storage::read(dir)?;
         return Ok(Overview {
-            projects: doc.projects.into_iter()
-                .filter(|project| project.lead_engineer_id == session.user.id)
-                .collect(),
-            leads: vec![models::Lead { id: session.user.id.clone(), name: session.user.name.clone() }],
+            projects: doc
+                .projects
+                .into_iter()
+                .map(|project| with_work_status(dir, project))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter().filter(|project| project.engineer_ids.contains(&session.user.id)).collect(),
+            leads: vec![models::Lead {
+                id: session.user.id.clone(),
+                name: session.user.name.clone(),
+            }],
             can_create: false,
-            write_message: "Consulta los proyectos donde eres el ingeniero responsable.".into(),
+            write_message: "Consulta los proyectos donde estás asignado.".into(),
         });
     }
     let leads = context(dir, session)?;
     let (doc, _) = storage::read(dir)?;
 
     Ok(Overview {
-        projects: doc.projects,
+        projects: doc.projects.into_iter().map(|project| with_work_status(dir, project)).collect::<Result<Vec<_>, _>>()?,
         leads,
         can_create: require_supervisor(dir, session).is_ok(),
         write_message: if session.user.role == "supervisor" {
             match require_supervisor(dir, session) {
-                Ok(()) => "Registra el proyecto y selecciona al ingeniero responsable.".into(),
+                Ok(()) => "Registra el proyecto y selecciona a los ingenieros responsables.".into(),
                 Err(error) => error,
             }
         } else {
@@ -116,16 +194,29 @@ pub fn create(
     active(dir, workspace_id)?;
     require_supervisor(dir, session)?;
     let leads = context(dir, session)?;
-    if !leads.iter().any(|m| m.id == input.lead_engineer_id) {
-        return Err("Selecciona un responsable activo del equipo.".into());
+    if input.engineer_ids.is_empty() || input.engineer_ids.iter().any(|id| !leads.iter().any(|m| &m.id == id)) {
+        return Err("Selecciona ingenieros activos del equipo.".into());
     }
     let (mut doc, previous) = storage::read(dir)?;
+    // Auto‑generate the project WBS if the client did not supply one.
+    // Existing numeric WBS values are parsed as i32; the next free integer is used.
+    let generated_wbs = if input.wbs.trim().is_empty() {
+        let mut max = 0i32;
+        for p in &doc.projects {
+            if let Ok(num) = p.wbs.parse::<i32>() {
+                if num > max { max = num; }
+            }
+        }
+        (max + 1).to_string()
+    } else {
+        input.wbs.trim().to_string()
+    };
     let mut project = Project {
         id: String::new(),
-        wbs: input.wbs.trim().into(),
+        wbs: generated_wbs,
         name: input.name.trim().into(),
         process_area: input.process_area.trim().into(),
-        lead_engineer_id: input.lead_engineer_id,
+        engineer_ids: input.engineer_ids,
         start_date: input.start_date,
         target_date: input.target_date,
         status: "Not Started".into(),
@@ -155,8 +246,8 @@ pub fn create(
         active(dir, workspace_id)?;
         require_supervisor(dir, session)?;
         let leads = context(dir, session)?;
-        if !leads.iter().any(|m| m.id == project.lead_engineer_id) {
-            return Err("El responsable ya no está activo.".into());
+        if project.engineer_ids.iter().any(|id| !leads.iter().any(|m| &m.id == id)) {
+            return Err("Un ingeniero asignado ya no está activo.".into());
         }
         Ok(())
     })?;

@@ -1,5 +1,5 @@
 use super::{
-    crypto::{revision, verify_role},
+    crypto::verify_role,
     models::*,
 };
 use argon2::password_hash::rand_core::{OsRng, RngCore};
@@ -65,21 +65,13 @@ pub(super) fn own_path(dir: &Path, m: &Member) -> Result<std::path::PathBuf, Str
     crate::workspace::profile_path(dir, &m.id)
 }
 pub(super) fn atomic_json(path: &Path, value: &serde_json::Value) -> Result<(), String> {
-    let tmp = path.with_extension(format!("{}.tmp", revision()));
-    let mut f = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&tmp)
-        .map_err(|e| format!("No se pudo preparar el archivo: {e}"))?;
-    f.write_all(
-        serde_json::to_string_pretty(value)
-            .map_err(|e| e.to_string())?
-            .as_bytes(),
-    )
-    .and_then(|_| f.sync_all())
-    .map_err(|e| format!("No se pudo guardar el archivo: {e}"))?;
-    drop(f);
-    fs::rename(&tmp, path).map_err(|e| format!("No se pudo publicar el archivo: {e}"))
+    let previous = match fs::read(path) {
+        Ok(bytes) => Some(bytes),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(format!("No se pudo leer el archivo: {error}")),
+    };
+    let bytes = serde_json::to_vec_pretty(value).map_err(|e| e.to_string())?;
+    crate::data_store::publish(path, &bytes, previous.as_deref(), || Ok(()))
 }
 
 pub(super) fn validate_profile_key(username: &str) -> Result<(), String> {

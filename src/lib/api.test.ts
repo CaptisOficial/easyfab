@@ -43,10 +43,12 @@ describe("frontera frontend / Tauri", () => {
 
 it("proyectos usa los comandos y payload del contrato sin rutas ni identidad del llamador", async () => {
   const api = await import("./api");
-  const input = { wbs: "FAB-1", name: "Fixture", process_area: "FAB", lead_engineer_id: "eng", start_date: "2026-10-28", target_date: "2026-10-29" };
+  const input = { wbs: "FAB-1", name: "Fixture", process_area: "FAB", engineer_ids: ["eng"], start_date: "2026-10-28", target_date: "2026-10-29" };
   vi.mocked(invoke).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Pending" });
   await api.projectsOverview();
   expect(invoke).toHaveBeenLastCalledWith("projects_overview");
+  await api.projectResultsCapabilities("fixture");
+  expect(invoke).toHaveBeenLastCalledWith("project_results_capabilities", { projectId: "fixture" });
   vi.mocked(invoke).mockRejectedValue("Denied");
   await expect(api.createProject(input)).rejects.toBe("Denied");
   expect(invoke).toHaveBeenLastCalledWith("create_project", { input });

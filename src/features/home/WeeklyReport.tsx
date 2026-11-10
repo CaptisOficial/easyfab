@@ -1,0 +1,27 @@
+import { useState } from "react";
+import { exportWeekly, weeklySnapshot, type WeeklySnapshot } from "../../lib/api";
+function today() { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()); return ["year", "month", "day"].map(key => parts.find(p => p.type === key)!.value).join("-"); }
+export function WeeklyReport() {
+  const [date, setDate] = useState(today); const [data, setData] = useState<WeeklySnapshot | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [output, setOutput] = useState<{ path: string; sha256: string } | null>(null);
+  async function run(exporting: boolean) { if (busy) return; setBusy(true); setError(""); setOutput(null); try { if (exporting) setOutput(await exportWeekly(date)); else setData(await weeklySnapshot(date)); } catch (e) { setError(String(e)); } finally { setBusy(false); } }
+  const entries = data?.projects.flatMap(p => p.entries) ?? []; const issues = data?.incidents.records.flatMap(r => r.leaves) ?? [];
+  const results = data?.result_projects ?? [];
+  const resultIds = new Set(results.map(value => value.project.id));
+  const accepted = results.flatMap(value => value.reviews.filter(review => review.commitment_revision === value.commitment?.revision && review.status === "accepted"));
+  const submitted = results.flatMap(value => value.reviews.filter(review => review.commitment_revision === value.commitment?.revision && review.status === "submitted"));
+  return <section className="space-y-4" aria-label="Resumen y reporte semanal"><div className="work-heading"><p className="eyebrow">FABRICATION · 10.FAB</p><h3>Resumen semanal</h3><p>Consulta el trabajo y los problemas de línea del periodo.</p></div>
+    <fieldset disabled={busy} className="flex flex-wrap items-end gap-3"><label className="field">Fecha del reporte<input type="date" required value={date} onChange={e => { setDate(e.target.value); setData(null); setOutput(null); }} /></label><button className="action" disabled={!date} onClick={() => void run(false)}>Consultar semana</button><button className="btn-primary" disabled={!date} onClick={() => void run(true)}>Exportar Excel semanal</button></fieldset>
+    <p className="text-sm">Semana de lunes a domingo. El Excel conserva el formato KMX-FW; requiere Microsoft Excel en este equipo.</p>
+    {busy && <p role="status">{data ? "Generando reporte…" : "Preparando información…"}</p>}{error && <p role="alert" className="text-kmx-red">{error}</p>}
+    {output && <div role="status" className="work-card space-y-2"><p className="font-bold">Reporte Excel guardado.</p><p className="break-all text-sm">{output.path}</p><p className="break-all font-mono text-xs">SHA256: {output.sha256}</p></div>}
+    {data && <><div className="grid gap-3 sm:grid-cols-4">{[["Proyectos", data.projects.length], ["Actividades", entries.length], ["Entregables aceptados", accepted.length], ["Entregables en revisión", submitted.length]].map(([label, value]) => <div key={label} className="work-card"><p className="eyebrow">{label}</p><strong className="milestone">{value}</strong></div>)}</div>
+      <p className="text-sm">Aceptaciones vigentes al consultar. Una actividad terminada no equivale a un entregable aceptado. {entries.filter(e => !resultIds.has(e.activity.project_id) && e.activity.supervisor_approved).length} cierres de actividades del formato anterior.</p>
+      <div className="grid gap-3 sm:grid-cols-3"><div className="work-card"><p>Paro registrado</p><strong className="milestone">{issues.reduce((sum, e) => sum + e.issue.downtime_hours, 0).toFixed(2)} h</strong></div><div className="work-card"><p>Scrap registrado</p><strong className="milestone">{issues.reduce((sum, e) => sum + e.issue.scrap_pieces, 0)} piezas</strong></div><div className="work-card"><p>Capacidad y desviación</p><strong>Sin datos</strong><p className="text-sm">Se requieren esfuerzo y horas disponibles.</p></div></div>
+      <ul className="space-y-3" aria-label="Proyectos del periodo">{data.projects.map(detail => {
+        const result = results.find(value => value.project.id === detail.project.id);
+        const count = result?.reviews.filter(review => review.commitment_revision === result.commitment?.revision && review.status === "accepted").length ?? 0;
+        return <li className="work-card" key={detail.project.id}><h4 className="font-bold">{detail.project.wbs} · {detail.project.name}</h4><p>{detail.entries.length} actividades del periodo · {result ? `${count}/${result.commitment?.deliverables.length ?? 0} entregables aceptados` : `${detail.entries.filter(e => e.activity.supervisor_approved).length} cierres del formato anterior`}</p><p className="text-sm">{detail.project.start_date} → {detail.project.target_date}</p><div className="mt-3 grid gap-3 sm:grid-cols-3"><p>Objetivo: <strong>{detail.project.target_hours == null ? "Sin definir" : `${detail.project.target_hours} h`}</strong></p><p>Invertido acumulado: <strong>{detail.hours_spent == null ? "Sin datos completos" : `${detail.hours_spent} h`}</strong></p><p>{result ? "Bloqueos abiertos" : "Avance declarado"}: <strong>{result ? result.blockers.filter(value => !value.blocker.resolved_at).length : detail.engineer_progress.map(p => `${p.engineer_name}: ${p.progress == null ? "Sin declarar" : `${p.progress}%`}`).join(" · ") || "Sin declarar"}</strong></p></div></li>;
+      })}</ul>
+    </>}
+  </section>;
+}

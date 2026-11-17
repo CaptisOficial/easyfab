@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { createProject, plantCatalogs, projectsOverview, type CatalogItem, type NewProject, type Project, type ProjectsOverview } from "../../lib/api";
+import { createProject, plantCatalogs, projectsOverview, reorderProjects, type CatalogItem, type NewProject, type Project, type ProjectsOverview } from "../../lib/api";
 import { saveResultsCommitment, saveResultsActivity, type ResultsDeliverable } from "../../lib/results-api";
 import { ProjectTimeline } from "./ProjectTimeline";
 import { ResultsWork } from "./ResultsWork";
@@ -16,7 +16,7 @@ export function Projects() {
   const [lines, setLines] = useState<CatalogItem[]>([]);
   const [input, setInput] = useState(empty);
   const [commitment, setCommitment] = useState(emptyCommitment());
-const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRow()]);
+  const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRow()]);
   const [createdProject, setCreatedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,7 +31,7 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
       .finally(() => { if (active) setLoading(false); });
     plantCatalogs().then(cat => {
       if (active) setLines(cat.config.lines.filter(l => l.active));
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { active = false; };
   }, []);
   async function reload() {
@@ -92,7 +92,9 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
       }
       await saveResultsCommitment({ project_id: project.id, expected_revision: null, commitment: draft, change_reason: "Definición inicial del proyecto", legacy_deliverable_id: null });
       for (const [idx, row] of validRows.entries()) {
-        const assignedEngineerId = input.engineer_ids[idx % input.engineer_ids.length];
+        const assignedEngineerId = row.responsible_id && input.engineer_ids.includes(row.responsible_id)
+          ? row.responsible_id
+          : input.engineer_ids[idx % input.engineer_ids.length];
         const deliverableId = deliverables[idx].id;
         try {
           await saveResultsActivity({
@@ -113,7 +115,7 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
               note: null,
             },
           });
-        } catch {}
+        } catch { }
       }
 
       setCreatedProject(null); setInput(empty); setCommitment(emptyCommitment()); setActivityRows([emptyActivityRow()]); setShowCreate(false);
@@ -126,34 +128,39 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
       value={input[key]} onChange={e => setInput({ ...input, [key]: e.target.value })} /></label>;
   }
   function closeDetail() { if (!detailBusy) { setSelected(null); void reload(); } }
+  async function handleReorder(projectIds: string[]) {
+    if (!data?.can_create || saving) return;
+    setSaving(true); setError("");
+    try {
+      const updated = await reorderProjects(projectIds);
+      setData(updated);
+      setNotice("Prioridad de proyectos actualizada.");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
   return <>
     <section className="min-w-0 w-full mx-auto space-y-4" aria-labelledby="projects-title">
       <div className="flex items-center justify-between gap-3"><h3 id="projects-title" className="sr-only">Proyectos FAB</h3>
         <button className="border px-3 py-2" disabled={loading || saving} onClick={reload} aria-label="Actualizar proyectos"><span aria-hidden="true">⟳</span></button>
-{data?.can_create && <button className="btn-primary" disabled={loading || saving} onClick={() => { setShowCreate(true); setError(""); }}><span aria-hidden="true">+ </span>Nuevo proyecto</button>}
+        {data?.can_create && <button className="btn-primary" disabled={loading || saving} onClick={() => { setShowCreate(true); setError(""); }}><span aria-hidden="true">+ </span>Nuevo proyecto</button>}
       </div>
       {loading && <p role="status">Cargando proyectos…</p>}
       {error && !showCreate && <p role="alert" className="text-kmx-red">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      {data && <><p className="text-sm">{data.write_message}</p><ProjectTimeline data={data} onOpen={setSelected} /></>}
+      {data && <><p className="text-sm">{data.write_message}</p><ProjectTimeline data={data} onOpen={setSelected} onReorder={data.can_create ? handleReorder : undefined} /></>}
     </section>
     {showCreate && data?.can_create && <ResultsModal title="Registrar proyecto" closeLabel="Cerrar registro de proyecto" busy={saving} onClose={() => setShowCreate(false)} wide>
       {error && <p role="alert" className="results-error">{error}</p>}
       {createdProject && <p className="results-warning">El proyecto ya se registró. Completa o reintenta guardar su definición de cierre; no se creará otro proyecto.</p>}
       <form onSubmit={submit} className="space-y-6">
-        {/* Sección 1: Datos Generales y Objetivo */}
         <section className="results-panel space-y-3" aria-labelledby="section-project-title">
-          <div className="border-b pb-2">
-            <h4 id="section-project-title" className="text-sm font-bold uppercase tracking-wider text-kmx-carbon flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-kmx-carbon text-white text-xs">1</span>
-              Datos generales y objetivo del proyecto
-            </h4>
-            <p className="text-xs text-kmx-gray-500">Título, objetivo y alcance global, línea de proceso, fechas y equipo asignado.</p>
-          </div>
           <fieldset disabled={saving || !!createdProject} className="project-create-grid">
             {field("name", "Título del proyecto", "text", true)}
             <label className="field project-form-wide">
-              Objetivo global y alcance
+              Objetivo
               <textarea
                 aria-label="Resultado esperado y alcance"
                 className="mt-1 block w-full border p-2"
@@ -166,9 +173,6 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
                   setCommitment(c => ({ ...c, final_outcome: val, scope: val }));
                 }}
               />
-              <span className="results-help">
-                El objetivo engloba los alcances y el resultado final verificable del proyecto.
-              </span>
             </label>
             <label className="field">Área de proceso
               <select className="mt-1 block w-full border p-2" required value={input.process_area}
@@ -182,20 +186,25 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
               {!lines.length && <span className="results-help">No hay líneas activas registradas en Catálogos FAB.</span>}
             </label>
             <fieldset className="space-y-2 min-w-0 border border-kmx-gray-300 p-3">
-              <legend className="px-1 text-sm font-bold">Ingenieros responsables</legend>
-              <p className="text-xs text-kmx-gray-500">Selecciona los ingenieros asignados. Las subactividades se distribuirán de forma equitativa entre ellos.</p>
+              <legend className="px-1 text-sm font-bold">Responsable(s)</legend>
               <div className="max-h-40 space-y-2 overflow-y-auto">
                 {data.leads.map(m => (
                   <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer">
                     <input
                       type="checkbox"
                       checked={input.engineer_ids.includes(m.id)}
-                      onChange={e => setInput(current => ({
-                        ...current,
-                        engineer_ids: e.target.checked
-                          ? [...current.engineer_ids, m.id]
-                          : current.engineer_ids.filter(id => id !== m.id),
-                      }))}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setInput(current => ({
+                          ...current,
+                          engineer_ids: checked
+                            ? [...current.engineer_ids, m.id]
+                            : current.engineer_ids.filter(id => id !== m.id),
+                        }));
+                        if (!checked) {
+                          setActivityRows(rows => rows.map(r => (r.responsible_id === m.id ? { ...r, responsible_id: undefined } : r)));
+                        }
+                      }}
                     />
                     {m.name} · {m.id}
                   </label>
@@ -205,36 +214,24 @@ const [activityRows, setActivityRows] = useState<ActivityRow[]>([emptyActivityRo
             {field("start_date", "Fecha de inicio", "date")}
             {field("target_date", "Fecha objetivo", "date")}
           </fieldset>
-        </section>
 
-        {/* Sección 2: Subactividades de Trabajo y Entregables de Cierre (DoD embebido) */}
-        <section className="results-panel space-y-3" aria-labelledby="section-activities-title">
-          <div className="border-b pb-2">
-            <h4 id="section-activities-title" className="text-sm font-bold uppercase tracking-wider text-kmx-carbon flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-kmx-carbon text-white text-xs">2</span>
-              Subactividades y entregables de cierre (Sprints / Historias)
-            </h4>
-            <p className="text-xs text-kmx-gray-500">
-              Plan inicial de trabajo. Cada subactividad representa un sprint o historia y embebe su entregable y condición de cierre verificable (DoD).
-            </p>
-          </div>
           <ActivityGrid
             rows={activityRows}
             onChange={setActivityRows}
             disabled={saving}
+            engineers={data.leads.filter(l => input.engineer_ids.includes(l.id))}
             embedDeliverable
             defaultStartDate={input.start_date}
             defaultDueDate={input.target_date}
           />
         </section>
 
-        <p className="results-help">Los ingenieros asignados podrán planear y actualizar sus actividades sin aprobación cotidiana.</p>
         <div className="results-modal-sticky-actions">
           <button disabled={saving || !data.leads.length} className="btn-primary">{saving ? "Guardando…" : createdProject ? "Reintentar definición de cierre" : "Guardar proyecto"}</button>
         </div>
       </form>
     </ResultsModal>}
-    {selected && <ResultsModal title="Detalle del proyecto" busy={detailBusy} onClose={closeDetail} wide>
+    {selected && <ResultsModal title={data?.projects.find(p => p.id === selected)?.name ?? "Detalle del proyecto"} busy={detailBusy} onClose={closeDetail} wide hideHeader>
       <ResultsWork key={selected} projectId={selected} onBack={closeDetail} onBusyChange={setDetailBusy} />
     </ResultsModal>}
   </>;

@@ -24,6 +24,11 @@ pub(super) fn validate(project: &Project) -> Result<(), String> {
     if project.engineer_ids.is_empty() || project.engineer_ids.iter().any(|id| !text(id) || !engineers.insert(id)) {
         return Err("Selecciona ingenieros sin duplicados para el proyecto.".into());
     }
+    if let Some(priority) = project.priority {
+        if priority == 0 {
+            return Err("La prioridad del proyecto debe ser mayor que cero.".into());
+        }
+    }
     if let Some(value) = project.extra.get("target_hours") {
         if !value.as_f64().is_some_and(|v| v.is_finite() && v > 0.0) {
             return Err("Objetivo de horas de proyecto inválido.".into());

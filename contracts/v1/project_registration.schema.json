@@ -1,8 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB project registration IPC v1",
-  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project. Errors are strings. Overview requires a revalidated normal session and the active workspace. Admin/Supervisor read all projects and active Engineer assignment choices. Engineer receives only projects whose engineer_ids contains the authenticated session ID, only their own identity in leads, and can_create=false; the client supplies no identity or project filter. Creation requires the sole active Supervisor account in the confirmed four-account workflow; Admin manages accounts and reads projects. Multiple active Supervisors block creation. No caller-supplied paths or identity; no per-machine or per-user build authorization. One working session per account is an operating precondition, not distributed exclusion guaranteed by OneDrive. New projects require one or more unique active trusted Engineer IDs in engineer_ids, all equally responsible; no lead is selected.",
+  "description": "projects_overview returns overview; create_project accepts {input: new_project} and returns projects.schema.json#/$defs/project; reorder_projects accepts {project_ids: string[]} and returns overview. Errors are strings. Overview requires a revalidated normal session and the active workspace. Admin/Supervisor read all projects and active Engineer assignment choices. Engineer receives only projects whose engineer_ids contains the authenticated session ID, only their own identity in leads, and can_create=false; the client supplies no identity or project filter. Creation and reordering require the sole active Supervisor account in the confirmed four-account workflow; Admin manages accounts and reads projects. Multiple active Supervisors block creation and reordering. No caller-supplied paths or identity; no per-machine or per-user build authorization. One working session per account is an operating precondition, not distributed exclusion guaranteed by OneDrive. New projects require one or more unique active trusted Engineer IDs in engineer_ids, all equally responsible; no lead is selected.",
   "$defs": {
+    "reorder_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_ids"
+      ],
+      "properties": {
+        "project_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "new_project": {
       "type": "object",
       "additionalProperties": false,

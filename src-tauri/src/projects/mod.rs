@@ -108,6 +108,15 @@ pub fn set_target(
     })?;
     Ok(project)
 }
+fn with_priority(mut projects: Vec<Project>) -> Vec<Project> {
+    for (idx, p) in projects.iter_mut().enumerate() {
+        if p.priority.is_none() {
+            p.priority = Some((idx + 1) as u32);
+        }
+    }
+    projects
+}
+
 fn with_work_status(dir: &Path, mut project: Project) -> Result<Project, String> {
     if crate::results_store::is_active(dir, &project.id)? {
         crate::results_store::project_projection(dir, &mut project)?;
@@ -153,13 +162,15 @@ pub fn overview(
         }
         auth::revalidate(dir, session)?;
         let (doc, _) = storage::read(dir)?;
+        let projects = with_priority(doc.projects)
+            .into_iter()
+            .map(|project| with_work_status(dir, project))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .filter(|project| project.engineer_ids.contains(&session.user.id))
+            .collect();
         return Ok(Overview {
-            projects: doc
-                .projects
-                .into_iter()
-                .map(|project| with_work_status(dir, project))
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter().filter(|project| project.engineer_ids.contains(&session.user.id)).collect(),
+            projects,
             leads: vec![models::Lead {
                 id: session.user.id.clone(),
                 name: session.user.name.clone(),
@@ -170,9 +181,13 @@ pub fn overview(
     }
     let leads = context(dir, session)?;
     let (doc, _) = storage::read(dir)?;
+    let projects = with_priority(doc.projects)
+        .into_iter()
+        .map(|project| with_work_status(dir, project))
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Overview {
-        projects: doc.projects.into_iter().map(|project| with_work_status(dir, project)).collect::<Result<Vec<_>, _>>()?,
+        projects,
         leads,
         can_create: require_supervisor(dir, session).is_ok(),
         write_message: if session.user.role == "supervisor" {
@@ -211,6 +226,7 @@ pub fn create(
     } else {
         input.wbs.trim().to_string()
     };
+    let next_priority = (doc.projects.len() + 1) as u32;
     let mut project = Project {
         id: String::new(),
         wbs: generated_wbs,
@@ -220,6 +236,7 @@ pub fn create(
         start_date: input.start_date,
         target_date: input.target_date,
         status: "Not Started".into(),
+        priority: Some(next_priority),
         extra: Default::default(),
     };
     // 256 random bits, and verify against the current document before insertion.
@@ -253,5 +270,45 @@ pub fn create(
     })?;
     Ok(project)
 }
+
+pub fn reorder(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    project_ids: Vec<String>,
+) -> Result<Overview, String> {
+    active(dir, workspace_id)?;
+    require_supervisor(dir, session)?;
+    let (mut doc, previous) = storage::read(dir)?;
+    if project_ids.len() != doc.projects.len() {
+        return Err("La lista de proyectos para reordenar no coincide con el total de proyectos.".into());
+    }
+    let mut seen = std::collections::HashSet::new();
+    for id in &project_ids {
+        if !seen.insert(id.to_lowercase()) {
+            return Err("Lista de proyectos contiene identificadores duplicados.".into());
+        }
+    }
+    for project in &doc.projects {
+        if !seen.contains(&project.id.to_lowercase()) {
+            return Err("Faltan proyectos existentes en el reordenamiento.".into());
+        }
+    }
+    doc.projects.sort_by_key(|p| {
+        project_ids
+            .iter()
+            .position(|id| id.eq_ignore_ascii_case(&p.id))
+            .unwrap_or(usize::MAX)
+    });
+    for (idx, p) in doc.projects.iter_mut().enumerate() {
+        p.priority = Some((idx + 1) as u32);
+    }
+    storage::save(dir, &doc, &previous, || {
+        active(dir, workspace_id)?;
+        require_supervisor(dir, session)
+    })?;
+    overview(dir, session, workspace_id)
+}
+
 #[cfg(test)]
 mod tests;

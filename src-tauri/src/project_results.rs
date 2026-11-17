@@ -156,8 +156,9 @@ pub(crate) fn capabilities(
     let supervisor = session.user.role == "supervisor"
         && crate::projects::require_supervisor(dir, session).is_ok();
     Ok(Capabilities {
-        can_plan_activities: session.user.role == "engineer"
-            && project.engineer_ids.contains(&session.user.id),
+        can_plan_activities: (session.user.role == "engineer"
+            && project.engineer_ids.contains(&session.user.id))
+            || supervisor,
         can_change_commitment: supervisor,
         can_review_deliverables: supervisor,
         can_resolve_blockers: supervisor,
@@ -351,8 +352,8 @@ impl Plan {
         Ok(())
     }
 
-    /// Pure closure precondition, not a persisted approval. R2/R6 supply the current
-    /// verified decisions and authorized immutable evidence, and verify final outcome.
+    /// Pure closure precondition, not a persisted approval. Deliverables are evaluated
+    /// during project closure rather than individually beforehand.
     pub fn validate_closure(
         &self,
         reviews: &[(Submission, Decision)],
@@ -360,17 +361,19 @@ impl Plan {
         final_outcome_verified: bool,
     ) -> Result<(), String> {
         self.validate()?;
-        if !final_outcome_verified
-            || reviews.len() != self.commitment.deliverables.len()
-            || !unique_ids(reviews.iter().map(|(s, _)| s.deliverable_id.as_str()))
-        {
-            return Err("Falta comprobar el estado final o el conjunto de entregables.".into());
+        if !final_outcome_verified {
+            return Err("Falta comprobar el estado final y los entregables al cierre.".into());
         }
-        for (submission, decision) in reviews {
-            self.validate_submission(submission, verified_evidence_ids)?;
-            self.validate_decision(submission, decision)?;
-            if !decision.accepted {
-                return Err("Hay entregables sin aceptación.".into());
+        if !reviews.is_empty() {
+            if !unique_ids(reviews.iter().map(|(s, _)| s.deliverable_id.as_str())) {
+                return Err("Revisiones duplicadas en el cierre.".into());
+            }
+            for (submission, decision) in reviews {
+                self.validate_submission(submission, verified_evidence_ids)?;
+                self.validate_decision(submission, decision)?;
+                if !decision.accepted {
+                    return Err("Hay entregables sin aceptación.".into());
+                }
             }
         }
         Ok(())

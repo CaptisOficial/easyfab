@@ -13,6 +13,8 @@ pub struct Project {
     pub start_date: String,
     pub target_date: String,
     pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<u32>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
 }
@@ -29,6 +31,8 @@ struct StoredProject {
     start_date: String,
     target_date: String,
     status: String,
+    #[serde(default)]
+    priority: Option<u32>,
     #[serde(flatten)]
     extra: BTreeMap<String, serde_json::Value>,
 }
@@ -44,7 +48,7 @@ impl TryFrom<StoredProject> for Project {
             id: value.id, wbs: value.wbs, name: value.name,
             process_area: value.process_area, engineer_ids,
             start_date: value.start_date, target_date: value.target_date,
-            status: value.status, extra: value.extra,
+            status: value.status, priority: value.priority, extra: value.extra,
         })
     }
 }

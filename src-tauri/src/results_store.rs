@@ -91,6 +91,14 @@ pub struct ResolveInput {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct ActivityRevisionInput {
+    pub project_id: String,
+    pub activity_id: String,
+    pub expected_revision: String,
+    pub comment: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AttachmentInput {
     pub project_id: String,
     pub activity_id: String,
@@ -305,9 +313,14 @@ fn verify_event(event: &Event, project_id: &str, key: &[u8]) -> Result<(), Strin
         Payload::Commitment(_) => {
             ["activate", "change_commitment", "resolve"].contains(&event.action.as_str())
         }
-        Payload::Activity(_) => {
-            ["migrate", "save_activity", "attach", "resolve"].contains(&event.action.as_str())
-        }
+        Payload::Activity(_) => [
+            "migrate",
+            "save_activity",
+            "request_activity_revision",
+            "attach",
+            "resolve",
+        ]
+        .contains(&event.action.as_str()),
         Payload::Blocker(_) => {
             ["report", "attend", "resolve_blocker", "resolve"].contains(&event.action.as_str())
         }
@@ -324,6 +337,7 @@ fn verify_event(event: &Event, project_id: &str, key: &[u8]) -> Result<(), Strin
         || [
             "resolve",
             "migrate",
+            "request_activity_revision",
             "accept",
             "return",
             "revise",
@@ -332,7 +346,7 @@ fn verify_event(event: &Event, project_id: &str, key: &[u8]) -> Result<(), Strin
         ]
         .contains(&event.action.as_str());
     if (supervisor_only && event.author_role != "supervisor")
-        || (!supervisor_only && event.author_role != "engineer")
+        || (!supervisor_only && !["engineer", "supervisor"].contains(&event.author_role.as_str()))
     {
         return Err("Revisión con autoridad inválida.".into());
     }
@@ -588,19 +602,6 @@ impl Graph {
         if data.commitment_revision != commitment.revision {
             return Some("El cierre recibido corresponde a un compromiso anterior. El Supervisor debe reabrir y validar el compromiso vigente.".into());
         }
-        let current: Option<BTreeSet<_>> = commitment
-            .deliverables
-            .iter()
-            .map(|d| {
-                self.current(&format!("review/{}", d.id))
-                    .ok()
-                    .flatten()
-                    .map(|event| event.id.clone())
-            })
-            .collect();
-        if current.as_ref() != Some(&data.review_revisions.iter().cloned().collect()) {
-            return Some("Las revisiones de entregables cambiaron respecto al cierre recibido. El Supervisor debe reabrir y comprobar el conjunto vigente.".into());
-        }
         None
     }
     fn current(&self, stream: &str) -> Result<Option<&Event>, String> {
@@ -676,8 +677,9 @@ fn context(
     let supervisor =
         session.user.role == "supervisor" && projects::require_supervisor(dir, session).is_ok();
     let capabilities = domain::Capabilities {
-        can_plan_activities: session.user.role == "engineer"
-            && project.engineer_ids.contains(&session.user.id),
+        can_plan_activities: (session.user.role == "engineer"
+            && project.engineer_ids.contains(&session.user.id))
+            || supervisor,
         can_change_commitment: supervisor,
         can_review_deliverables: supervisor,
         can_resolve_blockers: supervisor,
@@ -1310,7 +1312,7 @@ fn evidence_set(
     Ok(requested.clone())
 }
 fn verify_closure(
-    dir: &Path,
+    _dir: &Path,
     project_id: &str,
     graph: &Graph,
     closure: &ClosureData,
@@ -1322,42 +1324,7 @@ fn verify_closure(
     if closure.commitment_revision != plan.commitment.revision {
         return Err("El cierre corresponde a otro compromiso.".into());
     }
-    let mut reviews = vec![];
-    let mut revisions = vec![];
-    for d in &plan.commitment.deliverables {
-        let event = graph
-            .current(&format!("review/{}", d.id))?
-            .ok_or("Falta aceptación de un entregable.")?;
-        let Payload::Review(r) = &event.payload else {
-            return Err("Revisión inválida.".into());
-        };
-        if r.status != domain::ReviewStatus::Accepted {
-            return Err("Hay entregables sin aceptación.".into());
-        }
-        reviews.push((
-            r.submission.clone().ok_or("Falta solicitud de revisión.")?,
-            r.decision.clone().ok_or("Falta decisión de aceptación.")?,
-        ));
-        revisions.push(event.id.clone());
-    }
-    if revisions.into_iter().collect::<BTreeSet<_>>()
-        != closure
-            .review_revisions
-            .iter()
-            .cloned()
-            .collect::<BTreeSet<_>>()
-    {
-        return Err("Las aceptaciones cambiaron después del cierre.".into());
-    }
-    let requested = reviews
-        .iter()
-        .flat_map(|(submission, _)| requested_evidence(submission))
-        .collect();
-    plan.validate_closure(
-        &reviews,
-        &evidence_set(dir, project_id, graph, &requested)?,
-        true,
-    )
+    plan.validate_closure(&[], &HashSet::new(), true)
 }
 fn initialize(
     dir: &Path,
@@ -1837,6 +1804,57 @@ pub fn review(
     publish(dir, session, workspace_id, &event)?;
     detail(dir, session, workspace_id, &input.project_id)
 }
+pub fn request_activity_revision(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    input: ActivityRevisionInput,
+) -> Result<Detail, String> {
+    let (_, caps) = context(dir, session, workspace_id, &input.project_id)?;
+    require(caps.can_change_commitment)?;
+    let graph = read_graph(dir, &input.project_id)?;
+    if graph.closed()? {
+        return Err("El proyecto está cerrado. Reábrelo para solicitar revisiones.".into());
+    }
+    if input.comment.trim().is_empty() {
+        return Err("Describe el motivo de la revisión solicitada.".into());
+    }
+    let mut plan = graph.plan(&input.project_id)?;
+    let stream = format!("activity/{}", input.activity_id);
+    let parents = graph.expected(&stream, Some(&input.expected_revision))?;
+    let event = graph.current(&stream)?.ok_or("Actividad inexistente.")?;
+    let Payload::Activity(old) = &event.payload else {
+        return Err("Actividad inválida.".into());
+    };
+    if old.activity.status != domain::ActivityStatus::Done {
+        return Err("Solo puedes solicitar revisión de actividades marcadas como finalizadas.".into());
+    }
+    let mut data = old.clone();
+    data.activity.status = domain::ActivityStatus::InProgress;
+    data.activity.progress = 75;
+    data.activity.note = Some(format!("[Revisión solicitada]: {}", input.comment.trim()));
+    if let Some(slot) = plan
+        .activities
+        .iter_mut()
+        .find(|item| item.id == data.activity.id)
+    {
+        *slot = data.activity.clone();
+    }
+    plan.validate()?;
+    let event = annotate(
+        new_event(
+            session,
+            &input.project_id,
+            parents,
+            "request_activity_revision",
+            Payload::Activity(data),
+        )?,
+        Some(&plan.commitment.revision),
+        &input.comment,
+    )?;
+    publish(dir, session, workspace_id, &event)?;
+    detail(dir, session, workspace_id, &input.project_id)
+}
 pub fn set_closure(
     dir: &Path,
     session: &auth::Session,
@@ -1857,22 +1875,10 @@ pub fn set_closure(
     if !input.closed && input.comment.trim().is_empty() {
         return Err("Describe el motivo de reapertura del proyecto.".into());
     }
-    let review_revisions = plan
-        .commitment
-        .deliverables
-        .iter()
-        .filter_map(|d| {
-            graph
-                .current(&format!("review/{}", d.id))
-                .ok()
-                .flatten()
-                .map(|e| e.id.clone())
-        })
-        .collect();
     let closure = ClosureData {
         closed: input.closed,
         commitment_revision: plan.commitment.revision.clone(),
-        review_revisions,
+        review_revisions: vec![],
         comment: input.comment.trim().into(),
     };
     if closure.closed {

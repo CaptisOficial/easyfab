@@ -52,6 +52,20 @@ pub(crate) fn create_project(
     let session = guard.as_ref().ok_or("Ingresa primero.")?;
     projects::create(&data_path(&state)?, session, &workspace_id(&state)?, input)
 }
+#[tauri::command]
+pub(crate) fn reorder_projects(
+    state: State<'_, AppState>,
+    project_ids: Vec<String>,
+) -> Result<projects::Overview, String> {
+    let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    let session = guard.as_ref().ok_or("Ingresa primero.")?;
+    projects::reorder(
+        &data_path(&state)?,
+        session,
+        &workspace_id(&state)?,
+        project_ids,
+    )
+}
 
 #[cfg(test)]
 mod tests {
@@ -98,5 +112,17 @@ mod tests {
         .err()
         .unwrap();
         assert!(error.as_str().unwrap().contains("invalid args"));
+        assert_eq!(
+            call("reorder_projects", serde_json::json!({"projectIds":["p1"]}))
+                .err()
+                .unwrap(),
+            serde_json::json!("Ingresa primero.")
+        );
+        assert!(call("reorder_projects", serde_json::json!({}))
+            .err()
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("invalid args"));
     }
 }

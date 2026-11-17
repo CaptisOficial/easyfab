@@ -143,7 +143,7 @@ fn isolated_project_journey() {
     assert!(!engineer_policy.can_resolve_blockers);
     let supervisor_policy = policy(&dir, &sessions[1], &info.id, &first.id).unwrap();
     assert!(supervisor_policy.can_change_commitment && supervisor_policy.can_review_deliverables && supervisor_policy.can_resolve_blockers);
-    assert!(!supervisor_policy.can_plan_activities);
+    assert!(supervisor_policy.can_plan_activities);
     let admin_policy = policy(&dir, &admin, &info.id, &first.id).unwrap();
     assert!(!admin_policy.can_plan_activities && !admin_policy.can_review_deliverables && !admin_policy.can_change_commitment && !admin_policy.can_resolve_blockers);
     assert!(policy(&dir, &second_engineer, &info.id, &first.id).is_err()); // stale credential
@@ -184,6 +184,24 @@ fn isolated_project_journey() {
         overview(&dir, &fresh, &reopened.id).unwrap().projects.len(),
         2
     );
+    // Supervisor reorders projects, updating active priority sequence.
+    assert!(reorder(&dir, &admin, &info.id, vec![second.id.clone(), first.id.clone()]).is_err());
+    assert!(reorder(&dir, &sessions[0], &info.id, vec![second.id.clone(), first.id.clone()]).is_err());
+    assert!(reorder(&dir, &sessions[1], &info.id, vec![second.id.clone()]).is_err());
+    assert!(reorder(&dir, &sessions[1], &info.id, vec![second.id.clone(), second.id.clone()]).is_err());
+    assert!(reorder(&dir, &sessions[1], &info.id, vec![second.id.clone(), "missing".into()]).is_err());
+    let reordered = reorder(&dir, &sessions[1], &info.id, vec![second.id.clone(), first.id.clone()]).unwrap();
+    assert_eq!(reordered.projects.len(), 2);
+    assert_eq!(reordered.projects[0].id, second.id);
+    assert_eq!(reordered.projects[0].priority, Some(1));
+    assert_eq!(reordered.projects[1].id, first.id);
+    assert_eq!(reordered.projects[1].priority, Some(2));
+    let eng_overview = overview(&dir, &sessions[0], &info.id).unwrap();
+    assert_eq!(eng_overview.projects.len(), 1);
+    assert_eq!(eng_overview.projects[0].id, first.id);
+    assert_eq!(eng_overview.projects[0].priority, Some(2));
+    // Restore original order for subsequent checks
+    let _ = reorder(&dir, &sessions[1], &info.id, vec![first.id.clone(), second.id.clone()]).unwrap();
     let saved = fs::read(&path).unwrap();
     let value: serde_json::Value = serde_json::from_slice(&saved).unwrap();
     assert_eq!(value["legacy_metadata"]["keep"], true);

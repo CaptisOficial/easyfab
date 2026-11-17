@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import type { ResultsDeliverable } from "../../lib/results-api";
 
 export interface ActivityRow {
@@ -6,12 +6,18 @@ export interface ActivityRow {
   wbs: string;
   title: string;
   deliverable_id: string;
+  responsible_id?: string;
   criterion?: string;
   evidence_required?: boolean;
   start_date: string;
   due_date: string;
   status: "not_started" | "in_progress" | "done";
   at_risk: boolean;
+}
+
+export interface ActivityEngineerOption {
+  id: string;
+  name: string;
 }
 
 export function autoGenerateWbs(
@@ -77,6 +83,7 @@ export function ActivityGrid({
   onChange,
   disabled = false,
   deliverables = [],
+  engineers = [],
   embedDeliverable = false,
   defaultStartDate = "",
   defaultDueDate = "",
@@ -85,12 +92,14 @@ export function ActivityGrid({
   onChange: (rows: ActivityRow[]) => void;
   disabled?: boolean;
   deliverables?: ResultsDeliverable[];
+  engineers?: ActivityEngineerOption[];
   embedDeliverable?: boolean;
   defaultStartDate?: string;
   defaultDueDate?: string;
 }) {
   const [pasteBuffer, setPasteBuffer] = useState("");
   const [showPaste, setShowPaste] = useState(false);
+  const showResponsible = engineers.length > 1;
 
   function updateRow(index: number, patch: Partial<ActivityRow>) {
     const updated = rows.map((r, i) => (i === index ? { ...r, ...patch } : r));
@@ -152,19 +161,24 @@ export function ActivityGrid({
     setShowPaste(false);
   }
 
+  function handleRowKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (!disabled && index === rows.length - 1 && rows[index]?.title.trim()) {
+      addRow();
+    }
+  }
+
+  function handleTitlePaste(e: ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData?.getData("text") ?? "";
+    if (!text.includes("\t") && !text.includes("\n")) return;
+    e.preventDefault();
+    handlePasteText(text);
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-kmx-gray-500">
-            {embedDeliverable ? `Subactividades y entregables (${rows.length})` : `Subactividades (${rows.length})`}
-          </span>
-          <p className="results-help">
-            {embedDeliverable
-              ? "Cada fila representa un sprint o historia de trabajo y embebe su condición de cierre verificable (entregable) para el supervisor."
-              : "La numeración (#) y la asignación entre los ingenieros responsables se generan automáticamente."}
-          </p>
-        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -219,7 +233,7 @@ export function ActivityGrid({
       )}
 
       <div className="border border-kmx-gray-200 rounded overflow-x-auto shadow-sm">
-        <table className="results-table w-full">
+        <table className="results-table activity-grid-table w-full">
           <thead>
             <tr className="bg-kmx-gray-50 text-left text-xs font-semibold text-kmx-gray-600 border-b">
               <th className="p-2 w-12 text-center" title="Número autogenerado">#</th>
@@ -229,6 +243,7 @@ export function ActivityGrid({
               ) : (
                 deliverables.length > 0 && <th className="p-2 min-w-[180px]">Entregable asociado</th>
               )}
+              {showResponsible && <th className="p-2 min-w-[150px]">Responsable</th>}
               <th className="p-2 min-w-[220px]">Fechas (Inicio → Fin)</th>
               <th className="p-2 w-28">Estado</th>
               <th className="p-2 w-20 text-center">Riesgo</th>
@@ -238,7 +253,7 @@ export function ActivityGrid({
           <tbody>
             {rows.map((row, idx) => (
               <tr key={row.id} className="border-b last:border-b-0 hover:bg-kmx-gray-50/50 align-top">
-                <td className="p-2 text-center align-middle">
+                <td className="p-2 text-center align-middle" data-label="Número">
                   <span
                     className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-kmx-gray-100 text-kmx-carbon border"
                     title={`Número: ${row.wbs}`}
@@ -246,7 +261,7 @@ export function ActivityGrid({
                     {row.wbs}
                   </span>
                 </td>
-                <td className="p-2 align-middle">
+                <td className="p-2 align-middle" data-label={embedDeliverable ? "Subactividad / Entregable" : "Título"}>
                   <input
                     type="text"
                     disabled={disabled}
@@ -256,10 +271,12 @@ export function ActivityGrid({
                     placeholder={embedDeliverable ? "Título de la subactividad o entregable..." : "Descripción de la subactividad..."}
                     value={row.title}
                     onChange={e => updateRow(idx, { title: e.target.value })}
+                    onKeyDown={e => handleRowKeyDown(idx, e)}
+                    onPaste={handleTitlePaste}
                   />
                 </td>
                 {embedDeliverable ? (
-                  <td className="p-2 align-middle">
+                  <td className="p-2 align-middle" data-label="Condición de cierre / Criterio">
                     <div className="space-y-1">
                       <input
                         type="text"
@@ -269,6 +286,7 @@ export function ActivityGrid({
                         placeholder="Criterio verificable (opcional; si se omite usa el título)..."
                         value={row.criterion ?? ""}
                         onChange={e => updateRow(idx, { criterion: e.target.value })}
+                        onKeyDown={e => handleRowKeyDown(idx, e)}
                       />
                       <label className="inline-flex items-center gap-1 text-[11px] cursor-pointer text-kmx-gray-600 select-none">
                         <input
@@ -284,7 +302,7 @@ export function ActivityGrid({
                   </td>
                 ) : (
                   deliverables.length > 0 && (
-                    <td className="p-2 align-middle">
+                    <td className="p-2 align-middle" data-label="Entregable asociado">
                       <select
                         disabled={disabled}
                         className="w-full p-1.5 border rounded text-xs"
@@ -301,8 +319,26 @@ export function ActivityGrid({
                     </td>
                   )
                 )}
-                <td className="p-2 align-middle">
-                  <div className="flex items-center gap-1.5">
+                {showResponsible && (
+                  <td className="p-2 align-middle" data-label="Responsable">
+                    <select
+                      disabled={disabled}
+                      aria-label={`Responsable ${idx + 1}`}
+                      className="w-full p-1.5 border rounded text-xs"
+                      value={row.responsible_id ?? ""}
+                      onChange={e => updateRow(idx, { responsible_id: e.target.value || undefined })}
+                    >
+                      <option value="">Automático (equitativo)</option>
+                      {engineers.map(eng => (
+                        <option key={eng.id} value={eng.id}>
+                          {eng.name} · {eng.id}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                )}
+                <td className="p-2 align-middle" data-label="Fechas (Inicio → Fin)">
+                  <div className="activity-grid-dates-cell flex items-center gap-1.5">
                     <input
                       type="date"
                       disabled={disabled}
@@ -324,7 +360,7 @@ export function ActivityGrid({
                     />
                   </div>
                 </td>
-                <td className="p-2 align-middle">
+                <td className="p-2 align-middle" data-label="Estado">
                   <select
                     disabled={disabled}
                     className="w-full p-1.5 border rounded text-xs"
@@ -335,7 +371,7 @@ export function ActivityGrid({
                     <option value="in_progress">En curso</option>
                   </select>
                 </td>
-                <td className="p-2 text-center align-middle">
+                <td className="p-2 text-center align-middle" data-label="Riesgo">
                   <label className="inline-flex items-center gap-1 text-xs cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -348,7 +384,7 @@ export function ActivityGrid({
                     </span>
                   </label>
                 </td>
-                <td className="p-2 text-center align-middle">
+                <td className="p-2 text-center align-middle" data-label="Acción">
                   <button
                     type="button"
                     disabled={disabled || rows.length <= 1}

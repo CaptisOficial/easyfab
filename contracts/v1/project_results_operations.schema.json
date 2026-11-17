@@ -450,6 +450,30 @@
         }
       }
     },
+    "activity_revision_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "activity_id",
+        "expected_revision",
+        "comment"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "activity_id": {
+          "$ref": "project_results.schema.json#/$defs/id"
+        },
+        "expected_revision": {
+          "$ref": "project_results.schema.json#/$defs/revision"
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
     "blocker_input": {
       "type": "object",
       "additionalProperties": false,

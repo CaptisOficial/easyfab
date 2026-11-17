@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EasyFAB Macro Projects",
-  "description": "Projects have one or more equally responsible Engineers in engineer_ids. Legacy stored lead_engineer_id is read as a single-member assignment; dual assignment fields are rejected. New assignments require active trusted Engineers without duplicates. Existing unknown fields are preserved. A positive contribution from any assigned Engineer starts the project; queries have no write effects and preserve On Hold/Completed. No location migration is implied. For explicitly activated result-oriented projects, projects.json retains identity/name/WBS/area; current dates, engineer_ids and status in overview are projected from signed project results. Historical index values are not dual-written. Engineer filtering uses the current projected assignments.",
+  "description": "Projects have one or more equally responsible Engineers in engineer_ids. Legacy stored lead_engineer_id is read as a single-member assignment; dual assignment fields are rejected. New assignments require active trusted Engineers without duplicates. Existing unknown fields are preserved. The sequence and optional priority field define the active priority order established by the Supervisor. A positive contribution from any assigned Engineer starts the project; queries have no write effects and preserve On Hold/Completed. No location migration is implied. For explicitly activated result-oriented projects, projects.json retains identity/name/WBS/area; current dates, engineer_ids and status in overview are projected from signed project results. Historical index values are not dual-written. Engineer filtering uses the current projected assignments.",
   "type": "object",
   "required": [
     "version",
@@ -64,6 +64,11 @@
             "Completed",
             "On Hold"
           ]
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Active priority rank of the project established by the Supervisor."
         },
         "engineer_ids": {
           "type": "array",

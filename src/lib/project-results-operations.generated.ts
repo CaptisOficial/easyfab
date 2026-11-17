@@ -143,3 +143,10 @@ export type OperationsAttachmentInput = {
   name: Domain.ResultsText;
   bytes: Array<number>;
 };
+
+export type OperationsActivityRevisionInput = {
+  project_id: Domain.ResultsId;
+  activity_id: Domain.ResultsId;
+  expected_revision: Domain.ResultsRevision;
+  comment: string;
+};

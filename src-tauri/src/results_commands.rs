@@ -22,6 +22,7 @@ macro_rules! command {
 command!(results_save_commitment, results_store::CommitmentInput, save_commitment);
 command!(results_save_activity, results_store::ActivityInput, save_activity);
 command!(results_save_blocker, results_store::BlockerInput, save_blocker);
+command!(results_request_activity_revision, results_store::ActivityRevisionInput, request_activity_revision);
 command!(results_review, results_store::ReviewInput, review);
 command!(results_set_closure, results_store::ClosureInput, set_closure);
 command!(results_resolve, results_store::ResolveInput, resolve);
@@ -63,7 +64,7 @@ mod tests {
             assert_eq!(response.err().unwrap(), serde_json::json!("Ingresa primero."));
         }
         // Each mutating endpoint rejects malformed payloads before any filesystem access.
-        for command in ["results_save_commitment", "results_save_activity", "results_save_blocker", "results_review", "results_set_closure", "results_resolve", "results_attach_evidence"] {
+        for command in ["results_save_commitment", "results_save_activity", "results_save_blocker", "results_request_activity_revision", "results_review", "results_set_closure", "results_resolve", "results_attach_evidence"] {
             let response = get_ipc_response(&window, tauri::webview::InvokeRequest { cmd: command.into(), callback: tauri::ipc::CallbackFn(0), error: tauri::ipc::CallbackFn(1), url: "http://tauri.localhost".parse().unwrap(), body: tauri::ipc::InvokeBody::Json(serde_json::json!({"input":{}})), headers: Default::default(), invoke_key: tauri::test::INVOKE_KEY.into() });
             let error = response.err().unwrap();
             assert!(error.as_str().unwrap().contains("invalid args"), "{command}: {error}");

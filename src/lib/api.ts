@@ -63,6 +63,7 @@ export interface NewProject {
 export interface Project extends NewProject {
   id: string;
   target_hours?: number;
+  priority?: number;
   status: "Not Started" | "In Progress" | "Completed" | "On Hold";
 }
 export interface ProjectsOverview {
@@ -75,6 +76,7 @@ export const projectsOverview = () => invoke<ProjectsOverview>("projects_overvie
 // Backend-derived policy; each result write revalidates session and revisions separately.
 export const projectResultsCapabilities = (projectId: string) => invoke<ResultsCapabilities>("project_results_capabilities", { projectId });
 export const createProject = (input: NewProject) => invoke<Project>("create_project", { input });
+export const reorderProjects = (projectIds: string[]) => invoke<ProjectsOverview>("reorder_projects", { projectIds });
 
 export interface Evidence { id: string; name: string; relative_path: string; sha256: string; size: number }
 export interface Activity { id: string; project_id: string; wbs: string; task_title: string; start_date: string; due_date: string; milestone_gate: number; status: string; supervisor_approved: boolean; evidence: Evidence[]; hours_spent: number | null }

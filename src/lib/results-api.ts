@@ -7,6 +7,7 @@ export const resultsDetail = (projectId: string) => invoke<ResultsDetail>("resul
 export const saveResultsCommitment = (input: Ops.OperationsCommitmentInput) => invoke<ResultsDetail>("results_save_commitment", { input });
 export const saveResultsActivity = (input: Ops.OperationsActivityInput) => invoke<ResultsDetail>("results_save_activity", { input });
 export const saveResultsBlocker = (input: Ops.OperationsBlockerInput) => invoke<ResultsDetail>("results_save_blocker", { input });
+export const requestActivityRevision = (input: Ops.OperationsActivityRevisionInput) => invoke<ResultsDetail>("results_request_activity_revision", { input });
 export const reviewResultsDeliverable = (input: Ops.OperationsReviewInput) => invoke<ResultsDetail>("results_review", { input });
 export const setResultsClosure = (input: Ops.OperationsClosureInput) => invoke<ResultsDetail>("results_set_closure", { input });
 export const resolveResultsConflict = (input: Ops.OperationsResolveInput) => invoke<ResultsDetail>("results_resolve", { input });

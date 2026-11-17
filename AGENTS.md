@@ -12,3 +12,4 @@ La entrada al proyecto es [el índice](docs/indice.md). Desde allí consulta el 
 - Sigue la guía de desarrollo y sus verificaciones. Informa resultados reales, comprobaciones pendientes y siguiente acción.
 - Actualiza la fuente del dato que cambió y enlázala desde otros documentos. Registra el estado de desarrollo solo en el plan.
 - Si una instrucción vigente cambia una decisión documentada, corrige su fuente y explica el cambio. No alteres silenciosamente restricciones del producto.
+- Al cerrar cambios de código, pregunta al usuario si le conviene compilar la aplicación de escritorio en ese momento (en lugar de compilarla automáticamente); cuando confirme o solicite compilar, compila la aplicación de escritorio completa con Tauri (`npm run tauri build` / `npm.cmd run tauri build`), no solo el bundle del frontend.

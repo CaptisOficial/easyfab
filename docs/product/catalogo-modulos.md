@@ -6,7 +6,7 @@ Define las superficies, funciones y permisos esperados. El [plan](plan-maestro.m
 
 - Todos ingresan con ID y contraseña EasyFAB, independientes de Windows. Detalle de cuentas y confianza: [auth](../architecture/auth.md).
 - Admin administra usuarios y catálogos y consulta proyectos. No registra proyectos ni aprueba cierres.
-- El único Supervisor activo registra y modifica el plan de los proyectos y valida cierres. Engineer registra y edita actividades en proyectos asignados y solicita cierre.
+- El único Supervisor activo registra y modifica el plan de los proyectos, puede registrar avances en las actividades cuando sea necesario y valida cierres. Engineer registra y edita actividades en proyectos asignados y solicita cierre.
 - Reporte de incidencias previsto para los tres roles; seguimiento/correcciones se concretan antes de implementarse. Contratos y RBAC determinan las operaciones efectivas.
 
 ## Mapa funcional
@@ -15,8 +15,8 @@ Define las superficies, funciones y permisos esperados. El [plan](plan-maestro.m
 |---|---|---|
 | NAV-01 · Top Nav y panel lateral | Identidad, fecha, navegación, sección activa y cierre de sesión. Panel superpuesto con cierre exterior y teclado. | Todos; destinos según permisos. |
 | INI-01 · Inicio | Resumen de avances, próximos cierres, vencidos y pendientes de revisión. Abrir el registro de origen desde cada indicador. | Engineer: sus asignaciones; Supervisor/Admin: panorama general. |
-| PRO-01 · Proyectos: listado y alta | Consultar y abrir proyectos en un cronograma tabular único. Seleccionar semana (lunes a domingo), mes o año, fecha de referencia y periodo anterior/siguiente u Hoy; mostrar proyectos cuyo intervalo inicio–objetivo intersecta el periodo, con días en semana/mes y meses en año. Abrir el detalle para actividades y avance; el calendario representa planificación, no ejecución. Supervisor registra nombre, ingenieros responsables y fechas conforme al contrato vigente. | Solo Supervisor registra y modifica el plan; Admin consulta. Engineer consulta sus proyectos autorizados. |
-| PRO-02 · Detalle, actividades y avance | Consultar fechas y estado; registrar y editar actividades del proyecto asignado, hitos y evidencias; solicitar cierre y consultar resultado. | Ingenieros asignados colaboran en actividades conservando autoría e historial; Supervisor valida cierres. Admin consulta. |
+| PRO-01 · Proyectos: listado y alta | Consultar y abrir proyectos en un cronograma tabular único ordenado por la prioridad activa del área. Filtrar por estado (`Activos` por defecto, `En curso` y `Completados`) para evitar saturación, además de seleccionar semana (lunes a domingo), mes o año, fecha de referencia y periodo anterior/siguiente u Hoy; mostrar proyectos cuyo intervalo inicio–objetivo intersecta el periodo, con días en semana/mes y meses en año. Abrir el detalle para actividades y avance; el calendario representa planificación, no ejecución. Supervisor registra nombre, ingenieros responsables y fechas conforme al contrato vigente, y ajusta la prioridad activa reordenando proyectos. | Solo Supervisor registra, modifica el plan y reordena la prioridad activa; Admin consulta. Engineer consulta sus proyectos autorizados respetando la prioridad. |
+| PRO-02 · Detalle, actividades y avance | Consultar fechas y estado; registrar y editar actividades del proyecto asignado, hitos y evidencias; solicitar cierre y consultar resultado. | Ingenieros asignados y el único Supervisor activo pueden registrar avances y editar actividades conservando autoría e historial; Supervisor valida cierres. Admin consulta. |
 | LIN-01 · Problemas de línea: registro e historial | Registrar equipo/línea, descripción y fecha; paro y scrap cuando apliquen; consultar seguimiento hasta resolución. | Reporte previsto para los tres roles; responsables de seguimiento y correcciones por definir antes de implementar. |
 | CFG-01 · Configuración | Preferencias de la aplicación y conexión con la carpeta de gestión. Cada módulo mantiene una responsabilidad propia; Usuarios y Catálogos tienen destinos laterales independientes. | Todos; opciones filtradas por rol. |
 | CFG-02 · Carpeta de gestión | Mostrar carpeta activa; tras cerrar sesión, seleccionar y validar otra raíz. Mostrar errores sin perder la referencia válida ni migrar datos. | Sin sesión activa; permisos de carpeta y confianza siguen aplicando. |
@@ -25,6 +25,11 @@ Define las superficies, funciones y permisos esperados. El [plan](plan-maestro.m
 | ADM-02 · Catálogos | Mantener líneas, equipos y tipos de falla: añadir, editar nombres, asociar equipos a líneas y activar/desactivar sin eliminar identificadores ni referencias. | Admin edita; lectura según necesidad y contrato. |
 
 ## Reglas funcionales
+
+Decisión de producto de 2026-11-10: El Supervisor puede reordenar directamente la secuencia
+de proyectos en el cronograma tabular para fijar la prioridad activa de planta (#1, #2, #3...).
+Ingenieros y Admin consultan los proyectos respetando este orden de prioridad activo;
+solo el Supervisor cuenta con autorización para modificar la prioridad activa.
 
 Decisión de producto de 2026-10-29: PRO-01 permite asignar varios ingenieros con
 igual responsabilidad; sustituye la asignación de un único responsable. Un proyecto
@@ -72,38 +77,46 @@ de esta capacidad y su piloto se registran en el [plan](plan-maestro.md).
 - Los ingenieros asignados organizan y registran las actividades para alcanzar
   esos resultados. Cada actividad se vincula con el entregable al que contribuye;
   una actividad intermedia terminada no acredita por sí sola el cierre del proyecto.
-- Tabla de actividades y Gantt dentro del proyecto muestran los mismos registros:
-  entregable asociado, actividad, responsable entre los asignados, fechas previstas,
-  dependencias, estado y avance. Cambiar la previsión no cambia la fecha compromiso.
-  El Gantt no requiere captura adicional ni reprograma compromisos automáticamente.
-- «Actualizar actividad» abre un modal flotante contextual. Permite guardar avance
-  o estado sin autorización del Supervisor; nota y evidencia son opcionales salvo
-  evidencia necesaria al solicitar aceptación. No se vuelve a pedir el proyecto,
-  el entregable ni las fechas si no están cambiando. Se conservan borradores ante
-  error, se evitan envíos duplicados y se mantiene navegación por teclado.
+- **Planeación y previsión por entregables** es la fuente única de trabajo dentro
+  de `PRO-02`: el cronograma Gantt agrupado por entregables de cierre concentra el
+  avance y las acciones principales (`Registrar avance`, y para Supervisor en
+  actividades finalizadas `Solicitar revisión`, además de `Cerrar proyecto`). Para el
+  perfil Ingeniero se omiten la tabla dual, el alta suelta de actividades y las
+  bitácoras redundantes; la trazabilidad completa permanece en el **Historial del
+  proyecto**. Cambiar la previsión nunca modifica la fecha compromiso.
+- **Registrar avance / Actualizar actividad** abre un modal contextual que contrasta
+  **Condición anterior** (último reporte, evidencias e historial) contra **Nueva
+  condición (Avance)** en cuatro grupos: fecha de registro (mapeada a `forecast_start`
+  en altas nuevas sin alterar `recorded_at`), nueva condición y marca de cumplimiento
+  para el cierre, evidencia opcional (máx. 20 MB) y riesgo en fecha objetivo
+  (`at_risk`, impedimento, ayuda requerida y previsión estimada). Se conservan
+  borradores ante error, se evitan envíos duplicados y se mantiene navegación por teclado.
 - Un bloqueo registra impedimento, actividad afectada, ayuda o decisión requerida,
   fecha y seguimiento hasta resolución. Es independiente del porcentaje de avance
   y de «en riesgo». El Supervisor puede atenderlo sin aprobar la actualización.
   Solo cambios de compromiso, bloqueos que requieren intervención, conflictos
-  concurrentes y solicitudes de aceptación necesitan su atención; las actualizaciones
-  ordinarias quedan disponibles para consulta sin generar aprobaciones.
-- Terminar una actividad es una declaración de ejecución del ingeniero. La revisión
-  formal corresponde al entregable, mediante solicitud explícita con evidencia.
-  Esto sustituye como comportamiento objetivo el acoplamiento actual entre 100 %
-  de actividad y solicitud de aprobación. La transición debe preservar decisiones
-  históricas; no convertirlas automáticamente en aceptación de entregables nuevos.
+  concurrentes, revisiones solicitadas por el Supervisor sobre actividades finalizadas
+  y el cierre del proyecto necesitan su atención; las actualizaciones ordinarias quedan
+  disponibles para consulta sin generar aprobaciones.
+- Decisión de producto de 2026-11-14: Los entregables **no** se revisan ni se
+  aprueban de manera individual; todos los entregables se evalúan en conjunto durante
+  el **cierre del proyecto** para reducir la carga de trabajo del Supervisor. No obstante,
+  el Supervisor puede revisar en cualquier momento los documentos (evidencias) de una
+  actividad marcada como finalizada (`Cumplida`) y **solicitar una revisión**
+  correspondiente con motivo obligatorio, devolviéndola a `En curso` y conservando el
+  registro en el historial.
 - Una entrega intermedia puede comprobar una dependencia o permitir una decisión.
   No exige una aprobación adicional por defecto. El alcance determina si una compra
   termina al formalizarse, al recibirse o al quedar el activo en operación.
 - Los criterios particulares expresan qué debe cumplir cada entregable. La
   Definition of Done común exige criterios cumplidos, evidencia recuperable y
-  aceptación del Supervisor; incluye documentación y transferencia cuando el
-  alcance las requiera. Adjuntar un archivo o declarar 100 % no demuestra aceptación.
-- El cierre del proyecto requiere que todos los entregables de cierre acordados
-  estén aceptados y que se cumpla el estado final. El Supervisor puede devolver
-  una entrega indicando el criterio incumplido. La revisión debe identificar el
-  plan, los criterios y la evidencia evaluados; cambios posteriores del plan no
-  convierten automáticamente una aceptación anterior en aceptación del nuevo alcance.
+  evaluación del Supervisor al cierre del proyecto; incluye documentación y transferencia
+  cuando el alcance las requiera. Adjuntar un archivo o declarar 100 % no demuestra
+  aceptación por sí solo.
+- El cierre del proyecto requiere que el Supervisor evalúe los entregables de cierre
+  acordados, sus evidencias y el estado final del proyecto. La revisión de cierre debe
+  identificar el plan, los criterios y la evidencia evaluados; cambios posteriores del
+  plan requieren nueva validación de cierre.
 - En mejoras de proceso, el plan incluye línea base, meta medible, periodo de
   comprobación y responsable del control posterior cuando sean necesarios para
   demostrar y sostener el resultado. No se exige DMAIC completo a toda compra o gestión.
@@ -116,9 +129,8 @@ evidencias según los criterios definidos para ese proyecto.
 
 Esta decisión amplía la planeación y el cierre, sin definir una fórmula de avance
 por conteo de entregables. Las compuertas 0/25/50/75/100 pueden mantenerse para
-captura, separadas de la aceptación del entregable en el flujo objetivo. Los contratos,
-la persistencia y la interfaz deben adaptarse antes de exigir este flujo en la
-aplicación; no se reinterpretan ni migran proyectos existentes implícitamente.
+captura. Los contratos, la persistencia y la interfaz conservan compatibilidad con
+decisiones históricas sin exigir revisión individual de entregables en el flujo activo.
 
 ### Flujo objetivo para revisión
 
@@ -126,17 +138,13 @@ aplicación; no se reinterpretan ni migran proyectos existentes implícitamente.
 flowchart TD
     A[Supervisor define compromiso y DoD] --> B[Ingenieros revisan y desglosan actividades]
     B --> C[Tabla y Gantt del mismo plan de actividades]
-    C --> D[Ingeniero actualiza desde modal y continúa]
-    D --> E{¿Necesita intervención?}
-    E -- No --> C
-    E -- Bloqueo o cambio de compromiso --> F[Supervisor atiende o acuerda cambio]
-    F --> C
-    D --> G[Solicita aceptación del entregable con evidencia]
-    G --> H{Supervisor verifica criterios}
-    H -- Devuelve con motivo --> C
-    H -- Acepta --> I{¿Conjunto aceptado y estado final cumplido?}
-    I -- No --> C
-    I -- Sí --> J[Cierre del proyecto]
+    C --> D[Ingeniero actualiza avance/documentos y marca actividad finalizada]
+    D --> E{¿Supervisor revisa documentos de actividad finalizada?}
+    E -- Solicita revisión con motivo --> C
+    E -- Sin observaciones --> F{¿Proyecto listo para cierre?}
+    F -- No --> C
+    F -- Sí --> G[Supervisor evalúa entregables, criterios y estado final en Cierre del proyecto]
+    G --> H[Cierre del proyecto]
 ```
 
 La ruta cotidiana es tabla → modal → guardar → continuar. El seguimiento de

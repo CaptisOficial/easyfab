@@ -159,4 +159,59 @@ describe("ActivityGrid", () => {
     expect(screen.queryByText("Entregable asociado")).toBeNull();
     expect(screen.queryByRole("combobox")).toBeTruthy(); // solo el de status
   });
+
+  it("permite asignar responsable por fila solo cuando hay más de un ingeniero", async () => {
+    const user = userEvent.setup();
+    const rows: ActivityRow[] = [emptyRow("", "2026-11-01", "2026-11-10")];
+    const onChange = vi.fn();
+
+    render(
+      <ActivityGrid
+        rows={rows}
+        onChange={onChange}
+        embedDeliverable
+        engineers={[
+          { id: "ing_1", name: "Ana" },
+          { id: "ing_2", name: "Luis" },
+        ]}
+      />
+    );
+
+    const select = screen.getByLabelText("Responsable 1");
+    await user.selectOptions(select, "ing_2");
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect((onChange.mock.calls[0][0] as ActivityRow[])[0].responsible_id).toBe("ing_2");
+  });
+
+  it("importa filas TSV al pegar directo en el título y agrega fila con Enter en la última fila", async () => {
+    const onChange = vi.fn();
+    const rows: ActivityRow[] = [
+      { ...emptyRow("", "2026-11-01", "2026-11-10"), title: "Actividad inicial" },
+    ];
+
+    render(
+      <ActivityGrid
+        rows={rows}
+        onChange={onChange}
+        embedDeliverable
+      />
+    );
+
+    const titleInput = screen.getByLabelText("Nombre del entregable 1");
+    fireEvent.keyDown(titleInput, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect((onChange.mock.calls[0][0] as ActivityRow[]).length).toBe(2);
+
+    fireEvent.paste(titleInput, {
+      clipboardData: {
+        getData: () => "Paso A\t2026-11-02\t2026-11-04\tFoto\nPaso B\t2026-11-05\t2026-11-08\tChecklist",
+      },
+    });
+    expect(onChange).toHaveBeenCalledTimes(2);
+    const pasted = onChange.mock.calls[1][0] as ActivityRow[];
+    expect(pasted.length).toBe(3);
+    expect(pasted[1].title).toBe("Paso A");
+    expect(pasted[1].criterion).toBe("Foto");
+    expect(pasted[2].title).toBe("Paso B");
+  });
 });

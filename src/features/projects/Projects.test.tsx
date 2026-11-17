@@ -5,8 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { Projects } from "./Projects";
 import * as api from "../../lib/api";
 import * as resultsApi from "../../lib/results-api";
-vi.mock("../../lib/results-api", () => ({ saveResultsCommitment: vi.fn(), resultsDetail: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
-vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn(), projectDetail: vi.fn(), plantCatalogs: vi.fn() }));
+vi.mock("../../lib/results-api", () => ({ saveResultsCommitment: vi.fn(), resultsDetail: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
+vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn(), projectDetail: vi.fn(), plantCatalogs: vi.fn(), reorderProjects: vi.fn() }));
 afterEach(cleanup);
 const overview: api.ProjectsOverview = { projects: [], leads: [{ id: "eng", name: "Engineer Test" }], can_create: true, write_message: "Registro disponible" };
 const project: api.Project = { id: "PRJ-test", wbs: "FAB-1", name: "Fixture project", process_area: "FAB", engineer_ids: ["eng"], start_date: "2026-10-28", target_date: "2026-11-30", status: "Not Started" };
@@ -147,7 +147,7 @@ it("recarga el cronograma al cerrar el trabajo para mostrar el proyecto iniciado
   await screen.findByText("Definir el resultado antes de planear");
   vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [{ ...project, status: "In Progress" }] });
   await userEvent.click(screen.getByRole("button", { name: "Cerrar detalle del proyecto" }));
-  await screen.findByText("En curso");
+  await screen.findByText("En curso", { selector: ".schedule-status" });
   expect(api.projectsOverview).toHaveBeenCalledTimes(2);
 });
 
@@ -243,5 +243,107 @@ it("simplifica el registro unificando objetivo global y subactividades con entre
         responsible_id: "eng",
       }),
     })
+  );
+});
+
+it("muestra la prioridad activa y permite al supervisor reordenar proyectos", async () => {
+  const p1: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Proyecto Uno", priority: 1 };
+  const p2: api.Project = { ...project, id: "PRJ-2", wbs: "FAB-02", name: "Proyecto Dos", priority: 2 };
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [p1, p2], can_create: true });
+  vi.mocked(api.reorderProjects).mockResolvedValue({
+    ...overview,
+    projects: [{ ...p2, priority: 1 }, { ...p1, priority: 2 }],
+    can_create: true,
+  });
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+
+  expect(screen.getByText("#1")).toBeTruthy();
+  expect(screen.getByText("#2")).toBeTruthy();
+
+  const downBtn = screen.getByRole("button", { name: "Bajar prioridad de FAB-01" });
+  await userEvent.click(downBtn);
+
+  expect(api.reorderProjects).toHaveBeenCalledWith(["PRJ-2", "PRJ-1"]);
+  await screen.findByText("Prioridad de proyectos actualizada.");
+});
+
+it("no muestra controles de reordenamiento de prioridad a no supervisores", async () => {
+  const p1: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Proyecto Uno", priority: 1 };
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [p1], can_create: false });
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+
+  expect(screen.getByText("#1")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Subir prioridad de FAB-01" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Bajar prioridad de FAB-01" })).toBeNull();
+});
+
+it("filtra proyectos por activos, en curso y completados", async () => {
+  const notStarted: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Sin iniciar Uno", status: "Not Started", priority: 1 };
+  const inProgress: api.Project = { ...project, id: "PRJ-2", wbs: "FAB-02", name: "En curso Dos", status: "In Progress", priority: 2 };
+  const completed: api.Project = { ...project, id: "PRJ-3", wbs: "FAB-03", name: "Completado Tres", status: "Completed", priority: 3 };
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [notStarted, inProgress, completed] });
+
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+
+  expect(screen.getByRole("button", { name: "Activos" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("FAB-01 · Sin iniciar Uno")).toBeTruthy();
+  expect(screen.getByText("FAB-02 · En curso Dos")).toBeTruthy();
+  expect(screen.queryByText("FAB-03 · Completado Tres")).toBeNull();
+
+  await userEvent.click(screen.getByRole("button", { name: "En curso" }));
+  expect(screen.getByRole("button", { name: "En curso" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByText("FAB-01 · Sin iniciar Uno")).toBeNull();
+  expect(screen.getByText("FAB-02 · En curso Dos")).toBeTruthy();
+  expect(screen.queryByText("FAB-03 · Completado Tres")).toBeNull();
+
+  await userEvent.click(screen.getByRole("button", { name: "Completados" }));
+  expect(screen.getByRole("button", { name: "Completados" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByText("FAB-01 · Sin iniciar Uno")).toBeNull();
+  expect(screen.queryByText("FAB-02 · En curso Dos")).toBeNull();
+  expect(screen.getByText("FAB-03 · Completado Tres")).toBeTruthy();
+});
+
+it("muestra estado vacío cuando no hay proyectos completados en el filtro", async () => {
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [project] });
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+
+  await userEvent.click(screen.getByRole("button", { name: "Completados" }));
+  expect(screen.getByText("No hay proyectos completados.")).toBeTruthy();
+});
+
+it("respeta el responsable elegido por fila cuando se asignan varios ingenieros al proyecto", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.projectsOverview).mockResolvedValue({
+    ...overview,
+    leads: [...overview.leads, { id: "eng2", name: "Second Engineer" }],
+  });
+  vi.mocked(api.createProject).mockResolvedValue({ ...project, engineer_ids: ["eng", "eng2"] });
+
+  render(<Projects />);
+  await user.click(await screen.findByRole("button", { name: "Nuevo proyecto" }));
+  await user.type(screen.getByLabelText("Título del proyecto"), "Asignación directa");
+  await user.selectOptions(screen.getByLabelText("Área de proceso"), "FAB");
+  await user.click(screen.getByLabelText("Engineer Test · eng"));
+  await user.click(screen.getByLabelText("Second Engineer · eng2"));
+  fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-10-28" } });
+  fireEvent.change(screen.getByLabelText("Fecha objetivo"), { target: { value: "2026-11-30" } });
+  fillDoD();
+  await user.selectOptions(screen.getByLabelText("Responsable 1"), "eng2");
+
+  await user.click(screen.getByRole("button", { name: "Guardar proyecto" }));
+  await screen.findByText("Proyecto guardado con condiciones de cierre.");
+
+  expect(resultsApi.saveResultsActivity).toHaveBeenCalledWith(
+    expect.objectContaining({
+      activity: expect.objectContaining({ responsible_id: "eng2" }),
+    }),
   );
 });

@@ -404,7 +404,7 @@ fn full_flow(f: &Fixture) {
         .any(|e| e.summary.contains("Initial synthetic agreement")));
     assert_eq!(d.project.status, "Not Started");
     assert!(detail(&f.dir, &f.engineer, "wrong-space", &p.id).is_err());
-    assert!(save(f, &f.supervisor, &d, task("task_1", "delivery_1")).is_err());
+    assert!(save(f, &f.admin, &d, task("task_1", "delivery_1")).is_err());
     d = save(f, &f.engineer, &d, task("task_1", "delivery_1")).unwrap();
     let stale = row(&d, "task_1").revision.clone();
     let mut completed = row(&d, "task_1").activity.clone();
@@ -413,6 +413,11 @@ fn full_flow(f: &Fixture) {
     d = save(f, &f.colleague, &d, completed.clone()).unwrap();
     assert_eq!(row(&d, "task_1").created_by, "engineer");
     assert_eq!(row(&d, "task_1").edited_by, "engineer2");
+    let mut supervisor_update = row(&d, "task_1").activity.clone();
+    supervisor_update.note = Some("Avance verificado por supervisor".into());
+    d = save(f, &f.supervisor, &d, supervisor_update).unwrap();
+    assert_eq!(row(&d, "task_1").created_by, "engineer");
+    assert_eq!(row(&d, "task_1").edited_by, "supervisor");
     assert!(d.reviews.is_empty());
     assert_eq!(d.project.status, "In Progress");
     assert!(save_activity(
@@ -427,7 +432,28 @@ fn full_flow(f: &Fixture) {
     )
     .is_err());
     d = save(f, &f.colleague, &d, task("task_2", "delivery_2")).unwrap();
-    assert!(set_closure(&f.dir, &f.supervisor, &f.id, close_input(&d, true)).is_err());
+    // Supervisor can review documents and request revision on a finished (Done) activity at any time.
+    let rev_input = |id: &str, rev: &str, comment: &str| ActivityRevisionInput {
+        project_id: p.id.clone(),
+        activity_id: id.into(),
+        expected_revision: rev.into(),
+        comment: comment.into(),
+    };
+    let t1 = row(&d, "task_1").clone();
+    assert!(request_activity_revision(&f.dir, &f.engineer, &f.id, rev_input("task_1", &t1.revision, "Falta evidencia")).is_err());
+    assert!(request_activity_revision(&f.dir, &f.supervisor, &f.id, rev_input("task_1", &t1.revision, "  ")).is_err());
+    let t2 = row(&d, "task_2").clone();
+    assert!(request_activity_revision(&f.dir, &f.supervisor, &f.id, rev_input("task_2", &t2.revision, "Aún no finalizada")).is_err());
+    d = request_activity_revision(&f.dir, &f.supervisor, &f.id, rev_input("task_1", &t1.revision, "Falta firma en documento")).unwrap();
+    let t1_after = row(&d, "task_1");
+    assert_eq!(t1_after.activity.status, domain::ActivityStatus::InProgress);
+    assert_eq!(t1_after.activity.progress, 75);
+    assert!(t1_after.activity.note.as_deref().unwrap_or("").contains("Falta firma en documento"));
+    assert!(d.history.iter().any(|h| h.action == "request_activity_revision"));
+    let mut t1_re_done = t1_after.activity.clone();
+    t1_re_done.status = domain::ActivityStatus::Done;
+    t1_re_done.progress = 100;
+    d = save(f, &f.engineer, &d, t1_re_done).unwrap();
     assert!(activities::save(
         &f.dir,
         &f.engineer,
@@ -638,7 +664,6 @@ fn full_flow(f: &Fixture) {
         None,
     )
     .unwrap();
-    assert!(set_closure(&f.dir, &f.supervisor, &f.id, close_input(&d, true)).is_err());
     d = upload(f, &d, "task_2");
     let e2 = row(&d, "task_2").evidence[0].clone();
     d = act(
@@ -662,7 +687,7 @@ fn full_flow(f: &Fixture) {
     let path = project_root(&f.dir, &p.id).unwrap().join(&e2.relative_path);
     let bytes = fs::read(&path).unwrap();
     fs::write(&path, b"tampered").unwrap();
-    assert!(set_closure(&f.dir, &f.supervisor, &f.id, close_input(&d, true)).is_err());
+    assert!(evidence_bytes(&f.dir, &f.supervisor, &f.id, &p.id, &e2.id).is_err());
     fs::write(&path, &bytes).unwrap();
     assert!(set_closure(&f.dir, &f.engineer, &f.id, close_input(&d, true)).is_err());
     let mut no_confirm = close_input(&d, true);
@@ -726,7 +751,6 @@ fn full_flow(f: &Fixture) {
         None,
     )
     .unwrap();
-    assert!(set_closure(&f.dir, &f.supervisor, &f.id, close_input(&d, true)).is_err());
     let baseline = d.baseline.as_ref().unwrap().revision.clone();
     let mut change = initial(&p);
     change.expected_revision = Some(d.commitment.as_ref().unwrap().revision.clone());
@@ -1300,7 +1324,8 @@ fn stale_closure_can_be_reopened(f: &Fixture) {
     assert!(!d.closure.as_ref().unwrap().closed);
     assert_eq!(d.project.status, "In Progress");
     assert!(d.history.iter().any(|e| e.revision == late.id));
-    assert!(set_closure(&f.dir, &f.supervisor, &f.id, close_input(&d, true)).is_err());
+    d = set_closure(&f.dir, &f.supervisor, &f.id, close_input(&d, true)).unwrap();
+    assert!(d.closure.as_ref().unwrap().closed);
 }
 
 fn unrelated_corruption_does_not_block_target(f: &Fixture) {

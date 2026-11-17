@@ -22,25 +22,22 @@ ninguna escritura: cada operación revalida sesión, asignación y revisión al 
 
 `results_detail({projectId})` devuelve `$defs/detail` de operaciones. Las escrituras
 reciben `{input}`: `results_save_commitment`, `results_save_activity`,
-`results_save_blocker`, `results_review`, `results_set_closure`, `results_resolve`
-y `results_attach_evidence`, con sus entradas homónimas en el esquema.
-`results_read_evidence({projectId,evidenceId})` devuelve bytes verificados. Todas
-las mutaciones devuelven el detalle actualizado. Errores son cadenas; una revisión
-obsoleta no se convierte en guardado exitoso ni se reintenta sobre datos nuevos.
+`results_save_blocker`, `results_request_activity_revision`, `results_review`,
+`results_set_closure`, `results_resolve` y `results_attach_evidence`, con sus entradas
+homónimas en el esquema. `results_read_evidence({projectId,evidenceId})` devuelve bytes
+verificados. Todas las mutaciones devuelven el detalle actualizado. Errores son cadenas;
+una revisión obsoleta no se convierte en guardado exitoso ni se reintenta sobre datos
+nuevos.
 
 | Operación de dominio | Engineer asignado | Supervisor único activo | Admin |
 |---|---|---|---|
 | Consultar proyecto autorizado | Sí | Sí | Sí |
-| Planear y actualizar actividades compartidas; reportar bloqueo | Sí | Consulta | Consulta |
-| Solicitar o retirar revisión de entregable | Sí | Consulta | Consulta |
-| Cambiar compromiso, reabrir aceptación o resolver conflicto concurrente | No | Sí | No |
-| Aceptar/devolver entregable; resolver bloqueo | No | Sí | No |
+| Planear y actualizar actividades compartidas; reportar bloqueo | Sí | Sí | Consulta |
+| Revisar documentos y solicitar revisión de actividad finalizada | No | Sí | No |
+| Cambiar compromiso, evaluar entregables al cierre o resolver conflicto concurrente | No | Sí | No |
+| Resolver bloqueo | No | Sí | No |
 
-El Supervisor puede registrar atención y resolución sin convertirse en editor
-cotidiano de actividades. Si hay más de un Supervisor activo, las capacidades de
-autoridad son falsas. Una sesión restringida, revocada o no asignada no obtiene
-acceso de Engineer al proyecto. Un responsable de actividad no reemplaza ni amplía
-la asignación al proyecto.
+El único Supervisor activo también puede registrar avances en las actividades, reportar bloqueos y solicitar revisión cuando sea necesario, además de atender bloqueos, resolver conflictos y validar entregables. Si hay más de un Supervisor activo, las capacidades de autoridad son falsas. Una sesión restringida, revocada o no asignada no obtiene acceso de Engineer al proyecto. Un responsable de actividad no reemplaza ni amplía la asignación al proyecto.
 
 ## Relaciones y fechas
 
@@ -109,12 +106,20 @@ proyecto por lectura ni por porcentaje. Reabrir un proyecto cerrado requiere acc
 explícita del Supervisor y nueva revisión del estado de cierre, conservando el cierre
 anterior; un cambio posterior de compromiso exige nueva aceptación.
 
-La precondición de cierre comprueba todos los entregables, decisiones vigentes y
-sin conflicto, evidencias verificadas y estado final validado por Supervisor. El
-validador puro no autentica firmas ni cambia el estado persistido: Rust verifica
-las decisiones y evidencias. `confirm_final_outcome` es una declaración explícita
-del Supervisor autorizado que queda dentro de la revisión de cierre firmada; un
-booleano enviado por Engineer no concede cierre ni aceptación.
+La precondición de cierre comprueba que no existan conflictos pendientes, que el
+compromiso vigente esté validado y que el Supervisor confirme el estado final y la
+evaluación conjunta de los entregables del proyecto (sin exigir aprobaciones
+individuales previas por entregable). El validador puro no autentica firmas ni cambia el
+estado persistido: Rust verifica el plan y el estado de cierre. `confirm_final_outcome`
+es una declaración explícita del Supervisor autorizado que queda dentro de la revisión
+de cierre firmada; un booleano enviado por Engineer no concede cierre ni aceptación.
+Las solicitudes/decisiones históricas de entregables (`review/<id>`) se conservan para
+lectura y auditoría sin bloquear ni exigirse para el cierre.
+
+Por otra parte, `results_request_activity_revision` permite al Supervisor único activo
+revisar documentos adjuntos y solicitar revisión sobre cualquier actividad marcada como
+`done` (`Cumplida`) mientras el proyecto no esté cerrado, exigiendo comentario/motivo y
+devolviendo la actividad a `in_progress` con registro en el historial.
 
 ## Bloqueos
 

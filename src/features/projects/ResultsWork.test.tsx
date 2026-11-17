@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { ResultsWork } from "./ResultsWork";
 import * as api from "../../lib/results-api";
 
-vi.mock("../../lib/results-api", () => ({ resultsDetail: vi.fn(), saveResultsCommitment: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
+vi.mock("../../lib/results-api", () => ({ resultsDetail: vi.fn(), saveResultsCommitment: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
 afterEach(cleanup);
 const rev = (letter: string) => letter.repeat(64);
 function fixture(role: "engineer" | "supervisor" | "admin" = "engineer"): api.ResultsDetail {
@@ -14,7 +14,7 @@ function fixture(role: "engineer" | "supervisor" | "admin" = "engineer"): api.Re
     project: { id: "project_1", wbs: "FAB-1", name: "Proyecto sintético", process_area: "FAB", engineer_ids: ["eng", "eng2"], start_date: "2026-10-29", target_date: "2026-11-30", status: "In Progress" },
     commitment, baseline: structuredClone(commitment), activities: [{ revision: rev("b"), created_by: "eng2", edited_by: "eng", recorded_at: "2026-10-30T12:00:00Z", activity: { id: "task_1", deliverable_id: "delivery_1", title: "Instalar estación", responsible_id: "eng2", forecast_start: "2026-10-29", forecast_due: "2026-11-10", dependency_ids: [], status: "in_progress", progress: 25, at_risk: false, hours_spent: null, note: null }, evidence: [{ id: rev("c"), name: "prueba.pdf", relative_path: `evidence/${rev("c")}.pdf`, sha256: rev("d"), size: 6 }] }],
     blockers: [], reviews: [], closure: null,
-    capabilities: { can_plan_activities: role === "engineer", can_change_commitment: role === "supervisor", can_review_deliverables: role === "supervisor", can_resolve_blockers: role === "supervisor" },
+    capabilities: { can_plan_activities: role === "engineer" || role === "supervisor", can_change_commitment: role === "supervisor", can_review_deliverables: role === "supervisor", can_resolve_blockers: role === "supervisor" },
     history: [], conflicts: [], plan_issues: [], legacy_entries: [],
   };
 }
@@ -24,7 +24,7 @@ async function mount(value = fixture()) {
   render(<ResultsWork projectId="project_1" onBack={vi.fn()} />);
   await screen.findByText("Estación lista para producción");
 }
-function form(dialog: HTMLElement) { return within(dialog).getByRole("button", { name: /Guardar actualización|Reportar bloqueo|Atender bloqueo|Resolver bloqueo|Solicitar aceptación|Aceptar entregable|Devolver entregable|Cerrar proyecto|Reabrir proyecto|Integrar versiones/ }).closest("form")!; }
+function form(dialog: HTMLElement) { return within(dialog).getByRole("button", { name: /Guardar avance|Guardar actualización|Reportar bloqueo|Atender bloqueo|Resolver bloqueo|Solicitar revisión|Cerrar proyecto|Reabrir proyecto|Integrar versiones/ }).closest("form")!; }
 function submitted(value = fixture("supervisor")): api.ResultsDetail {
   value.reviews = [{ revision: rev("e"), deliverable_id: "delivery_1", commitment_revision: rev("a"), status: "submitted", submission: { id: rev("f"), deliverable_id: "delivery_1", commitment_revision: rev("a"), criteria: [{ criterion_id: "capacity", fulfilled: true, evidence_ids: [rev("c")] }] }, decision: null }];
   return value;
@@ -35,16 +35,32 @@ function accepted(value = submitted()): api.ResultsDetail {
   return value;
 }
 
-it("muestra una sola fuente para tabla y Gantt, con acciones autónomas solo para Engineer", async () => {
+it("simplifica la vista de Engineer al estado actual, entregables y Gantt sin tabla ni acciones redundantes", async () => {
   await mount();
-  const table = screen.getByRole("table", { name: "Actividades del proyecto" });
   const gantt = screen.getByRole("region", { name: "Gantt de actividades" });
-  expect(within(table).getByText("Instalar estación")).toBeTruthy();
   expect(within(gantt).getByText("Instalar estación")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Actualizar Instalar estación" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Agregar actividad en Estación validada" })).toBeTruthy();
+  expect(screen.queryByRole("region", { name: "Entregables y validación" })).toBeNull();
+  expect(screen.queryByRole("table", { name: "Actividades del proyecto" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Nueva actividad" })).toBeNull();
+  expect(screen.queryByRole("region", { name: "Reportes de las actividades" })).toBeNull();
+  expect(screen.queryByRole("region", { name: "Bloqueos y seguimiento" })).toBeNull();
+  expect(screen.queryByText(/Historial del proyecto/)).toBeNull();
   expect(screen.queryByRole("button", { name: "Editar compromiso y DoD" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Cerrar proyecto" })).toBeNull();
-  expect(screen.getByText(/El 100 % termina la actividad/)).toBeTruthy();
+  expect(screen.queryByText("Métricas operativas y cohorte semanal")).toBeNull();
+});
+
+it("omite las secciones redundantes de métricas operativas y reportes de actividades en favor del historial", async () => {
+  await mount(fixture("engineer"));
+  expect(screen.queryByText("Métricas operativas y cohorte semanal")).toBeNull();
+  expect(screen.queryByRole("region", { name: "Reportes de las actividades" })).toBeNull();
+
+  cleanup();
+  await mount(fixture("supervisor"));
+  expect(screen.queryByText("Métricas operativas y cohorte semanal")).toBeNull();
+  expect(screen.queryByRole("region", { name: "Reportes de las actividades" })).toBeNull();
+  expect(screen.getByText(/Historial del proyecto/)).toBeTruthy();
 });
 
 it("Admin consulta sin controles de edición ni aceptación", async () => {
@@ -54,14 +70,16 @@ it("Admin consulta sin controles de edición ni aceptación", async () => {
   expect(screen.getByRole("table", { name: "Actividades del proyecto" })).toBeTruthy();
 });
 
-it("guarda 100 como actividad terminada sin solicitar aceptación ni recapturar planeación", async () => {
+it("guarda actividad cumplida sin solicitar aceptación y sin campos de planeación", async () => {
   const next = fixture(); next.activities[0].activity.progress = 100; next.activities[0].activity.status = "done"; next.activities[0].revision = rev("d");
   vi.mocked(api.saveResultsActivity).mockResolvedValue(next);
   await mount();
-  await userEvent.click(screen.getByRole("button", { name: "Actualizar Instalar estación" }));
+  await userEvent.click(screen.getByRole("button", { name: "Agregar actividad en Estación validada" }));
   const dialog = screen.getByRole("dialog", { name: "Actualizar actividad" });
-  expect((within(dialog).getByText("Editar planeación y horas").closest("details") as HTMLDetailsElement).open).toBe(false);
-  fireEvent.change(within(dialog).getByLabelText("Avance"), { target: { value: "100" } });
+  expect(within(dialog).queryByText("Editar planeación y horas")).toBeNull();
+  expect(within(dialog).getByText("Condición anterior")).toBeTruthy();
+  expect(within(dialog).getByText("Nueva condición (Avance)")).toBeTruthy();
+  await userEvent.click(within(dialog).getByLabelText(/cumple la condición para el cierre/i));
   fireEvent.submit(form(dialog));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.saveResultsActivity).toHaveBeenCalledWith({ project_id: "project_1", expected_revision: rev("b"), activity: expect.objectContaining({ id: "task_1", progress: 100, status: "done", responsible_id: "eng2", forecast_due: "2026-11-10", note: null }) });
@@ -73,14 +91,13 @@ it("un avance positivo inicia una actividad y un error conserva la nota y el mod
   const initial = fixture(); initial.activities[0].activity.status = "not_started"; initial.activities[0].activity.progress = 0;
   vi.mocked(api.saveResultsActivity).mockRejectedValue("La revisión cambió");
   await mount(initial);
-  await userEvent.click(screen.getByRole("button", { name: "Actualizar Instalar estación" }));
+  await userEvent.click(screen.getByRole("button", { name: "Agregar actividad en Estación validada" }));
   const dialog = screen.getByRole("dialog", { name: "Actualizar actividad" });
-  fireEvent.change(within(dialog).getByLabelText("Avance"), { target: { value: "25" } });
-  fireEvent.change(within(dialog).getByLabelText("Nota de avance · opcional"), { target: { value: "Base instalada" } });
+  fireEvent.change(within(dialog).getByLabelText(/^Nueva condición/i, { selector: "textarea" }), { target: { value: "Base instalada" } });
   fireEvent.submit(form(dialog));
   expect(await within(dialog).findByRole("alert")).toHaveProperty("textContent", "La revisión cambió");
-  expect((within(dialog).getByLabelText("Nota de avance · opcional") as HTMLTextAreaElement).value).toBe("Base instalada");
-  expect(api.saveResultsActivity).toHaveBeenCalledWith(expect.objectContaining({ activity: expect.objectContaining({ status: "in_progress", progress: 25 }) }));
+  expect((within(dialog).getByLabelText(/^Nueva condición/i, { selector: "textarea" }) as HTMLTextAreaElement).value).toBe("Base instalada");
+  expect(api.saveResultsActivity).toHaveBeenCalledWith(expect.objectContaining({ activity: expect.objectContaining({ status: "in_progress", progress: 50 }) }));
 });
 
 it("mantiene exclusión de envío y cierre durante guardado y archivo, y reintenta evidencia sin duplicar actividad", async () => {
@@ -89,10 +106,10 @@ it("mantiene exclusión de envío y cierre durante guardado y archivo, y reinten
   vi.mocked(api.saveResultsActivity).mockImplementation(() => new Promise(resolve => { finishSave = resolve; }));
   vi.mocked(api.attachResultsEvidence).mockImplementationOnce(() => new Promise((_resolve, reject) => { failAttachment = reject; })).mockResolvedValueOnce(fixture());
   await mount();
-  const opener = screen.getByRole("button", { name: "Actualizar Instalar estación" });
+  const opener = screen.getByRole("button", { name: "Agregar actividad en Estación validada" });
   await userEvent.click(opener);
   const dialog = screen.getByRole("dialog", { name: "Actualizar actividad" });
-  fireEvent.change(within(dialog).getByLabelText("Nota de avance · opcional"), { target: { value: "Nueva nota" } });
+  fireEvent.change(within(dialog).getByLabelText(/^Nueva condición/i, { selector: "textarea" }), { target: { value: "Nueva nota" } });
   const file = new File(["%PDF-1"], "evidencia.pdf", { type: "application/pdf" });
   Object.defineProperty(file, "arrayBuffer", { value: vi.fn().mockResolvedValue(new Uint8Array([37, 80, 68, 70, 45, 49]).buffer) });
   fireEvent.change(within(dialog).getByLabelText(/Evidencia · opcional/), { target: { files: [file] } });
@@ -117,17 +134,21 @@ it("mantiene exclusión de envío y cierre durante guardado y archivo, y reinten
   await waitFor(() => expect(document.activeElement).toBe(opener));
 });
 
-it("reporta un bloqueo con impedimento y ayuda, sin aprobar o cambiar avance", async () => {
-  vi.mocked(api.saveResultsBlocker).mockResolvedValue(fixture());
+it("reporta un bloqueo con impedimento y ayuda desde el entregable, sin aprobar entregable", async () => {
+  const saved = fixture();
+  saved.activities[0].activity.at_risk = true;
+  vi.mocked(api.saveResultsActivity).mockResolvedValue(saved);
+  vi.mocked(api.saveResultsBlocker).mockResolvedValue(saved);
   await mount();
-  await userEvent.click(screen.getByRole("button", { name: "Bloqueo en Instalar estación" }));
-  const dialog = screen.getByRole("dialog", { name: "Reportar bloqueo" });
-  fireEvent.change(within(dialog).getByLabelText("¿Qué impide continuar?"), { target: { value: "Sin acceso" } });
-  fireEvent.change(within(dialog).getByLabelText("¿Qué ayuda o decisión necesitas?"), { target: { value: "Autorizar entrada" } });
+  await userEvent.click(screen.getByRole("button", { name: "Agregar actividad en Estación validada" }));
+  const dialog = screen.getByRole("dialog", { name: "Actualizar actividad" });
+  await userEvent.click(within(dialog).getByLabelText(/¿Riesgo en fecha objetivo/i));
+  fireEvent.change(within(dialog).getByLabelText("Problema / impedimento"), { target: { value: "Sin acceso" } });
+  fireEvent.change(within(dialog).getByLabelText("Ayuda requerida"), { target: { value: "Autorizar entrada" } });
   fireEvent.submit(form(dialog));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.saveResultsBlocker).toHaveBeenCalledWith({ project_id: "project_1", blocker_id: null, expected_revision: null, activity_id: "task_1", reason: "Sin acceso", help_needed: "Autorizar entrada", action: "report", comment: "" });
-  expect(api.saveResultsActivity).not.toHaveBeenCalled();
+  expect(api.reviewResultsDeliverable).not.toHaveBeenCalled();
 });
 
 it("Supervisor registra atención y resolución como acciones diferentes con motivo", async () => {
@@ -150,52 +171,53 @@ it("Supervisor registra atención y resolución como acciones diferentes con mot
   expect(api.saveResultsBlocker).toHaveBeenLastCalledWith(expect.objectContaining({ action: "resolve", expected_revision: rev("d"), comment: "Acceso autorizado" }));
 });
 
-it("solicita aceptación explícita solo con criterios confirmados y evidencia seleccionada", async () => {
-  vi.mocked(api.reviewResultsDeliverable).mockResolvedValue(submitted(fixture()));
-  await mount();
-  await userEvent.click(screen.getByRole("button", { name: "Solicitar aceptación de Estación validada" }));
-  const dialog = screen.getByRole("dialog", { name: "Solicitar aceptación" });
-  fireEvent.submit(form(dialog));
-  expect(await within(dialog).findByRole("alert")).toHaveProperty("textContent", "Confirma cada criterio y selecciona su evidencia requerida.");
-  expect(api.reviewResultsDeliverable).not.toHaveBeenCalled();
-  await userEvent.click(within(dialog).getByLabelText("Confirmo: Capacidad verificada"));
-  await userEvent.click(within(dialog).getByLabelText("prueba.pdf"));
-  fireEvent.submit(form(dialog));
-  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.reviewResultsDeliverable).toHaveBeenCalledWith({ project_id: "project_1", deliverable_id: "delivery_1", expected_revision: null, action: "submit", criteria: [{ criterion_id: "capacity", fulfilled: true, evidence_ids: [rev("c")] }], comment: "" });
-  expect(screen.getByRole("button", { name: "Retirar solicitud de Estación validada" })).toBeTruthy();
-});
-
-it("Supervisor devuelve con motivo y solo habilita cierre cuando los entregables están aceptados", async () => {
-  const returned = accepted(); returned.reviews[0].status = "returned"; returned.reviews[0].decision!.accepted = false; returned.reviews[0].decision!.comment = "Falta comparar la capacidad";
-  vi.mocked(api.reviewResultsDeliverable).mockResolvedValue(returned);
-  await mount(submitted());
-  expect((screen.getByRole("button", { name: "Cerrar proyecto" }) as HTMLButtonElement).disabled).toBe(true);
-  await userEvent.click(screen.getByRole("button", { name: "Devolver Estación validada" }));
-  const dialog = screen.getByRole("dialog", { name: "Devolver entregable" });
-  fireEvent.submit(form(dialog));
-  expect(await within(dialog).findByRole("alert")).toHaveProperty("textContent", "Describe el motivo de esta decisión.");
-  fireEvent.change(within(dialog).getByLabelText("Comentario · obligatorio"), { target: { value: "Falta comparar la capacidad" } });
-  fireEvent.submit(form(dialog));
-  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.reviewResultsDeliverable).toHaveBeenLastCalledWith(expect.objectContaining({ action: "return", expected_revision: rev("e"), comment: "Falta comparar la capacidad" }));
-  expect((screen.getByRole("button", { name: "Cerrar proyecto" }) as HTMLButtonElement).disabled).toBe(true);
-  vi.mocked(api.resultsDetail).mockResolvedValue(accepted());
-  await userEvent.click(screen.getByRole("button", { name: "Actualizar proyecto" }));
-  await screen.findByText("Aceptado");
+it("no muestra revisiones individuales de entregables y habilita el cierre para evaluarlos en conjunto", async () => {
+  await mount(fixture("supervisor"));
+  expect(screen.queryByRole("button", { name: /Solicitar aceptación/i })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Aceptar /i })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Devolver /i })).toBeNull();
   expect((screen.getByRole("button", { name: "Cerrar proyecto" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
-it("el cierre exige comprobación explícita del Supervisor y conserva su comentario", async () => {
-  const closed = accepted(); closed.closure = { revision: rev("f"), closed: true, commitment_revision: rev("a"), recorded_at: "2026-10-30T15:00:00Z", author_id: "supervisor", comment: "Estado final comprobado" };
+it("Supervisor puede revisar documentos de una actividad finalizada y solicitar revisión", async () => {
+  const initial = fixture("supervisor");
+  initial.activities[0].activity.status = "done";
+  initial.activities[0].activity.progress = 100;
+  const afterRevision = structuredClone(initial);
+  afterRevision.activities[0].activity.status = "in_progress";
+  afterRevision.activities[0].activity.progress = 75;
+  afterRevision.activities[0].activity.note = "[Revisión solicitada]: Falta firma en el reporte";
+  vi.mocked(api.requestActivityRevision).mockResolvedValue(afterRevision);
+  await mount(initial);
+  await userEvent.click(screen.getByRole("button", { name: "Solicitar revisión de Instalar estación" }));
+  const dialog = screen.getByRole("dialog", { name: "Revisar actividad finalizada" });
+  expect(within(dialog).getByRole("button", { name: "prueba.pdf" })).toBeTruthy();
+  fireEvent.submit(form(dialog));
+  expect(await within(dialog).findByRole("alert")).toHaveProperty("textContent", "Describe el motivo o las observaciones de la revisión.");
+  fireEvent.change(within(dialog).getByLabelText("Observaciones / motivo de revisión · obligatorio"), { target: { value: "Falta firma en el reporte" } });
+  fireEvent.submit(form(dialog));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.requestActivityRevision).toHaveBeenCalledWith({
+    project_id: "project_1",
+    activity_id: "task_1",
+    expected_revision: rev("b"),
+    comment: "Falta firma en el reporte",
+  });
+});
+
+it("el cierre evalúa entregables en conjunto y exige comprobación explícita del Supervisor", async () => {
+  const closed = fixture("supervisor");
+  closed.closure = { revision: rev("f"), closed: true, commitment_revision: rev("a"), recorded_at: "2026-10-30T15:00:00Z", author_id: "supervisor", comment: "Estado final comprobado" };
   vi.mocked(api.setResultsClosure).mockResolvedValue(closed);
-  await mount(accepted());
+  await mount(fixture("supervisor"));
   await userEvent.click(screen.getByRole("button", { name: "Cerrar proyecto" }));
   const dialog = screen.getByRole("dialog", { name: "Cerrar proyecto" });
+  expect(within(dialog).getByRole("button", { name: "prueba.pdf" })).toBeTruthy();
   fireEvent.change(within(dialog).getByLabelText("Motivo del cierre"), { target: { value: "Estado final comprobado" } });
   fireEvent.submit(form(dialog));
   expect(api.setResultsClosure).not.toHaveBeenCalled();
-  await userEvent.click(within(dialog).getByLabelText("He comprobado el estado final acordado y sus entregables aceptados."));
+  await userEvent.click(within(dialog).getByLabelText(/Estación validada/));
+  await userEvent.click(within(dialog).getByLabelText("He comprobado el estado final acordado y evaluado los entregables de cierre."));
   fireEvent.submit(form(dialog));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.setResultsClosure).toHaveBeenCalledWith({ project_id: "project_1", expected_revision: null, closed: true, confirm_final_outcome: true, comment: "Estado final comprobado" });
@@ -241,31 +263,7 @@ it("Engineer espera la definición del Supervisor cuando el proyecto aún no tie
   expect(screen.queryByRole("button", { name: "Definir DoD y activar flujo" })).toBeNull();
 });
 
-it("permite retirar una solicitud pendiente sin modificar actividades", async () => {
-  const initial = submitted(fixture());
-  const withdrawn = structuredClone(initial); withdrawn.reviews[0].status = "withdrawn";
-  vi.mocked(api.reviewResultsDeliverable).mockResolvedValue(withdrawn);
-  await mount(initial);
-  await userEvent.click(screen.getByRole("button", { name: "Retirar solicitud de Estación validada" }));
-  const dialog = screen.getByRole("dialog", { name: "Retirar solicitud" });
-  fireEvent.submit(within(dialog).getByRole("button", { name: "Retirar solicitud" }).closest("form")!);
-  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.reviewResultsDeliverable).toHaveBeenCalledWith(expect.objectContaining({ expected_revision: rev("e"), action: "withdraw", criteria: [] }));
-  expect(api.saveResultsActivity).not.toHaveBeenCalled();
-});
-
-it("Supervisor acepta la revisión de un entregable sin editar sus actividades", async () => {
-  vi.mocked(api.reviewResultsDeliverable).mockResolvedValue(accepted());
-  await mount(submitted());
-  await userEvent.click(screen.getByRole("button", { name: "Aceptar Estación validada" }));
-  const dialog = screen.getByRole("dialog", { name: "Aceptar entregable" });
-  expect(within(dialog).getByRole("button", { name: "prueba.pdf" })).toBeTruthy();
-  fireEvent.submit(form(dialog));
-  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(api.reviewResultsDeliverable).toHaveBeenCalledWith(expect.objectContaining({ expected_revision: rev("e"), action: "accept", criteria: [], comment: "" }));
-  expect(api.saveResultsActivity).not.toHaveBeenCalled();
-  expect(screen.getByText("Aceptado")).toBeTruthy();
-});
+// Individual deliverable review tests (withdraw/accept) removed: deliverables are evaluated at closure.
 
 it("reabre proyecto cerrado con motivo sin habilitar edición cotidiana mientras siga cerrado", async () => {
   const initial = accepted(); initial.closure = { revision: rev("f"), closed: true, commitment_revision: rev("a"), recorded_at: "2026-10-30T15:00:00Z", author_id: "supervisor", comment: "Cierre" };
@@ -308,24 +306,129 @@ it("activa trabajo anterior solo después de seleccionar explícitamente su entr
 });
 
 
-it("consolida estatus y KPIs estratégicos arriba, actividades a la izquierda y reportes con evidencias a la derecha", async () => {
-  const detail = fixture();
+it("consolida estatus y KPIs estratégicos arriba y planeación por entregables con historial para Supervisor", async () => {
+  const detail = fixture("supervisor");
   detail.activities[0].activity.note = "Instalación completada y verificada";
   await mount(detail);
 
-  // Estatus superior consolidado
-  expect(screen.getByRole("progressbar", { name: "Avance general del proyecto" })).toBeTruthy();
-  expect(screen.getByText("Avance general del proyecto")).toBeTruthy();
-  expect(screen.getByText("Compromiso")).toBeTruthy();
-  expect(screen.getByText("0 / 1 terminadas")).toBeTruthy();
-  expect(screen.getByText("0 bloqueos")).toBeTruthy();
+  // Estatus superior consolidado embebido en el encabezado (sin botón redundante "Volver a proyectos" ni tarjetas KPI)
+  const header = screen.getByRole("banner", { name: "Compromiso y condiciones de cierre" });
+  expect(within(header).getByRole("heading", { name: "Proyecto sintético" })).toBeTruthy();
+  expect(within(header).getByRole("progressbar", { name: "Avance general del proyecto" })).toBeTruthy();
+  expect(within(header).getByText("Avance general del proyecto")).toBeTruthy();
+  expect(within(header).getByText("Compromiso")).toBeTruthy();
+  expect(within(header).getByText("Entregables")).toBeTruthy();
+  expect(within(header).getByRole("button", { name: "Actualizar proyecto" })).toBeTruthy();
+  expect(within(header).getByRole("button", { name: "Cerrar proyecto" })).toBeTruthy();
+  expect(within(header).getByRole("button", { name: "Cerrar detalle del proyecto" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Volver a proyectos" })).toBeNull();
+  expect(screen.queryByRole("region", { name: "Cierre del proyecto" })).toBeNull();
+  expect(screen.queryByText("0 bloqueos")).toBeNull();
 
-  // Columna izquierda: actividades
+  // Planeación por entregables + historial sin secciones redundantes
   expect(screen.getByRole("region", { name: "Planeación y ejecución" })).toBeTruthy();
+  expect(screen.queryByRole("region", { name: "Reportes de las actividades" })).toBeNull();
+  expect(screen.queryByText("Métricas operativas y cohorte semanal")).toBeNull();
+  expect(screen.getByText(/Historial del proyecto/)).toBeTruthy();
+});
 
-  // Columna derecha: reportes y evidencias
-  const reportsRegion = screen.getByRole("region", { name: "Reportes de las actividades" });
-  expect(within(reportsRegion).getByText("Reportes de las actividades")).toBeTruthy();
-  expect(within(reportsRegion).getByText('"Instalación completada y verificada"')).toBeTruthy();
-  expect(within(reportsRegion).getByRole("button", { name: "📎 prueba.pdf" })).toBeTruthy();
+it("registra avance por entregable agrupando fecha de registro, nueva condición, evidencia y riesgo de fecha objetivo", async () => {
+  const initial = fixture("engineer");
+  initial.activities = [];
+  const saved = fixture("engineer");
+  saved.activities[0].activity = {
+    ...saved.activities[0].activity,
+    forecast_start: "2026-11-05",
+    forecast_due: "2026-11-20",
+    at_risk: true,
+    note: "Pieza recibida con retraso parcial",
+    status: "in_progress",
+    progress: 50,
+  };
+  vi.mocked(api.saveResultsActivity).mockResolvedValue(saved);
+  vi.mocked(api.saveResultsBlocker).mockResolvedValue(saved);
+
+  await mount(initial);
+
+  // Abrir registro directamente desde el entregable cuando aún no hay actividades
+  await userEvent.click(screen.getAllByRole("button", { name: "Agregar actividad en Estación validada" })[0]);
+  const dialog = screen.getByRole("dialog", { name: "Registrar avance" });
+
+  // No debe existir campo redundante de título de actividad
+  expect(within(dialog).queryByLabelText(/Nombre de la actividad/i)).toBeNull();
+  expect(within(dialog).getByText("Condición anterior")).toBeTruthy();
+  expect(within(dialog).getByText("Nueva condición (Avance)")).toBeTruthy();
+
+  // 1. Fecha de registro
+  fireEvent.change(within(dialog).getByLabelText("Fecha de registro"), { target: { value: "2026-11-05" } });
+
+  // 2. Nueva condición
+  fireEvent.change(within(dialog).getByLabelText(/^Nueva condición/i, { selector: "textarea" }), {
+    target: { value: "Pieza recibida con retraso parcial" },
+  });
+
+  // 3. Evidencia · opcional está presente
+  expect(within(dialog).getByLabelText(/Evidencia · opcional/)).toBeTruthy();
+
+  // 4. Problema para cumplir la fecha objetivo (sin alterar fecha compromiso del entregable)
+  await userEvent.click(within(dialog).getByLabelText(/¿Riesgo en fecha objetivo/i));
+  fireEvent.change(within(dialog).getByLabelText("Problema / impedimento"), {
+    target: { value: "Falta liberación de proveedor" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Ayuda requerida"), {
+    target: { value: "Escalar con compras" },
+  });
+  fireEvent.change(within(dialog).getByLabelText(/Fecha estimada \(previsión\)/i), {
+    target: { value: "2026-11-20" },
+  });
+
+  fireEvent.submit(form(dialog));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  expect(api.saveResultsActivity).toHaveBeenCalledWith({
+    project_id: "project_1",
+    expected_revision: null,
+    activity: expect.objectContaining({
+      deliverable_id: "delivery_1",
+      title: "Estación validada",
+      forecast_start: "2026-11-05",
+      forecast_due: "2026-11-20",
+      at_risk: true,
+      note: "Pieza recibida con retraso parcial",
+      status: "in_progress",
+      progress: 50,
+    }),
+  });
+
+  expect(api.saveResultsBlocker).toHaveBeenCalledWith({
+    project_id: "project_1",
+    expected_revision: null,
+    blocker_id: null,
+    activity_id: expect.stringMatching(/^activity_/),
+    action: "report",
+    reason: "Falta liberación de proveedor",
+    help_needed: "Escalar con compras",
+    comment: "",
+  });
+});
+
+it("Supervisor puede registrar avances en las actividades del proyecto", async () => {
+  const initial = fixture("supervisor");
+  vi.mocked(api.saveResultsActivity).mockResolvedValue(initial);
+  await mount(initial);
+
+  await userEvent.click(screen.getAllByRole("button", { name: "Agregar actividad en Estación validada" })[0]);
+  const dialog = screen.getByRole("dialog", { name: "Actualizar actividad" });
+  fireEvent.change(within(dialog).getByLabelText(/^Nueva condición/i, { selector: "textarea" }), {
+    target: { value: "Avance registrado por supervisor" },
+  });
+  fireEvent.submit(form(dialog));
+
+  await waitFor(() => expect(api.saveResultsActivity).toHaveBeenCalledTimes(1));
+  expect(api.saveResultsActivity).toHaveBeenCalledWith(
+    expect.objectContaining({
+      project_id: "project_1",
+      activity: expect.objectContaining({ note: "Avance registrado por supervisor" }),
+    })
+  );
 });

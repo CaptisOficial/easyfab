@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Script de validación Gate 0 (Captis Governance) para EasyFAB.
 .DESCRIPTION
@@ -34,7 +34,7 @@ $requiredContracts = @(
     "config_plant.schema.json",
     "workspace.schema.json",
     "workspace.layout.json",
-    "installation.schema.json"
+    "installation.schema.json",
     "profile_upgrade.schema.json",
     "user_preferences.schema.json"
 )

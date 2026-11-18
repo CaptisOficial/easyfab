@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Login } from "./Login";
+import { I18nProvider } from "../lib/i18n";
 import * as api from "../lib/api";
 import * as resultsApi from "../lib/results-api";
 
@@ -16,8 +17,19 @@ vi.mock("../lib/api", () => ({
   userPreferences: vi.fn(), plantCatalogs: vi.fn(),
   setUserActive: vi.fn(), resetPassword: vi.fn(), projectsOverview: vi.fn().mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta de proyectos" }), createProject: vi.fn(),
 }));
-afterEach(cleanup);
-beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.userPreferences).mockResolvedValue({ preferences: { version: 1, workspace_id: "fixture", user_id: "fixture", theme: "light", ui_scale: "standard" }, revision: null, warning: null }); vi.mocked(api.plantCatalogs).mockResolvedValue({ config: { version: 1, lines: [{ id: "line-fab", name: "FAB", active: true }], machines: [], failure_types: [] }, revision: "fixture", can_edit: false }); vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta de proyectos" }); });
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+  document.documentElement.lang = "";
+});
+beforeEach(() => {
+  vi.resetAllMocks();
+  window.localStorage.clear();
+  document.documentElement.lang = "";
+  vi.mocked(api.userPreferences).mockResolvedValue({ preferences: { version: 1, workspace_id: "fixture", user_id: "fixture", theme: "light", ui_scale: "standard" }, revision: null, warning: null });
+  vi.mocked(api.plantCatalogs).mockResolvedValue({ config: { version: 1, lines: [{ id: "line-fab", name: "FAB", active: true }], machines: [], failure_types: [] }, revision: "fixture", can_edit: false });
+  vi.mocked(api.projectsOverview).mockResolvedValue({ projects: [], leads: [], can_create: false, write_message: "Consulta de proyectos" });
+});
 
 describe("primer recorrido de acceso", () => {
   it("crea Admin, cambia contraseña, registra usuario y permite probar su acceso", async () => {
@@ -204,3 +216,121 @@ it("Admin crea Supervisor; Supervisor cambia contraseña, registra y encuentra e
   await screen.findByText(/Proyecto de prueba/);
   expect(api.createProject).toHaveBeenCalledTimes(1);
 }, 15000);
+
+
+describe("bilingüe es / en (N1)", () => {
+  it("alterna es <-> en antes de iniciar sesión, persiste en localStorage y oculta el botón al autenticar", async () => {
+    const actor = userEvent.setup();
+    vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [{ id: "eng", name: "Fixture", role: "engineer" } as unknown as api.LoginChoice], requires_admin: false });
+    vi.mocked(api.login).mockResolvedValue({ id: "eng", name: "Fixture", role: "engineer", must_change_password: false });
+    vi.mocked(api.logout).mockResolvedValue();
+
+    const firstMount = render(<I18nProvider><Login destination="home" /></I18nProvider>);
+    expect(await screen.findByRole("heading", { name: "Acceso a EasyFAB" })).toBeTruthy();
+    const toggleEs = screen.getByRole("button", { name: "Idioma" });
+    expect(toggleEs.textContent).toBe("ES");
+
+    await actor.click(toggleEs);
+    expect(window.localStorage.getItem("easyfab.lang")).toBe("en");
+    expect(document.documentElement.lang).toBe("en");
+    expect(screen.getByRole("heading", { name: "Sign in to EasyFAB" })).toBeTruthy();
+    expect(screen.getByLabelText("User")).toBeTruthy();
+    expect(screen.getByLabelText("Password (8 characters)")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Language" }).textContent).toBe("EN");
+
+    firstMount.unmount();
+    render(<I18nProvider><Login destination="home" /></I18nProvider>);
+    expect(await screen.findByRole("heading", { name: "Sign in to EasyFAB" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Language" }).textContent).toBe("EN");
+
+    await actor.type(screen.getByLabelText("Password (8 characters)"), "User1234");
+    await actor.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByText("Signed in as Fixture · Engineer")).toBeTruthy();
+    expect(screen.getByText("EasyFAB user: eng")).toBeTruthy();
+    expect(screen.getByText("Open Projects from the menu to view your assignments and record daily work.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Language" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Idioma" })).toBeNull();
+
+    await actor.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("button", { name: "Language" })).toBeTruthy();
+  });
+
+  it("no duplica el botón de idioma cuando headerInTopNav es true", async () => {
+    vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [{ id: "eng", name: "Fixture" }], requires_admin: false });
+    render(<I18nProvider><Login headerInTopNav destination="home" /></I18nProvider>);
+    expect(await screen.findByRole("heading", { name: "Acceso a EasyFAB" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Idioma" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Language" })).toBeNull();
+  });
+
+  it("renderiza InitialAdminForm y PasswordChangeForm en inglés con validación y aviso reactivos", async () => {
+    const actor = userEvent.setup();
+    window.localStorage.setItem("easyfab.lang", "en");
+    const admin = { id: "admin", name: "Admin Test", role: "admin" as const, must_change_password: false };
+    vi.mocked(api.listLoginUsers)
+      .mockResolvedValueOnce({ users: [], requires_admin: true })
+      .mockResolvedValue({ users: [{ id: admin.id, name: admin.name }], requires_admin: false });
+    vi.mocked(api.provisionInitialAdmin).mockResolvedValue("TEMP1234");
+    vi.mocked(api.login).mockResolvedValueOnce({ ...admin, must_change_password: true });
+    vi.mocked(api.changePassword).mockResolvedValue();
+
+    render(<I18nProvider><Login destination="home" /></I18nProvider>);
+    expect(await screen.findByRole("heading", { name: "Create initial administrator" })).toBeTruthy();
+    await actor.type(screen.getByLabelText("EasyFAB user ID"), "admin");
+    await actor.type(screen.getByLabelText("Full name"), "Admin Test");
+    await actor.click(screen.getByRole("button", { name: "Create administrator" }));
+    expect(await screen.findByText("Admin created: admin. Save this temporary password; it expires in 24 hours:")).toBeTruthy();
+    await actor.click(screen.getByRole("button", { name: "Continue to sign in" }));
+
+    await actor.type(await screen.findByLabelText("Password (8 characters)"), "TEMP1234");
+    await actor.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await actor.type(await screen.findByLabelText("New password (8 characters)"), "Admin123");
+    await actor.type(screen.getByLabelText("Confirm password"), "Admin999");
+    await actor.click(screen.getByRole("button", { name: "Save & sign in again" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Passwords do not match.");
+
+    await actor.clear(screen.getByLabelText("New password (8 characters)"));
+    await actor.clear(screen.getByLabelText("Confirm password"));
+    await actor.type(screen.getByLabelText("New password (8 characters)"), "Admin123");
+    await actor.type(screen.getByLabelText("Confirm password"), "Admin123");
+    await actor.click(screen.getByRole("button", { name: "Save & sign in again" }));
+
+    expect(await screen.findByText("Password updated. Sign in with your new password.")).toBeTruthy();
+    await actor.click(screen.getByRole("button", { name: "Language" }));
+    expect(screen.getByText("Contraseña actualizada. Ingresa con tu nueva contraseña.")).toBeTruthy();
+  });
+
+  it("traduce errores del backend Rust en es y en y reacciona al alternar idioma", async () => {
+    const actor = userEvent.setup();
+    vi.mocked(api.listLoginUsers).mockRejectedValueOnce("Directorio invalido.");
+    const first = render(<I18nProvider><Login /></I18nProvider>);
+    expect((await screen.findByRole("alert")).textContent).toBe("Directorio inválido.");
+    await actor.click(screen.getByRole("button", { name: "Idioma" }));
+    expect(screen.getByRole("alert").textContent).toBe("Invalid directory.");
+    first.unmount();
+
+    vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [{ id: "eng", name: "Fixture" }], requires_admin: false });
+    vi.mocked(api.login)
+      .mockRejectedValueOnce("Espera 30 segundos antes de intentar de nuevo.")
+      .mockResolvedValueOnce({ id: "eng", name: "Fixture", role: "engineer", must_change_password: true });
+    vi.mocked(api.changePassword).mockRejectedValueOnce("Elige una contraseña diferente a la anterior.");
+
+    render(<I18nProvider><Login /></I18nProvider>);
+    await actor.type(await screen.findByLabelText("Password (8 characters)"), "Wrong123");
+    await actor.click(screen.getByRole("button", { name: "Sign in" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Wait 30 seconds before trying again.");
+
+    await actor.click(screen.getByRole("button", { name: "Language" }));
+    expect(screen.getByRole("alert").textContent).toBe("Espera 30 segundos antes de intentar de nuevo.");
+    await actor.click(screen.getByRole("button", { name: "Idioma" }));
+
+    await actor.type(screen.getByLabelText("Password (8 characters)"), "TEMP1234");
+    await actor.click(screen.getByRole("button", { name: "Sign in" }));
+    await actor.type(await screen.findByLabelText("New password (8 characters)"), "Admin123");
+    await actor.type(screen.getByLabelText("Confirm password"), "Admin123");
+    await actor.click(screen.getByRole("button", { name: "Save & sign in again" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Choose a password different from the previous one.");
+  });
+});

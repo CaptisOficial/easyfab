@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkspaceSetup } from "./WorkspaceSetup";
+import { I18nProvider } from "../lib/i18n";
 import * as api from "../lib/api";
 
 vi.mock("../lib/api", () => ({
@@ -19,9 +20,15 @@ const workspace: api.WorkspaceInfo = {
   executable: "C:\\synthetic\\FAB\\easy-fab\\software\\easyfab.exe",
 };
 const engineer: api.SessionUser = { id: "engineer", name: "Engineer Fixture", role: "engineer", must_change_password: false };
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+  document.documentElement.lang = "";
+});
 beforeEach(() => {
   vi.resetAllMocks();
+  window.localStorage.clear();
+  document.documentElement.lang = "";
   vi.mocked(api.runningInTauri).mockReturnValue(true);
   vi.mocked(api.workspaceStatus).mockResolvedValue({ phase: "ready", workspace, candidate_root: "C:\\other-suggestion", message: null });
   vi.mocked(api.listLoginUsers).mockResolvedValue({ users: [engineer], requires_admin: false });
@@ -244,4 +251,103 @@ it("Supervisor conserva el borrador del proyecto al visitar Configuración y vol
   expect((screen.getByLabelText("Título del proyecto") as HTMLInputElement).value).toBe("Mejora fixture");
   expect(api.projectsOverview).toHaveBeenCalledTimes(1);
   expect(api.createProject).not.toHaveBeenCalled();
+});
+
+
+it("alterna idioma antes de iniciar sesión desde TopNav y persiste en localStorage al remount", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.workspaceStatus).mockResolvedValue({ phase: "unconfigured", workspace: null, candidate_root: "", message: null });
+
+  const first = render(<I18nProvider><WorkspaceSetup /></I18nProvider>);
+  expect(await screen.findByRole("heading", { name: "Carpeta activa" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Espacio de trabajo EasyFAB" })).toBeTruthy();
+
+  const toggle = screen.getByRole("button", { name: "Idioma" });
+  expect(toggle.textContent).toBe("ES");
+  await user.click(toggle);
+
+  expect(window.localStorage.getItem("easyfab.lang")).toBe("en");
+  expect(document.documentElement.lang).toBe("en");
+  expect(within(screen.getByRole("banner")).getByRole("heading", { name: "Settings" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Active folder" })).toBeTruthy();
+  expect(screen.getByLabelText("Corporate shared folder")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Create or open workspace" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "EasyFAB Workspace" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Language" })).toHaveLength(1);
+
+  first.unmount();
+  vi.mocked(api.workspaceStatus).mockResolvedValue({ phase: "ready", workspace, candidate_root: "", message: null });
+  render(<I18nProvider><WorkspaceSetup /></I18nProvider>);
+  expect(await screen.findByRole("heading", { name: "Sign in to EasyFAB" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Language" })).toHaveLength(1);
+
+  await user.click(screen.getByRole("button", { name: "Open menu" }));
+  await user.click(screen.getByRole("button", { name: "Settings" }));
+  expect(screen.getByText("Workspace ready")).toBeTruthy();
+  expect(screen.getByText("Shared folder")).toBeTruthy();
+  expect(screen.getByText("Workspace locations")).toBeTruthy();
+  expect(screen.getByText("System workspace")).toBeTruthy();
+  expect(screen.getByText("Data")).toBeTruthy();
+  expect(screen.getByText("Documentation")).toBeTruthy();
+  expect(screen.getByText("Portable executable")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Change shared folder" })).toBeTruthy();
+});
+
+it("conserva el idioma inglés pre-login tras autenticar cuando userPreferences no tiene revisión", async () => {
+  const user = userEvent.setup();
+  window.localStorage.setItem("easyfab.lang", "en");
+  render(<I18nProvider><WorkspaceSetup /></I18nProvider>);
+  const password = await screen.findByLabelText("Password (8 characters)");
+  await waitFor(() => expect((password as HTMLInputElement).disabled).toBe(false));
+  await user.type(password, "User1234");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+  const header = screen.getByRole("banner");
+  expect(await within(header).findByText("Engineer")).toBeTruthy();
+  expect(within(header).getByRole("button", { name: "Sign out" })).toBeTruthy();
+
+  await user.click(within(header).getByRole("button", { name: "Open menu" }));
+  const dialog = screen.getByRole("dialog", { name: "EasyFAB Menu" });
+  expect(within(dialog).getByRole("button", { name: "Home" })).toBeTruthy();
+  expect(within(dialog).getByRole("button", { name: "Projects" })).toBeTruthy();
+  expect(within(dialog).getByRole("button", { name: "Line issues" })).toBeTruthy();
+  await user.click(within(dialog).getByRole("button", { name: "Settings" }));
+
+  expect((screen.getByRole("button", { name: "Change shared folder" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText("Sign out to change workspace.")).toBeTruthy();
+});
+
+it("traduce WorkspaceStatus.message y errores de configureWorkspace en es y en reactivamente", async () => {
+  const user = userEvent.setup();
+  window.localStorage.setItem("easyfab.lang", "en");
+  vi.mocked(api.workspaceStatus).mockResolvedValue({
+    phase: "unavailable",
+    workspace: null,
+    candidate_root: null,
+    message: "El espacio está incompleto (team.json). Restaura sus datos; no se creará otro directorio vacío.",
+  });
+  vi.mocked(api.configureWorkspace).mockRejectedValueOnce("Elige una carpeta compartida existente con ruta absoluta.");
+
+  render(<I18nProvider><WorkspaceSetup /></I18nProvider>);
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "The workspace is incomplete (team.json). Restore its data; no new empty directory will be created."
+  );
+
+  await user.click(screen.getByRole("button", { name: "Language" }));
+  expect(screen.getByRole("alert").textContent).toBe(
+    "El espacio está incompleto (team.json). Restaura sus datos; no se creará otro directorio vacío."
+  );
+
+  await user.click(screen.getByRole("button", { name: "Idioma" }));
+  await user.type(screen.getByLabelText("Corporate shared folder"), "relative\\path");
+  await user.click(screen.getByRole("button", { name: "Create or open workspace" }));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Choose an existing shared folder with an absolute path."
+  );
+
+  await user.click(screen.getByRole("button", { name: "Language" }));
+  expect(screen.getByRole("alert").textContent).toBe(
+    "Elige una carpeta compartida existente con ruta absoluta."
+  );
 });

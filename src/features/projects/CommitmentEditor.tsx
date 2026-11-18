@@ -16,12 +16,14 @@ export function commitmentError(value: OperationsCommitmentDraft): string | null
   return null;
 }
 
-export function CommitmentEditor({ value, onChange, disabled = false, defaultDueDate = "", showSchedule = true }: {
+export function CommitmentEditor({ value, onChange, disabled = false, defaultDueDate = "", showSchedule = true, activityStartDates, onActivityStartDateChange }: {
   value: OperationsCommitmentDraft;
   onChange: (value: OperationsCommitmentDraft) => void;
   disabled?: boolean;
   defaultDueDate?: string;
   showSchedule?: boolean;
+  activityStartDates?: Record<string, string>;
+  onActivityStartDateChange?: (deliverableId: string, startDate: string) => void;
 }) {
   function updateDeliverable(index: number, patch: Partial<ResultsDeliverable>) {
     onChange({ ...value, deliverables: value.deliverables.map((d, i) => i === index ? { ...d, ...patch } : d) });
@@ -134,7 +136,9 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                 <th className="p-2 w-12 text-center" title="Número de entregable">#</th>
                 <th className="p-2 min-w-[200px]">Nombre del entregable</th>
                 <th className="p-2 min-w-[260px]">Criterio de aceptación</th>
-                <th className="p-2 w-36">Fecha límite</th>
+                <th className={onActivityStartDateChange ? "p-2 min-w-[220px]" : "p-2 w-36"}>
+                  {onActivityStartDateChange ? "Fechas (Inicio → Límite)" : "Fecha límite"}
+                </th>
                 <th className="p-2 w-28 text-center">Evidencia</th>
                 <th className="p-2 w-16 text-center">Acción</th>
               </tr>
@@ -214,15 +218,32 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                     </div>
                   </td>
                   <td className="p-2">
-                    <input
-                      type="date"
-                      aria-label={`Fecha del entregable ${index + 1}`}
-                      disabled={disabled}
-                      required
-                      className="p-1 border rounded text-xs w-full"
-                      value={d.due_date || defaultDueDate}
-                      onChange={e => updateDeliverable(index, { due_date: e.target.value })}
-                    />
+                    <div className={onActivityStartDateChange ? "activity-grid-dates-cell flex items-center gap-1.5" : undefined}>
+                      {onActivityStartDateChange && (
+                        <>
+                          <input
+                            type="date"
+                            aria-label={`Inicio del entregable ${index + 1}`}
+                            disabled={disabled}
+                            className="p-1 border rounded text-xs w-full"
+                            title="Fecha de inicio de la actividad"
+                            value={activityStartDates?.[d.id] ?? value.start_date}
+                            onChange={e => onActivityStartDateChange(d.id, e.target.value)}
+                          />
+                          <span className="text-kmx-gray-400 text-xs">→</span>
+                        </>
+                      )}
+                      <input
+                        type="date"
+                        aria-label={`Fecha del entregable ${index + 1}`}
+                        disabled={disabled}
+                        required
+                        className="p-1 border rounded text-xs w-full"
+                        title="Fecha límite del entregable"
+                        value={d.due_date || defaultDueDate}
+                        onChange={e => updateDeliverable(index, { due_date: e.target.value })}
+                      />
+                    </div>
                   </td>
                   <td className="p-2 text-center align-middle">
                     {d.criteria.length === 1 ? (

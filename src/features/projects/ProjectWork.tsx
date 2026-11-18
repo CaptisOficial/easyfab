@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { attachEvidence, projectDetail, readEvidence, reviewActivity, saveActivity, setProjectProgress, setProjectTarget, type ActivityEntry, type ActivityInput, type ProjectDetail } from "../../lib/api";
+import { attachEvidence, openEvidence, projectDetail, reviewActivity, saveActivity, setProjectProgress, setProjectTarget, type ActivityEntry, type ActivityInput, type ProjectDetail } from "../../lib/api";
 
 function blank(projectId: string): ActivityInput { return { id: null, expected_revision: null, project_id: projectId, wbs: "", task_title: "", start_date: "", due_date: "", milestone_gate: 0, at_risk: false, hours_spent: null }; }
 export function ProjectWork({ projectId, onBack }: { projectId: string; onBack: () => void }) {
@@ -24,12 +24,10 @@ export function ProjectWork({ projectId, onBack }: { projectId: string; onBack: 
     if (file.size > 20 * 1024 * 1024 || !file.size) { setError("El archivo debe contener datos y no superar 20 MB."); return; }
     await perform(async () => attachEvidence({ project_id: projectId, activity_id: entry.activity.id, revision: entry.revision, name: file.name, bytes: Array.from(new Uint8Array(await file.arrayBuffer())) }), "Evidencia guardada.");
   }
-  async function download(entry: ActivityEntry, id: string, name: string) {
+  async function download(entry: ActivityEntry, id: string, _name: string) {
     if (sending.current) return; sending.current = true; setBusy(true); setError("");
     try {
-      const bytes = await readEvidence(projectId, entry.owner_id, entry.activity.id, id);
-      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "application/octet-stream" }));
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await openEvidence(projectId, entry.owner_id, entry.activity.id, id);
     } catch (e) { setError(String(e)); } finally { sending.current = false; setBusy(false); }
   }
   function field(key: "wbs" | "task_title" | "start_date" | "due_date", label: string, type = "text") { return <label className="field">{label}<input required type={type} value={input[key]} onChange={e => setInput({ ...input, [key]: e.target.value })} /></label>; }

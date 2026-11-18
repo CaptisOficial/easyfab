@@ -35,10 +35,15 @@ foreach ($case in @(
     @('workspace_id', ('a' * 31)), @('workspace_id', ('a' * 33)),
     @('user_id', ''), @('user_id', '../admin'), @('user_id', 'a/b'),
     @('user_id', ('a' * 65)), @('user_id', "user`n"),
-    @('theme', 'automatic'), @('theme', 1), @('ui_scale', 'compact'), @('ui_scale', 1)
+    @('theme', 'automatic'), @('theme', 1), @('ui_scale', 'compact'), @('ui_scale', 1),
+    @('language', 'fr'), @('language', 1), @('language', $null)
 )) {
     $document = $fixture.Clone(); $document[$case[0]] = $case[1]
     Assert-Document $document $false "invalid $($case[0]): $($case[1])"
+}
+foreach ($lang in @('es', 'en')) {
+    $document = $fixture.Clone(); $document.language = $lang
+    Assert-Document $document $true "language $lang"
 }
 foreach ($id in @('a', ('a' * 64), 'Admin', 'admin', 'CON', 'a-b_2')) {
     $document = $fixture.Clone(); $document.user_id = $id

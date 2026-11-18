@@ -11,6 +11,9 @@ mod bootstrap;
 #[path = "../src/data_store.rs"]
 #[allow(dead_code)]
 mod data_store;
+#[path = "../src/evidence_preview.rs"]
+#[allow(dead_code)]
+mod evidence_preview;
 #[path = "../src/workspace.rs"]
 #[allow(dead_code)]
 mod workspace;

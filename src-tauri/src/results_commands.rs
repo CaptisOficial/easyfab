@@ -35,6 +35,14 @@ pub(crate) fn results_read_evidence(state: State<'_, AppState>, project_id: Stri
     results_store::evidence_bytes(&data_path(&state)?, session, &workspace_id(&state)?, &project_id, &evidence_id)
 }
 
+#[tauri::command]
+pub(crate) fn results_open_evidence(state: State<'_, AppState>, project_id: String, evidence_id: String) -> Result<(), String> {
+    let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    let session = guard.as_ref().ok_or("Ingresa primero.")?;
+    let (evidence, bytes) = results_store::evidence_asset(&data_path(&state)?, session, &workspace_id(&state)?, &project_id, &evidence_id)?;
+    crate::evidence_preview::open_evidence_bytes(&evidence, &bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use tauri::test::{get_ipc_response, mock_builder, mock_context, noop_assets};
@@ -59,6 +67,7 @@ mod tests {
         for (command, body) in [
             ("results_detail", serde_json::json!({"projectId":"project_1"})),
             ("results_read_evidence", serde_json::json!({"projectId":"project_1","evidenceId":"a".repeat(64)})),
+            ("results_open_evidence", serde_json::json!({"projectId":"project_1","evidenceId":"a".repeat(64)})),
         ] {
             let response = get_ipc_response(&window, tauri::webview::InvokeRequest { cmd: command.into(), callback: tauri::ipc::CallbackFn(0), error: tauri::ipc::CallbackFn(1), url: "http://tauri.localhost".parse().unwrap(), body: tauri::ipc::InvokeBody::Json(body), headers: Default::default(), invoke_key: tauri::test::INVOKE_KEY.into() });
             assert_eq!(response.err().unwrap(), serde_json::json!("Ingresa primero."));

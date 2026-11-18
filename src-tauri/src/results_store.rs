@@ -2054,13 +2054,13 @@ pub fn attach(
     publish(dir, session, workspace_id, &event)?;
     detail(dir, session, workspace_id, &input.project_id)
 }
-pub fn evidence_bytes(
+pub fn evidence_asset(
     dir: &Path,
     session: &auth::Session,
     workspace_id: &str,
     project_id: &str,
     evidence_id: &str,
-) -> Result<Vec<u8>, String> {
+) -> Result<(activities::Evidence, Vec<u8>), String> {
     context(dir, session, workspace_id, project_id)?;
     if !valid_revision(evidence_id) {
         return Err("ID de evidencia inválido.".into());
@@ -2081,11 +2081,18 @@ pub fn evidence_bytes(
             }
         }
     }
-    verified_bytes(
-        dir,
-        &project_root(dir, project_id)?,
-        &found.ok_or("Evidencia no autorizada o inexistente.")?,
-    )
+    let evidence = found.ok_or("Evidencia no autorizada o inexistente.")?;
+    let bytes = verified_bytes(dir, &project_root(dir, project_id)?, &evidence)?;
+    Ok((evidence, bytes))
+}
+pub fn evidence_bytes(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    project_id: &str,
+    evidence_id: &str,
+) -> Result<Vec<u8>, String> {
+    evidence_asset(dir, session, workspace_id, project_id, evidence_id).map(|(_, bytes)| bytes)
 }
 
 #[cfg(test)]

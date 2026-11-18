@@ -72,6 +72,26 @@ pub(crate) fn read_evidence(
     )
 }
 #[tauri::command]
+pub(crate) fn open_evidence(
+    state: State<'_, AppState>,
+    project_id: String,
+    owner_id: String,
+    activity_id: String,
+    evidence_id: String,
+) -> Result<(), String> {
+    let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    let (evidence, bytes) = activities::evidence_asset(
+        &data_path(&state)?,
+        guard.as_ref().ok_or("Ingresa primero.")?,
+        &workspace_id(&state)?,
+        &project_id,
+        &owner_id,
+        &activity_id,
+        &evidence_id,
+    )?;
+    crate::evidence_preview::open_evidence_bytes(&evidence, &bytes)
+}
+#[tauri::command]
 pub(crate) fn review_activity(
     state: State<'_, AppState>,
     input: activities::ReviewInput,

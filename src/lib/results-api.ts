@@ -13,3 +13,4 @@ export const setResultsClosure = (input: Ops.OperationsClosureInput) => invoke<R
 export const resolveResultsConflict = (input: Ops.OperationsResolveInput) => invoke<ResultsDetail>("results_resolve", { input });
 export const attachResultsEvidence = (input: Ops.OperationsAttachmentInput) => invoke<ResultsDetail>("results_attach_evidence", { input });
 export const readResultsEvidence = (projectId: string, evidenceId: string) => invoke<number[]>("results_read_evidence", { projectId, evidenceId });
+export const openResultsEvidence = (projectId: string, evidenceId: string) => invoke<void>("results_open_evidence", { projectId, evidenceId });

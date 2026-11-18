@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { ResultsWork } from "./ResultsWork";
 import * as api from "../../lib/results-api";
 
-vi.mock("../../lib/results-api", () => ({ resultsDetail: vi.fn(), saveResultsCommitment: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
+vi.mock("../../lib/results-api", () => ({ resultsDetail: vi.fn(), saveResultsCommitment: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn(), openResultsEvidence: vi.fn() }));
 afterEach(cleanup);
 const rev = (letter: string) => letter.repeat(64);
 function fixture(role: "engineer" | "supervisor" | "admin" = "engineer"): api.ResultsDetail {
@@ -431,4 +431,87 @@ it("Supervisor puede registrar avances en las actividades del proyecto", async (
       activity: expect.objectContaining({ note: "Avance registrado por supervisor" }),
     })
   );
+});
+
+it("permite editar Inicio previsto y Fin previsto en actividades existentes", async () => {
+  const initial = fixture();
+  vi.mocked(api.saveResultsActivity).mockResolvedValue(initial);
+  await mount(initial);
+
+  await userEvent.click(screen.getByRole("button", { name: "Agregar actividad en Estación validada" }));
+  const dialog = screen.getByRole("dialog", { name: "Actualizar actividad" });
+  const startInput = within(dialog).getByLabelText("Inicio previsto") as HTMLInputElement;
+  const dueInput = within(dialog).getByLabelText("Fin previsto") as HTMLInputElement;
+
+  expect(startInput.value).toBe("2026-10-29");
+  expect(dueInput.value).toBe("2026-11-10");
+
+  fireEvent.change(startInput, { target: { value: "2026-10-30" } });
+  fireEvent.change(dueInput, { target: { value: "2026-11-12" } });
+  fireEvent.submit(form(dialog));
+
+  await waitFor(() => expect(api.saveResultsActivity).toHaveBeenCalledTimes(1));
+  expect(api.saveResultsActivity).toHaveBeenCalledWith(
+    expect.objectContaining({
+      project_id: "project_1",
+      expected_revision: rev("b"),
+      activity: expect.objectContaining({
+        id: "task_1",
+        forecast_start: "2026-10-30",
+        forecast_due: "2026-11-12",
+      }),
+    })
+  );
+});
+
+it("al definir o editar cierres permite ajustar la fecha de inicio y la sincroniza con la actividad del entregable", async () => {
+  const initial = fixture("supervisor");
+  vi.mocked(api.saveResultsCommitment).mockResolvedValue(initial);
+  vi.mocked(api.saveResultsActivity).mockResolvedValue(initial);
+  await mount(initial);
+
+  await userEvent.click(screen.getByRole("button", { name: "Editar compromiso y DoD" }));
+  const dialog = screen.getByRole("dialog", { name: "Definir cierre del proyecto" });
+
+  const startInput = within(dialog).getByLabelText("Inicio del entregable 1") as HTMLInputElement;
+  expect(startInput.value).toBe("2026-10-29");
+
+  fireEvent.change(startInput, { target: { value: "2026-10-30" } });
+  fireEvent.change(within(dialog).getByLabelText("Motivo de la definición o cambio"), {
+    target: { value: "Ajuste de fecha de inicio" },
+  });
+  fireEvent.submit(within(dialog).getByRole("button", { name: "Guardar cambio de compromiso" }).closest("form")!);
+
+  await waitFor(() => expect(api.saveResultsCommitment).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(api.saveResultsActivity).toHaveBeenCalledTimes(1));
+  expect(api.saveResultsActivity).toHaveBeenCalledWith(
+    expect.objectContaining({
+      project_id: "project_1",
+      expected_revision: rev("b"),
+      activity: expect.objectContaining({
+        id: "task_1",
+        forecast_start: "2026-10-30",
+      }),
+    })
+  );
+});
+
+it("en el Gantt muestra el avance y nota de la actividad cuando su título coincide con el entregable", async () => {
+  const initial = fixture("supervisor");
+  initial.activities[0].activity.title = "Estación validada";
+  initial.activities[0].activity.progress = 50;
+  initial.activities[0].activity.note = "Cableado principal terminado";
+  await mount(initial);
+
+  const gantt = screen.getByRole("region", { name: "Gantt de actividades" });
+  expect(within(gantt).getByText("50% · Cableado principal terminado")).toBeTruthy();
+});
+
+it("abre documentos adjuntos usando el comando nativo sin depender de descargas blob", async () => {
+  vi.mocked(api.openResultsEvidence).mockResolvedValue(undefined);
+  await mount(fixture("supervisor"));
+
+  await userEvent.click(screen.getByRole("button", { name: /prueba\.pdf/i }));
+
+  await waitFor(() => expect(api.openResultsEvidence).toHaveBeenCalledWith("project_1", rev("c")));
 });

@@ -8,6 +8,7 @@ mod auth;
 mod auth_commands;
 mod bootstrap;
 mod data_store;
+mod evidence_preview;
 mod incidents;
 mod onedrive;
 mod operations_commands;
@@ -62,6 +63,7 @@ fn app_builder<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<
             results_commands::results_resolve,
             results_commands::results_attach_evidence,
             results_commands::results_read_evidence,
+            results_commands::results_open_evidence,
             project_commands::create_project,
             project_commands::reorder_projects,
             project_commands::set_project_target,
@@ -70,6 +72,7 @@ fn app_builder<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<
             activity_commands::save_activity,
             activity_commands::attach_evidence,
             activity_commands::read_evidence,
+            activity_commands::open_evidence,
             activity_commands::review_activity,
             operations_commands::plant_catalogs,
             operations_commands::save_plant_catalogs,

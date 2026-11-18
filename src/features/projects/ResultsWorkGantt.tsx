@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Target } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardList, Target } from "lucide-react";
 import type { OperationsActivityEntry, ResultsDeliverable, OperationsReviewEntry } from "../../lib/results-api";
 import { toInitials } from "./compactLabels";
 import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
@@ -13,6 +13,13 @@ const day = (value: string) => {
   const ts = Date.parse(`${value}T00:00:00Z`);
   return isNaN(ts) ? 0 : ts / 86400000;
 };
+
+const shortAxisDate = (tickDay: number) =>
+  new Intl.DateTimeFormat("es-MX", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(tickDay * 86400000));
 
 const todayIso = () =>
   new Intl.DateTimeFormat("en-CA", {
@@ -101,11 +108,23 @@ export function ResultsGantt({
 
   const timelineMinWidth = Math.min(1400, Math.max(460, span * 10));
 
-  function renderActivityRow(entry: OperationsActivityEntry, isNested: boolean, rowIndex: number) {
+  function renderActivityRow(
+    entry: OperationsActivityEntry,
+    isNested: boolean,
+    rowIndex: number,
+    deliverableTitle?: string
+  ) {
     const a = entry.activity;
     const aStart = day(a.forecast_start);
     const aEnd = day(a.forecast_due);
     const isDone = a.status === "done" || a.progress === 100;
+    const matchesDeliverable = Boolean(
+      isNested && deliverableTitle && a.title.trim().toLowerCase() === deliverableTitle.trim().toLowerCase()
+    );
+    const statusText = activityStatusLabel[a.status] ?? a.status;
+    const displayLabel = matchesDeliverable
+      ? (a.note?.trim() ? `${a.progress}% · ${a.note.trim()}` : `Avance: ${a.progress}% (${statusText})`)
+      : a.title;
     const actLeft = Math.max(0, (100 * (aStart - start)) / span);
     const actWidth = Math.max(2.2, (100 * (Math.max(aStart, aEnd) - aStart + 1)) / span);
     const barCenter = actLeft + actWidth / 2;
@@ -114,7 +133,7 @@ export function ResultsGantt({
     const tooltipData: GanttTooltipData = {
       kindLabel: "Actividad",
       title: a.title,
-      statusLabel: activityStatusLabel[a.status] ?? a.status,
+      statusLabel: statusText,
       atRisk: a.at_risk,
       startDate: a.forecast_start,
       endDate: a.forecast_due,
@@ -126,40 +145,31 @@ export function ResultsGantt({
     return (
       <div className="results-gantt-row results-gantt-row-activity" key={a.id}>
         <div className="results-gantt-rail">
-          <div className="results-gantt-rail-main">
+          <div className="results-gantt-rail-col-expand">
             {isNested && (
               <span className="results-gantt-sub-indent" aria-hidden="true">
                 └
               </span>
             )}
-            <span className="results-gantt-title font-medium" title={a.title}>
-              {a.title}
-            </span>
-            <span
-              className="results-gantt-initials-badge"
-              title={`Responsable: ${a.responsible_id}`}
-              aria-label={`Responsable ${a.responsible_id}`}
-            >
-              {toInitials(a.responsible_id)}
-            </span>
           </div>
-          <div className="results-gantt-rail-meta">
-            <span className="results-gantt-date-chip tabular-nums">
-              {a.forecast_start} → {a.forecast_due}
-            </span>
-            {a.at_risk && (
-              <span className="results-state is-risk">
-                <AlertTriangle size={11} aria-hidden="true" />
-                <span>Riesgo</span>
+          <div className="results-gantt-rail-col-text">
+            <div className="results-gantt-rail-main">
+              <span
+                className={`results-gantt-title ${matchesDeliverable ? "text-kmx-gray-600 italic" : "font-medium"}`}
+                title={displayLabel}
+              >
+                {displayLabel}
               </span>
-            )}
-            {isDone && (
-              <span className="results-state is-done">
-                <CheckCircle2 size={11} aria-hidden="true" />
-                <span>Cumplida</span>
+              <span
+                className="results-gantt-initials-badge"
+                title={`Responsable: ${a.responsible_id}`}
+                aria-label={`Responsable ${a.responsible_id}`}
+              >
+                {toInitials(a.responsible_id)}
               </span>
-            )}
+            </div>
           </div>
+          <div className="results-gantt-rail-col-action" />
         </div>
 
         <div className="results-gantt-track-cell">
@@ -168,13 +178,11 @@ export function ResultsGantt({
               <div className="results-gantt-today-line" style={{ left: `${todayLeftPct}%` }} aria-hidden="true" />
             )}
             <div
-              className={`results-gantt-bar results-gantt-activity-bar ${isDone ? "is-done" : ""} ${
-                a.at_risk ? "is-at-risk" : ""
-              } ${interactive ? "is-interactive" : ""}`}
+              className={`results-gantt-bar results-gantt-activity-bar ${isDone ? "is-done" : ""} ${a.at_risk ? "is-at-risk" : ""
+                } ${interactive ? "is-interactive" : ""}`}
               style={{ left: `${actLeft}%`, width: `${actWidth}%` }}
-              aria-label={`${a.title}, del ${a.forecast_start} al ${a.forecast_due}, avance ${a.progress}%${
-                a.at_risk ? ", en riesgo" : ""
-              }`}
+              aria-label={`${a.title}, del ${a.forecast_start} al ${a.forecast_due}, avance ${a.progress}%${a.at_risk ? ", en riesgo" : ""
+                }`}
               onClick={() => interactive && onUpdateActivity?.(entry)}
               onKeyDown={e => handleBarKeyDown(e, entry)}
               onMouseEnter={() => showTooltip(a.id, barCenter, placement, tooltipData)}
@@ -185,7 +193,10 @@ export function ResultsGantt({
               tabIndex={0}
             >
               <span className="results-gantt-progress" style={{ width: `${a.progress}%` }} />
-              <span className="tabular-nums">{a.progress}%</span>
+              <span className="tabular-nums">
+                {a.at_risk ? "! " : isDone ? "✓ " : ""}
+                {a.progress}%
+              </span>
             </div>
             {tooltip?.id === a.id && (
               <GanttTooltip data={tooltip.data} anchorLeftPct={tooltip.anchorLeftPct} placement={tooltip.placement} />
@@ -200,17 +211,12 @@ export function ResultsGantt({
     <div className="results-gantt-wrapper space-y-2">
       {/* Barra de control del Gantt */}
       <div className="results-gantt-toolbar">
-        <span className="text-xs text-kmx-gray-600 tabular-nums">
-          Horizonte: {new Date(start * 86400000).toISOString().slice(0, 10)} →{" "}
-          {new Date(end * 86400000).toISOString().slice(0, 10)} ({span} días)
-        </span>
         {deliverables.length > 0 && (
           <div className="inline-flex rounded-md shadow-sm border border-kmx-gray-300 overflow-hidden text-xs">
             <button
               type="button"
-              className={`px-2.5 py-1.5 font-medium transition-colors ${
-                viewScope === "all" ? "bg-kmx-carbon text-white" : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
-              }`}
+              className={`px-2.5 py-1.5 font-medium transition-colors ${viewScope === "all" ? "bg-kmx-carbon text-white" : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
+                }`}
               onClick={() => setViewScope("all")}
               title="Desglosar cada entregable con sus actividades y fechas de previsión"
             >
@@ -218,11 +224,10 @@ export function ResultsGantt({
             </button>
             <button
               type="button"
-              className={`px-2.5 py-1.5 font-medium transition-colors border-l border-kmx-gray-300 ${
-                viewScope === "deliverables_only"
-                  ? "bg-kmx-carbon text-white"
-                  : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
-              }`}
+              className={`px-2.5 py-1.5 font-medium transition-colors border-l border-kmx-gray-300 ${viewScope === "deliverables_only"
+                ? "bg-kmx-carbon text-white"
+                : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
+                }`}
               onClick={() => setViewScope("deliverables_only")}
               title="Visualización concisa: únicamente entregables de cierre"
             >
@@ -238,16 +243,18 @@ export function ResultsGantt({
           {/* Encabezado sincronizado */}
           <div className="results-gantt-header-row">
             <div className="results-gantt-rail results-gantt-rail-head">
-              <span>Entregable / Actividad</span>
-              <span>Estado y fechas</span>
+              <span className="results-gantt-rail-col-expand" aria-hidden="true" />
+              <span className="results-gantt-rail-col-text">Actividad</span>
+              <span className="results-gantt-rail-col-action" aria-hidden="true" />
             </div>
             <div className="results-gantt-track-cell">
               <div className="results-gantt-axis" style={{ minWidth: timelineMinWidth }}>
                 {Array.from({ length: 5 }, (_, i) => {
                   const tickDay = start + Math.round(((span - 1) * i) / 4);
+                  const iso = new Date(tickDay * 86400000).toISOString().slice(0, 10);
                   return (
-                    <span key={i} className="tabular-nums">
-                      {new Date(tickDay * 86400000).toISOString().slice(0, 10)}
+                    <span key={i} className="tabular-nums" title={iso}>
+                      {shortAxisDate(tickDay)}
                     </span>
                   );
                 })}
@@ -290,7 +297,7 @@ export function ResultsGantt({
                 <div key={d.id} className="results-gantt-deliverable-block">
                   <div className="results-gantt-row results-gantt-row-deliverable">
                     <div className="results-gantt-rail">
-                      <div className="results-gantt-rail-main">
+                      <div className="results-gantt-rail-col-expand">
                         {viewScope === "all" && (
                           <button
                             type="button"
@@ -306,19 +313,18 @@ export function ResultsGantt({
                             )}
                           </button>
                         )}
-                        <Target size={14} className="results-gantt-icon-target" aria-hidden="true" />
-                        <span className="results-gantt-title font-bold text-kmx-carbon" title={d.title}>
-                          {d.title}
-                        </span>
                       </div>
 
-                      <div className="results-gantt-rail-meta">
-                        <span className="text-xs text-kmx-gray-600 tabular-nums">
-                          {group.doneCount}/{group.totalCount} · {d.due_date}
-                        </span>
+                      <div className="results-gantt-rail-col-text">
+                        <div className="results-gantt-rail-main">
+                          <Target size={14} className="results-gantt-icon-target" aria-hidden="true" />
+                          <span className="results-gantt-title font-bold text-kmx-carbon" title={d.title}>
+                            {d.title}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="results-gantt-rail-actions">
+                      <div className="results-gantt-rail-col-action">
                         <DeliverableActions
                           deliverable={d}
                           canPlan={canPlan}
@@ -337,9 +343,8 @@ export function ResultsGantt({
                           />
                         )}
                         <div
-                          className={`results-gantt-bar results-gantt-deliverable-bar ${
-                            group.status === "accepted" ? "is-done" : ""
-                          }`}
+                          className={`results-gantt-bar results-gantt-deliverable-bar ${group.status === "accepted" ? "is-done" : ""
+                            }`}
                           style={{ left: `${delivLeft}%`, width: `${delivWidth}%` }}
                           tabIndex={0}
                           aria-label={`Entregable ${d.title}, del ${group.startIso} al ${d.due_date}, avance ${group.progress}%`}
@@ -349,7 +354,10 @@ export function ResultsGantt({
                           onBlur={() => hideTooltip(d.id)}
                         >
                           <span className="results-gantt-progress" style={{ width: `${group.progress}%` }} />
-                          <span className="tabular-nums">{group.progress}%</span>
+                          <span className="tabular-nums">
+                            {group.status === "accepted" ? "✓ " : ""}
+                            {group.progress}%
+                          </span>
                         </div>
                         {dueMarkerLeft !== null && (
                           <div
@@ -376,7 +384,7 @@ export function ResultsGantt({
 
                   {viewScope === "all" &&
                     !isCollapsed &&
-                    group.activities.map((entry, idx) => renderActivityRow(entry, true, groupIdx + idx + 1))}
+                    group.activities.map((entry, idx) => renderActivityRow(entry, true, groupIdx + idx + 1, d.title))}
                 </div>
               );
             })
@@ -388,12 +396,16 @@ export function ResultsGantt({
             <div className="results-gantt-deliverable-block">
               <div className="results-gantt-row results-gantt-row-deliverable">
                 <div className="results-gantt-rail">
-                  <div className="results-gantt-rail-main">
-                    <ClipboardList size={14} aria-hidden="true" />
-                    <span className="results-gantt-title font-bold text-kmx-gray-600">
-                      Actividades sin entregable asignado
-                    </span>
+                  <div className="results-gantt-rail-col-expand" />
+                  <div className="results-gantt-rail-col-text">
+                    <div className="results-gantt-rail-main">
+                      <ClipboardList size={14} aria-hidden="true" />
+                      <span className="results-gantt-title font-bold text-kmx-gray-600">
+                        Actividades sin entregable asignado
+                      </span>
+                    </div>
                   </div>
+                  <div className="results-gantt-rail-col-action" />
                 </div>
                 <div className="results-gantt-track-cell">
                   <div className="results-gantt-track" style={{ minWidth: timelineMinWidth }} />
@@ -411,10 +423,13 @@ export function ResultsGantt({
           <i className="results-legend-swatch is-deliverable" aria-hidden="true" /> Entregable
         </span>
         <span>
-          <i className="results-legend-swatch is-activity" aria-hidden="true" /> Actividad (hover / foco para fechas)
+          <i className="results-legend-swatch is-activity" aria-hidden="true" /> Actividad (hover / foco para fechas{canPlan ? "; clic para avanzar" : ""})
         </span>
         <span>
-          <i className="results-legend-swatch is-risk" aria-hidden="true" /> En riesgo
+          <i className="results-legend-swatch is-done" aria-hidden="true" /> Cumplida (✓)
+        </span>
+        <span>
+          <i className="results-legend-swatch is-risk" aria-hidden="true" /> En riesgo (!)
         </span>
         <span>
           <strong className="results-gantt-due-flag" aria-hidden="true">◆</strong> Compromiso DoD

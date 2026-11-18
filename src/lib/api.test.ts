@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { configureWorkspace, login, workspaceStatus } from "./api";
 
@@ -12,11 +12,32 @@ beforeEach(() => {
   vi.mocked(isTauri).mockReturnValue(true);
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("frontera frontend / Tauri", () => {
   it("ofrece configuración en navegador sin intentar acceder al backend", async () => {
     vi.mocked(isTauri).mockReturnValue(false);
     expect(await workspaceStatus()).toMatchObject({
       phase: "unconfigured", workspace: null, candidate_root: null,
+      message: "Abre la aplicación de escritorio para configurar el espacio compartido.",
+    });
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("localiza el mensaje de navegador cuando el idioma guardado es inglés", async () => {
+    vi.mocked(isTauri).mockReturnValue(false);
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => (key === "easyfab.lang" ? "en" : null),
+      },
+    });
+    expect(await workspaceStatus()).toEqual({
+      phase: "unconfigured",
+      candidate_root: null,
+      workspace: null,
+      message: "Open the desktop application to configure the shared workspace.",
     });
     expect(invoke).not.toHaveBeenCalled();
   });

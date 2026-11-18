@@ -1,3 +1,5 @@
+import type { Lang } from "./bilingual";
+import { translateMessage } from "./i18n";
 import type { ResultsDetail, OperationsHistoryEntry, OperationsReviewEntry } from "./results-api";
 
 const DAY_MS = 86_400_000;
@@ -69,29 +71,33 @@ function mexicoDay(instant: number): string {
  * use Mexico City civil days; a selected date is an inclusive end-of-day cutoff.
  * The utility never turns absent observations or conflicts into a measured zero rate.
  */
-export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDay(Date.now())): ResultsMetrics {
+export function summarizeResults(
+  detail: ResultsDetail,
+  reportingDate = mexicoDay(Date.now()),
+  lang: Lang = "es",
+): ResultsMetrics {
   const cutoff = civilDay(reportingDate);
-  if (cutoff === null) throw new Error("Usa una fecha de corte válida con formato AAAA-MM-DD.");
+  if (cutoff === null) throw new Error(translateMessage("resultsMetrics.invalidCutoffDate", lang));
   const weekday = new Date(cutoff * DAY_MS).getUTCDay();
   const firstDay = cutoff - ((weekday + 6) % 7);
   const lastDay = firstDay + 6;
   const weekStart = dayString(firstDay);
   const weekEnd = dayString(lastDay);
   const caveats = new Set<string>();
-  if (detail.plan_issues?.length) caveats.add("El plan tiene relaciones pendientes de corregir; los indicadores no acreditan que el proyecto pueda cerrarse.");
+  if (detail.plan_issues?.length) caveats.add(translateMessage("resultsMetrics.caveat.planIssues", lang));
   const excludedStreams = [...new Set(detail.conflicts.map(conflict => conflict.stream))].sort();
   const conflicts = new Set(excludedStreams);
   const commitmentConflict = conflicts.has("commitment");
-  if (excludedStreams.length) caveats.add("Las versiones en conflicto se excluyen de los indicadores; los conteos confirmados pueden ser parciales.");
-  if (reportingDate < weekEnd) caveats.add("Semana en curso: el corte es parcial y todavía hay fechas del periodo por vencer.");
-  if (!detail.commitment) caveats.add("El proyecto todavía no tiene un compromiso definido.");
+  if (excludedStreams.length) caveats.add(translateMessage("resultsMetrics.caveat.conflicts", lang));
+  if (reportingDate < weekEnd) caveats.add(translateMessage("resultsMetrics.caveat.partialWeek", lang));
+  if (!detail.commitment) caveats.add(translateMessage("resultsMetrics.caveat.noCommitment", lang));
   if (detail.baseline && detail.commitment && detail.baseline.revision !== detail.commitment.revision) {
-    caveats.add("El compromiso cambió: se conserva la fecha de la línea base y no se mezclan aceptaciones de revisiones distintas.");
+    caveats.add(translateMessage("resultsMetrics.caveat.commitmentChanged", lang));
   }
 
   function eventDay(value: string): string | null {
     const instant = timestamp(value);
-    if (instant === null) { caveats.add("Hay marcas de tiempo no válidas; las observaciones afectadas no se consideran mediciones completas."); return null; }
+    if (instant === null) { caveats.add(translateMessage("resultsMetrics.caveat.invalidTimestamps", lang)); return null; }
     return mexicoDay(instant);
   }
   function inWeek(day: string): boolean { return day >= weekStart && day <= weekEnd; }
@@ -107,7 +113,7 @@ export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDa
     if (currentReviews.has(review.deliverable_id)) {
       // A projection with duplicate heads is incomplete even if its conflict list is missing.
       conflicts.add(`review/${review.deliverable_id}`);
-      caveats.add("La proyección contiene más de una revisión vigente para un entregable; se excluye ese entregable.");
+      caveats.add(translateMessage("resultsMetrics.caveat.duplicateReviewHeads", lang));
     } else currentReviews.set(review.deliverable_id, review);
   }
   const liveReviews = [...currentReviews.values()].filter(review =>
@@ -151,7 +157,7 @@ export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDa
       const decisionDay = decision ? eventDay(decision.recorded_at) : null;
       if (decision && (decisionDay === null || decisionDay <= reportingDate)) {
         firstPass.unmeasurable++;
-        caveats.add("Falta historial para establecer la primera decisión de algunos entregables; la tasa de primera aceptación queda sin determinar.");
+        caveats.add(translateMessage("resultsMetrics.caveat.missingFirstDecisionHistory", lang));
       }
     }
     const last = entries.at(-1);
@@ -160,7 +166,7 @@ export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDa
       if (day !== null && inWeek(day)) firstPass.pending++;
     } else if (!entries.length && currentReviews.get(deliverableId)?.status === "submitted") {
       firstPass.pendingUnmeasurable++;
-      caveats.add("Hay solicitudes pendientes sin fecha de solicitud en el historial; no pueden asignarse a una semana.");
+      caveats.add(translateMessage("resultsMetrics.caveat.pendingWithoutSubmitDate", lang));
     }
   }
   if (firstPass.reviewed > 0 && firstPass.unmeasurable === 0 && !commitmentConflict
@@ -171,12 +177,12 @@ export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDa
   const onTime: ResultsMetrics["onTime"] = { accepted: 0, due: 0, missingBaseline: 0, unmeasurable: 0, notYetDue: 0, rate: null };
   const baselineIds = new Set(detail.baseline?.deliverables.map(deliverable => deliverable.id) ?? []);
   onTime.missingBaseline = currentDeliverables.filter(deliverable => !baselineIds.has(deliverable.id)).length;
-  if (!detail.baseline) caveats.add("Sin línea base no puede medirse cumplimiento de la fecha comprometida.");
-  if (onTime.missingBaseline) caveats.add("Hay entregables sin referencia en la línea base; se muestran aparte del cumplimiento comprometido.");
+  if (!detail.baseline) caveats.add(translateMessage("resultsMetrics.caveat.noBaseline", lang));
+  if (onTime.missingBaseline) caveats.add(translateMessage("resultsMetrics.caveat.missingBaselineDeliverables", lang));
   for (const deliverable of detail.baseline?.deliverables ?? []) {
     if (civilDay(deliverable.due_date) === null) {
       onTime.missingBaseline++;
-      caveats.add("Hay fechas de línea base inválidas; no se pueden asignar al periodo.");
+      caveats.add(translateMessage("resultsMetrics.caveat.invalidBaselineDates", lang));
       continue;
     }
     if (!inWeek(deliverable.due_date)) continue;
@@ -207,7 +213,7 @@ export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDa
       else onTime.unmeasurable++;
     }
   }
-  if (onTime.unmeasurable) caveats.add("No puede ligarse toda la aceptación histórica a la revisión de la línea base; el cumplimiento de ese periodo queda sin determinar.");
+  if (onTime.unmeasurable) caveats.add(translateMessage("resultsMetrics.caveat.unmeasurableOnTime", lang));
   if (onTime.due > 0 && onTime.unmeasurable === 0 && onTime.notYetDue === 0) onTime.rate = onTime.accepted / onTime.due;
 
   const openBlockers: ResultsMetrics["openBlockers"] = [];
@@ -226,7 +232,7 @@ export function summarizeResults(detail: ResultsDetail, reportingDate = mexicoDa
     let firstAttentionHours: number | null = null;
     if (attention !== null && attentionDay !== null && attentionDay <= reportingDate && attention >= reported) {
       firstAttentionHours = (attention - reported) / 3_600_000;
-    } else if (attention !== null && attention < reported) caveats.add("Hay una primera atención anterior al reporte; ese tiempo no se interpreta como medición válida.");
+    } else if (attention !== null && attention < reported) caveats.add(translateMessage("resultsMetrics.caveat.attentionBeforeReport", lang));
     openBlockers.push({ id: blocker.id, activityId: blocker.activity_id, reason: blocker.reason,
       ageDays: Math.max(0, cutoff - civilDay(reportDay)!), firstAttentionHours });
   }

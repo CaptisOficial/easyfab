@@ -1,10 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { createUser, type NewUser } from "../../lib/api";
+import { useI18n } from "../../lib/i18n";
 
 const emptyUser: NewUser = { id: "", name: "", role: "engineer" };
 
 export function NewUserForm({ onCreated }: { onCreated: () => Promise<void> }) {
+  const { t, tError } = useI18n();
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -37,48 +39,50 @@ export function NewUserForm({ onCreated }: { onCreated: () => Promise<void> }) {
   const [temporary, setTemporary] = useState("");
   const [createdId, setCreatedId] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (sending.current) return;
     sending.current = true;
-    setBusy(true); setError(""); setTemporary("");
+    setBusy(true); setError(null); setTemporary("");
     try {
       setTemporary(await createUser(input));
       setCreatedId(input.id.trim());
       setInput(emptyUser);
       await onCreated();
-    } catch (e) { setError(String(e)); }
+    } catch (e) { setError(e); }
     finally { sending.current = false; setBusy(false); }
   }
 
+  const errorText = error !== null && error !== "" ? tError(error) : "";
+
   return <>
-    <button ref={trigger} type="button" className="btn-primary" onClick={() => setOpen(true)}>Nuevo usuario</button>
+    <button ref={trigger} type="button" className="btn-primary" onClick={() => setOpen(true)}>{t("auth.newUser.open")}</button>
     {open && createPortal(<div className="project-dialog-backdrop" onClick={event => { if (event.target === event.currentTarget) close(); }}>
       <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="project-dialog w-full max-w-2xl bg-surface rounded shadow-lg">
-        <div className="project-dialog-header"><h3 id={titleId} className="font-bold">Crear usuario</h3><button type="button" disabled={busy} aria-label="Cerrar alta de usuario" onClick={close}>✕</button></div>
+        <div className="project-dialog-header"><h3 id={titleId} className="font-bold">{t("auth.newUser.title")}</h3><button type="button" disabled={busy} aria-label={t("auth.newUser.close")} onClick={close}>✕</button></div>
         <div className="project-dialog-body"><form onSubmit={submit} className="space-y-3">
     <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
-      <label>ID de usuario<input required maxLength={64} pattern="[A-Za-z0-9_-]+"
+      <label>{t("auth.newUser.userId")}<input required maxLength={64} pattern="[A-Za-z0-9_-]+"
         value={input.id} onChange={e => setInput({ ...input, id: e.target.value })}
         className="block w-full border p-2" /></label>
-      <label>Nombre completo<input required maxLength={100} value={input.name}
+      <label>{t("auth.fullName")}<input required maxLength={100} value={input.name}
         onChange={e => setInput({ ...input, name: e.target.value })} className="block w-full border p-2" /></label>
-      <label>Rol<select value={input.role} className="block w-full border p-2"
+      <label>{t("auth.role")}<select value={input.role} className="block w-full border p-2"
         onChange={e => setInput({ ...input, role: e.target.value as NewUser["role"] })}>
-        <option value="engineer">Ingeniero</option><option value="supervisor">Supervisor</option>
+        <option value="engineer">{t("role.engineer")}</option><option value="supervisor">{t("role.supervisor")}</option>
       </select></label>
     </fieldset>
-    <p className="text-sm">El usuario y la contraseña de EasyFAB permiten acceder desde los equipos habilitados del área.</p>
-    {error && <p role="alert" className="text-kmx-red">{error}</p>}
-    <button disabled={busy} className="bg-kmx-carbon px-4 py-2 text-white">{busy ? "Creando…" : "Crear y generar temporal"}</button>
+    <p className="text-sm">{t("auth.newUser.accessHelp")}</p>
+    {errorText && <p role="alert" className="text-kmx-red">{errorText}</p>}
+    <button disabled={busy} className="bg-kmx-carbon px-4 py-2 text-white">{busy ? t("common.creating") : t("auth.newUser.submit")}</button>
     {temporary && <div role="status">
-      <p>Usuario creado: {createdId}. Temporal de 8 caracteres, válida 24 horas:</p>
+      <p>{t("auth.newUser.created", { id: createdId })}</p>
       <output className="block font-mono">{temporary}</output>
-      <p className="text-sm">Entrégala al titular por el canal corporativo autorizado. Deberá cambiarla al ingresar.</p>
-      <p className="text-sm">Para probar el acceso: guarda la temporal, cierra tu sesión de Admin y elige este usuario. Después de cambiar la contraseña, vuelve a ingresar con la nueva.</p>
-      <button type="button" onClick={() => setTemporary("")} className="border px-3 py-1">Ocultar temporal</button>
+      <p className="text-sm">{t("auth.newUser.deliveryHelp")}</p>
+      <p className="text-sm">{t("auth.newUser.testHelp")}</p>
+      <button type="button" onClick={() => setTemporary("")} className="border px-3 py-1">{t("common.hideTemporary")}</button>
     </div>}
   </form></div></div></div>, document.body)}
   </>;

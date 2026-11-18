@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ProjectsOverview } from "../../lib/api";
+import { useI18n } from "../../lib/i18n";
 import { compactArea, formatStackedGroup } from "./compactLabels";
 import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
 import { movePeriod, overlaps, periodRange, todayKey, type Period } from "./timeline";
@@ -33,6 +34,7 @@ export function ProjectTimeline({
   onOpen: (id: string) => void;
   onReorder?: (projectIds: string[]) => void;
 }) {
+  const { pick } = useI18n();
   const [period, setPeriod] = useState<Period>("week");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [anchor, setAnchor] = useState(todayKey);
@@ -178,9 +180,10 @@ export function ProjectTimeline({
                   .map((area, idx) => ({ id: `${p.id}-area-${idx}`, label: area, compact: compactArea(area) }));
                 const stackedAreas = formatStackedGroup(areaItems, 2);
 
+                const displayName = pick(p.name);
                 const tooltipData: GanttTooltipData = {
                   kindLabel: p.wbs,
-                  title: p.name,
+                  title: displayName,
                   statusLabel: statuses[p.status],
                   startDate: p.start_date,
                   endDate: p.target_date,
@@ -234,8 +237,8 @@ export function ProjectTimeline({
                     </td>
 
                     <th scope="row">
-                      <button onClick={() => onOpen(p.id)} title={`Abrir ${p.wbs} · ${p.name}`}>
-                        {p.wbs} · {p.name}
+                      <button onClick={() => onOpen(p.id)} title={`Abrir ${p.wbs} · ${displayName}`}>
+                        {p.wbs} · {displayName}
                       </button>
                     </th>
 
@@ -255,8 +258,10 @@ export function ProjectTimeline({
                     </td>
 
                     <td className="schedule-dates-cell tabular-nums" title={`Inicio: ${p.start_date} · Objetivo: ${p.target_date}`}>
-                      <span>{p.start_date}</span>
-                      <span className="schedule-date-end">{p.target_date}</span>
+                      <div className="schedule-dates-stack">
+                        <span>{p.start_date}</span>
+                        <span className="schedule-date-end">{p.target_date}</span>
+                      </div>
                     </td>
 
                     <td>
@@ -296,7 +301,7 @@ export function ProjectTimeline({
                               className={`schedule-bar ${p.status === "Completed" ? "is-complete" : p.status === "On Hold" ? "is-paused" : ""} ${
                                 !prevActive ? "is-start" : ""
                               } ${!nextActive ? "is-end" : ""}`}
-                              aria-label={`${p.name}: ${p.start_date} a ${p.target_date}`}
+                              aria-label={`${displayName}: ${p.start_date} a ${p.target_date}`}
                               onMouseEnter={() =>
                                 setHoveredBar({ projectId: p.id, colIndex, rowIndex, data: tooltipData })
                               }

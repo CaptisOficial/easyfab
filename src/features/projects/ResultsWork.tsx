@@ -7,7 +7,7 @@ import { DeliverableActions, activityStatusLabel, groupDeliverables } from "./de
 import { summarizeResults } from "../../lib/results-metrics";
 import {
   resultsDetail, saveResultsCommitment, saveResultsActivity, saveResultsBlocker,
-  requestActivityRevision, setResultsClosure, resolveResultsConflict, attachResultsEvidence, readResultsEvidence,
+  requestActivityRevision, setResultsClosure, resolveResultsConflict, attachResultsEvidence, openResultsEvidence,
   type ResultsDetail, type ResultsActivity, type OperationsActivityEntry, type OperationsCommitmentDraft,
   type ResultsDeliverable, type OperationsBlockerEntry, type OperationsConflict,
 } from "../../lib/results-api";
@@ -46,6 +46,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
   const [savedActivityJson, setSavedActivityJson] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [commitment, setCommitment] = useState<OperationsCommitmentDraft>(emptyCommitment);
+  const [commitmentStartDates, setCommitmentStartDates] = useState<Record<string, string>>({});
   const [comment, setComment] = useState("");
   const [legacyTarget, setLegacyTarget] = useState("");
   const [reason, setReason] = useState(""); const [help, setHelp] = useState("");
@@ -80,6 +81,15 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
 
   function openCommitment() {
     if (!data) return;
+    const startDates: Record<string, string> = {};
+    for (const deliv of data.commitment?.deliverables ?? []) {
+      const starts = data.activities
+        .filter(e => e.activity.deliverable_id === deliv.id && e.activity.forecast_start)
+        .map(e => e.activity.forecast_start)
+        .sort();
+      if (starts.length) startDates[deliv.id] = starts[0];
+    }
+    setCommitmentStartDates(startDates);
     setCommitment(data.commitment ? { final_outcome: data.commitment.final_outcome, scope: data.commitment.scope, start_date: data.commitment.start_date, target_date: data.commitment.target_date, engineer_ids: [...data.commitment.engineer_ids], deliverables: structuredClone(data.commitment.deliverables) }
       : { ...emptyCommitment(), start_date: data.project.start_date, target_date: data.project.target_date, engineer_ids: [...data.project.engineer_ids] });
     setComment(""); setLegacyTarget(""); setError(""); setModal({ kind: "commitment" });
@@ -90,21 +100,21 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
     const base = entry
       ? structuredClone(entry.activity)
       : (() => {
-          const blank = blankActivity(data);
-          if (deliverable) {
-            blank.deliverable_id = deliverable.id;
-            blank.title = deliverable.title;
-            blank.forecast_due = deliverable.due_date;
-          } else {
-            const firstDeliv = data.commitment?.deliverables[0];
-            if (firstDeliv) {
-              blank.deliverable_id = firstDeliv.id;
-              blank.title = firstDeliv.title;
-              blank.forecast_due = firstDeliv.due_date;
-            }
+        const blank = blankActivity(data);
+        if (deliverable) {
+          blank.deliverable_id = deliverable.id;
+          blank.title = deliverable.title;
+          blank.forecast_due = deliverable.due_date;
+        } else {
+          const firstDeliv = data.commitment?.deliverables[0];
+          if (firstDeliv) {
+            blank.deliverable_id = firstDeliv.id;
+            blank.title = firstDeliv.title;
+            blank.forecast_due = firstDeliv.due_date;
           }
-          return blank;
-        })();
+        }
+        return blank;
+      })();
     setActivity(base);
     setActivityRevision(entry?.revision ?? null);
     setSavedActivityJson(entry ? JSON.stringify(entry.activity) : null);
@@ -140,7 +150,56 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
     if (data.legacy_entries.length && !data.commitment && !legacyTarget) { setError("Selecciona el entregable que recibirá las actividades anteriores para activar este flujo."); return; }
     if (!comment.trim()) { setError("Describe el motivo de la definición o cambio."); return; }
     const next = await perform(() => saveResultsCommitment({ project_id: projectId, expected_revision: data.commitment?.revision ?? null, commitment, change_reason: comment, legacy_deliverable_id: legacyTarget || null }), "Definición de cierre guardada.");
-    if (next) setModal(null);
+    if (!next) return;
+
+    let latest = next;
+    const defaultEngineer = latest.project.engineer_ids[0] ?? commitment.engineer_ids[0] ?? "";
+    for (const d of commitment.deliverables) {
+      const explicitStart = commitmentStartDates[d.id];
+      const existing = latest.activities.filter(e => e.activity.deliverable_id === d.id);
+      if (existing.length === 0 && explicitStart && defaultEngineer && explicitStart <= d.due_date) {
+        try {
+          const updated = await saveResultsActivity({
+            project_id: projectId,
+            expected_revision: null,
+            activity: {
+              id: `act_${crypto.randomUUID().replaceAll("-", "")}`,
+              deliverable_id: d.id,
+              title: d.title.trim(),
+              responsible_id: defaultEngineer,
+              forecast_start: explicitStart,
+              forecast_due: d.due_date,
+              dependency_ids: [],
+              status: "not_started",
+              progress: 0,
+              at_risk: false,
+              hours_spent: null,
+              note: null,
+            },
+          });
+          if (updated) {
+            latest = updated;
+            setData(updated);
+          }
+        } catch { }
+      } else if (existing.length > 0 && explicitStart) {
+        const earliest = [...existing].sort((a, b) => a.activity.forecast_start.localeCompare(b.activity.forecast_start))[0];
+        if (earliest && earliest.activity.forecast_start !== explicitStart && explicitStart <= earliest.activity.forecast_due) {
+          try {
+            const updated = await saveResultsActivity({
+              project_id: projectId,
+              expected_revision: earliest.revision,
+              activity: { ...earliest.activity, forecast_start: explicitStart },
+            });
+            if (updated) {
+              latest = updated;
+              setData(updated);
+            }
+          } catch { }
+        }
+      }
+    }
+    setModal(null);
   }
 
   async function saveActivity(event: FormEvent) {
@@ -190,7 +249,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
             comment: "",
           });
           setData(current);
-        } catch {}
+        } catch { }
       }
       setNotice(attachment ? "Avance y evidencia guardados." : hasTargetDateIssue ? "Avance y alerta de fecha objetivo registrados." : "Avance guardado. No requiere aprobación.");
       setModal(null);
@@ -238,9 +297,9 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
     if (next) setModal(null);
   }
 
-  async function download(id: string, name: string) {
+  async function download(id: string, _name: string) {
     if (sending.current) return; sending.current = true; setBusy(true); setError("");
-    try { const bytes = await readResultsEvidence(projectId, id); const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)])); const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    try { await openResultsEvidence(projectId, id); }
     catch (e) { setError(String(e)); } finally { sending.current = false; setBusy(false); }
   }
 
@@ -267,18 +326,18 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
 
   const canCloseProject = Boolean(
     data?.commitment &&
-      data.capabilities.can_review_deliverables &&
-      (closed || data.conflicts.length === 0),
+    data.capabilities.can_review_deliverables &&
+    (closed || data.conflicts.length === 0),
   );
   const tableDeliverableGroups = data?.commitment?.deliverables
     ? groupDeliverables(
-        data.activities,
-        data.commitment.deliverables,
-        data.reviews,
-        data.commitment.revision,
-        0,
-        0,
-      )
+      data.activities,
+      data.commitment.deliverables,
+      data.reviews,
+      data.commitment.revision,
+      0,
+      0,
+    )
     : [];
   const completedDeliverableGroups = tableDeliverableGroups.filter(
     g => g.totalCount > 0 && g.doneCount === g.totalCount,
@@ -366,7 +425,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
         <div className="results-work-header-outcome">
           <p className="text-sm font-medium text-kmx-carbon">{data.commitment.final_outcome}</p>
           {data.capabilities.can_change_commitment && !closed && (
-            <button type="button" className="action text-xs py-1 px-2.5" disabled={busy} onClick={openCommitment}>Editar compromiso y DoD</button>
+            <button type="button" className="action text-xs py-1 px-2.5" disabled={busy} onClick={openCommitment}>Editar</button>
           )}
         </div>
       )}
@@ -490,214 +549,214 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
 
                 {/* Tabla de actividades agrupadas por entregable */}
                 {!isEngineerView && (
-                <div className={planViewMode === "gantt" ? "hidden" : "block w-full"}>
-                  <div className="results-table-scroll">
-                    <table className="results-table" aria-label="Actividades del proyecto">
-                      <colgroup>
-                        <col className="results-col-activity" />
-                        <col className="results-col-responsible" />
-                        <col className="results-col-forecast" />
-                        <col className="results-col-progress" />
-                        <col className="results-col-actions" />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th>Actividad</th>
-                          <th>Responsable</th>
-                          <th>Previsión</th>
-                          <th>Avance</th>
-                          <th>Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tableDeliverableGroups.length > 0 ? (
-                          <>
-                            {tableDeliverableGroups.map(group => {
-                              const deliv = group.deliverable;
-                              const delivActivities = group.activities;
+                  <div className={planViewMode === "gantt" ? "hidden" : "block w-full"}>
+                    <div className="results-table-scroll">
+                      <table className="results-table" aria-label="Actividades del proyecto">
+                        <colgroup>
+                          <col className="results-col-activity" />
+                          <col className="results-col-responsible" />
+                          <col className="results-col-forecast" />
+                          <col className="results-col-progress" />
+                          <col className="results-col-actions" />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th>Actividad</th>
+                            <th>Responsable</th>
+                            <th>Previsión</th>
+                            <th>Avance</th>
+                            <th>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tableDeliverableGroups.length > 0 ? (
+                            <>
+                              {tableDeliverableGroups.map(group => {
+                                const deliv = group.deliverable;
+                                const delivActivities = group.activities;
 
-                              return (
-                                <Fragment key={deliv.id}>
-                                  <tr className="results-table-deliverable-header">
-                                    <td colSpan={5}>
-                                      <div className="results-table-deliverable-bar">
-                                        <span className="font-bold text-kmx-carbon inline-flex items-center gap-1.5 min-w-0">
-                                          <Target size={14} className="text-kmx-lime shrink-0" aria-hidden="true" />
-                                          <span className="truncate">{deliv.title}</span>
-                                        </span>
-                                        <div className="flex items-center gap-3 flex-wrap">
-                                          <span className="text-xs text-kmx-gray-500 font-normal tabular-nums">
-                                            Compromiso: <strong>{deliv.due_date}</strong> · {group.doneCount}/{group.totalCount} cumplidas
+                                return (
+                                  <Fragment key={deliv.id}>
+                                    <tr className="results-table-deliverable-header">
+                                      <td colSpan={5}>
+                                        <div className="results-table-deliverable-bar">
+                                          <span className="font-bold text-kmx-carbon inline-flex items-center gap-1.5 min-w-0">
+                                            <Target size={14} className="text-kmx-lime shrink-0" aria-hidden="true" />
+                                            <span className="truncate">{deliv.title}</span>
                                           </span>
-                                          <DeliverableActions
-                                            deliverable={deliv}
-                                            canPlan={!closed && canPlan}
-                                            disabled={busy}
-                                            onAddActivity={openDeliverableProgress}
-                                          />
+                                          <div className="flex items-center gap-3 flex-wrap">
+                                            <span className="text-xs text-kmx-gray-500 font-normal tabular-nums">
+                                              Compromiso: <strong>{deliv.due_date}</strong> · {group.doneCount}/{group.totalCount} cumplidas
+                                            </span>
+                                            <DeliverableActions
+                                              deliverable={deliv}
+                                              canPlan={!closed && canPlan}
+                                              disabled={busy}
+                                              onAddActivity={openDeliverableProgress}
+                                            />
+                                          </div>
                                         </div>
-                                      </div>
+                                      </td>
+                                    </tr>
+                                    {delivActivities.map(entry => {
+                                      const a = entry.activity;
+                                      const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                                      return (
+                                        <tr key={a.id}>
+                                          <td>
+                                            <span className="results-task-title">{a.title}</span>
+                                            {a.note && <small className="italic text-kmx-gray-500">"{a.note}"</small>}
+                                            {a.dependency_ids.length > 0 && (
+                                              <small>Depende de: {a.dependency_ids.map(id => data.activities.find(e => e.activity.id === id)?.activity.title ?? "Actividad pendiente de sincronizar").join(", ")}</small>
+                                            )}
+                                          </td>
+                                          <td className="results-cell-responsible">
+                                            <strong>{a.responsible_id || "Sin asignar"}</strong>
+                                            <small>Creó {entry.created_by} · Editó {entry.edited_by}</small>
+                                          </td>
+                                          <td className="results-forecast tabular-nums">
+                                            {a.forecast_start}<br />{a.forecast_due}
+                                            {a.forecast_due > (deliv.due_date || data.project.target_date) && (
+                                              <small>Previsión posterior al compromiso</small>
+                                            )}
+                                          </td>
+                                          <td>
+                                            <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
+                                              {activityStatusLabel[a.status] ?? a.status}
+                                            </span>
+                                            {a.at_risk && <small className="text-kmx-red font-semibold">En riesgo</small>}
+                                            {blockers.length > 0 && <small className="text-kmx-red font-semibold">{blockers.length} bloqueo(s)</small>}
+                                          </td>
+                                          <td>
+                                            <div className="results-actions">
+                                              {canPlan && (
+                                                <>
+                                                  <button className="action" aria-label={`Actualizar ${a.title}`} disabled={busy} onClick={() => openActivity(entry)}>Actualizar</button>
+                                                  <button className="action" aria-label={`Bloqueo en ${a.title}`} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>Bloqueo</button>
+                                                </>
+                                              )}
+                                              {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
+                                                <button type="button" className="action" aria-label={`Solicitar revisión de ${a.title}`} disabled={busy} onClick={() => openActivityRevision(entry)}>Solicitar revisión</button>
+                                              )}
+                                            </div>
+                                            {entry.evidence.map(file => (
+                                              <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
+                                            ))}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </Fragment>
+                                );
+                              })}
+
+                              {data.activities.filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id)).length > 0 && (
+                                <>
+                                  <tr className="results-table-deliverable-header">
+                                    <td colSpan={5} className="font-bold text-kmx-gray-600">
+                                      📋 Otras actividades sin entregable asignado
                                     </td>
                                   </tr>
-                                  {delivActivities.map(entry => {
-                                    const a = entry.activity;
-                                    const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
-                                    return (
-                                      <tr key={a.id}>
-                                        <td>
-                                          <span className="results-task-title">{a.title}</span>
-                                          {a.note && <small className="italic text-kmx-gray-500">"{a.note}"</small>}
-                                          {a.dependency_ids.length > 0 && (
-                                            <small>Depende de: {a.dependency_ids.map(id => data.activities.find(e => e.activity.id === id)?.activity.title ?? "Actividad pendiente de sincronizar").join(", ")}</small>
-                                          )}
-                                        </td>
-                                        <td className="results-cell-responsible">
-                                          <strong>{a.responsible_id || "Sin asignar"}</strong>
-                                          <small>Creó {entry.created_by} · Editó {entry.edited_by}</small>
-                                        </td>
-                                        <td className="results-forecast tabular-nums">
-                                          {a.forecast_start}<br />{a.forecast_due}
-                                          {a.forecast_due > (deliv.due_date || data.project.target_date) && (
-                                            <small>Previsión posterior al compromiso</small>
-                                          )}
-                                        </td>
-                                        <td>
-                                          <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
-                                            {activityStatusLabel[a.status] ?? a.status}
-                                          </span>
-                                          {a.at_risk && <small className="text-kmx-red font-semibold">En riesgo</small>}
-                                          {blockers.length > 0 && <small className="text-kmx-red font-semibold">{blockers.length} bloqueo(s)</small>}
-                                        </td>
-                                        <td>
-                                          <div className="results-actions">
-                                            {canPlan && (
-                                              <>
-                                                <button className="action" aria-label={`Actualizar ${a.title}`} disabled={busy} onClick={() => openActivity(entry)}>Actualizar</button>
-                                                <button className="action" aria-label={`Bloqueo en ${a.title}`} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>Bloqueo</button>
-                                              </>
+                                  {data.activities
+                                    .filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id))
+                                    .map(entry => {
+                                      const a = entry.activity;
+                                      const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                                      return (
+                                        <tr key={a.id}>
+                                          <td>
+                                            <span className="results-task-title">{a.title}</span>
+                                            <small>Sin entregable asignado</small>
+                                            {a.note && <small className="italic text-kmx-gray-500">"{a.note}"</small>}
+                                            {a.dependency_ids.length > 0 && (
+                                              <small>Depende de: {a.dependency_ids.map(id => data.activities.find(e => e.activity.id === id)?.activity.title ?? "Actividad pendiente de sincronizar").join(", ")}</small>
                                             )}
-                                            {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
-                                              <button type="button" className="action" aria-label={`Solicitar revisión de ${a.title}`} disabled={busy} onClick={() => openActivityRevision(entry)}>Solicitar revisión</button>
-                                            )}
-                                          </div>
-                                          {entry.evidence.map(file => (
-                                            <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
-                                          ))}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </Fragment>
-                              );
-                            })}
-
-                            {data.activities.filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id)).length > 0 && (
-                              <>
-                                <tr className="results-table-deliverable-header">
-                                  <td colSpan={5} className="font-bold text-kmx-gray-600">
-                                    📋 Otras actividades sin entregable asignado
+                                          </td>
+                                          <td>
+                                            {a.responsible_id}
+                                            <small>Creó {entry.created_by} · Editó {entry.edited_by}</small>
+                                          </td>
+                                          <td className="results-forecast">
+                                            {a.forecast_start}<br />{a.forecast_due}
+                                          </td>
+                                          <td>
+                                            <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
+                                              {a.status === "done" ? "Cumplida" : a.status === "in_progress" ? "En curso" : "Sin iniciar"}
+                                            </span>
+                                            {a.at_risk && <small className="text-kmx-red font-semibold">En riesgo</small>}
+                                            {blockers.length > 0 && <small className="text-kmx-red font-semibold">{blockers.length} bloqueo(s)</small>}
+                                          </td>
+                                          <td>
+                                            <div className="results-actions">
+                                              {canPlan && (
+                                                <>
+                                                  <button className="action" aria-label={`Actualizar ${a.title}`} disabled={busy} onClick={() => openActivity(entry)}>Actualizar</button>
+                                                  <button className="action" aria-label={`Bloqueo en ${a.title}`} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>Bloqueo</button>
+                                                </>
+                                              )}
+                                              {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
+                                                <button type="button" className="action" aria-label={`Solicitar revisión de ${a.title}`} disabled={busy} onClick={() => openActivityRevision(entry)}>Solicitar revisión</button>
+                                              )}
+                                            </div>
+                                            {entry.evidence.map(file => (
+                                              <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
+                                            ))}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            data.activities.map(entry => {
+                              const a = entry.activity;
+                              const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                              return (
+                                <tr key={a.id}>
+                                  <td>
+                                    <span className="results-task-title">{a.title}</span>
+                                    <small>Sin entregables definidos</small>
+                                    {a.note && <small className="italic text-kmx-gray-500">"{a.note}"</small>}
+                                    {a.dependency_ids.length > 0 && (
+                                      <small>Depende de: {a.dependency_ids.map(id => data.activities.find(e => e.activity.id === id)?.activity.title ?? "Actividad pendiente de sincronizar").join(", ")}</small>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {a.responsible_id}
+                                    <small>Creó {entry.created_by} · Editó {entry.edited_by}</small>
+                                  </td>
+                                  <td className="results-forecast">
+                                    {a.forecast_start}<br />{a.forecast_due}
+                                  </td>
+                                  <td>
+                                    <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
+                                      {a.status === "done" ? "Cumplida" : a.status === "in_progress" ? "En curso" : "Sin iniciar"}
+                                    </span>
+                                    {a.at_risk && <small className="text-kmx-red font-semibold">En riesgo</small>}
+                                    {blockers.length > 0 && <small className="text-kmx-red font-semibold">{blockers.length} bloqueo(s)</small>}
+                                  </td>
+                                  <td>
+                                    <div className="results-actions">
+                                      {canPlan && (
+                                        <>
+                                          <button className="action" aria-label={`Actualizar ${a.title}`} disabled={busy} onClick={() => openActivity(entry)}>Actualizar</button>
+                                          <button className="action" aria-label={`Bloqueo en ${a.title}`} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>Bloqueo</button>
+                                        </>
+                                      )}
+                                    </div>
+                                    {entry.evidence.map(file => (
+                                      <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
+                                    ))}
                                   </td>
                                 </tr>
-                                {data.activities
-                                  .filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id))
-                                  .map(entry => {
-                                    const a = entry.activity;
-                                    const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
-                                    return (
-                                      <tr key={a.id}>
-                                        <td>
-                                          <span className="results-task-title">{a.title}</span>
-                                          <small>Sin entregable asignado</small>
-                                          {a.note && <small className="italic text-kmx-gray-500">"{a.note}"</small>}
-                                          {a.dependency_ids.length > 0 && (
-                                            <small>Depende de: {a.dependency_ids.map(id => data.activities.find(e => e.activity.id === id)?.activity.title ?? "Actividad pendiente de sincronizar").join(", ")}</small>
-                                          )}
-                                        </td>
-                                        <td>
-                                          {a.responsible_id}
-                                          <small>Creó {entry.created_by} · Editó {entry.edited_by}</small>
-                                        </td>
-                                        <td className="results-forecast">
-                                          {a.forecast_start}<br />{a.forecast_due}
-                                        </td>
-                                        <td>
-                                          <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
-                                            {a.status === "done" ? "Cumplida" : a.status === "in_progress" ? "En curso" : "Sin iniciar"}
-                                          </span>
-                                          {a.at_risk && <small className="text-kmx-red font-semibold">En riesgo</small>}
-                                          {blockers.length > 0 && <small className="text-kmx-red font-semibold">{blockers.length} bloqueo(s)</small>}
-                                        </td>
-                                        <td>
-                                          <div className="results-actions">
-                                            {canPlan && (
-                                              <>
-                                                <button className="action" aria-label={`Actualizar ${a.title}`} disabled={busy} onClick={() => openActivity(entry)}>Actualizar</button>
-                                                <button className="action" aria-label={`Bloqueo en ${a.title}`} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>Bloqueo</button>
-                                              </>
-                                            )}
-                                            {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
-                                              <button type="button" className="action" aria-label={`Solicitar revisión de ${a.title}`} disabled={busy} onClick={() => openActivityRevision(entry)}>Solicitar revisión</button>
-                                            )}
-                                          </div>
-                                          {entry.evidence.map(file => (
-                                            <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
-                                          ))}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          data.activities.map(entry => {
-                            const a = entry.activity;
-                            const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
-                            return (
-                              <tr key={a.id}>
-                                <td>
-                                  <span className="results-task-title">{a.title}</span>
-                                  <small>Sin entregables definidos</small>
-                                  {a.note && <small className="italic text-kmx-gray-500">"{a.note}"</small>}
-                                  {a.dependency_ids.length > 0 && (
-                                    <small>Depende de: {a.dependency_ids.map(id => data.activities.find(e => e.activity.id === id)?.activity.title ?? "Actividad pendiente de sincronizar").join(", ")}</small>
-                                  )}
-                                </td>
-                                <td>
-                                  {a.responsible_id}
-                                  <small>Creó {entry.created_by} · Editó {entry.edited_by}</small>
-                                </td>
-                                <td className="results-forecast">
-                                  {a.forecast_start}<br />{a.forecast_due}
-                                </td>
-                                <td>
-                                  <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
-                                    {a.status === "done" ? "Cumplida" : a.status === "in_progress" ? "En curso" : "Sin iniciar"}
-                                  </span>
-                                  {a.at_risk && <small className="text-kmx-red font-semibold">En riesgo</small>}
-                                  {blockers.length > 0 && <small className="text-kmx-red font-semibold">{blockers.length} bloqueo(s)</small>}
-                                </td>
-                                <td>
-                                  <div className="results-actions">
-                                    {canPlan && (
-                                      <>
-                                        <button className="action" aria-label={`Actualizar ${a.title}`} disabled={busy} onClick={() => openActivity(entry)}>Actualizar</button>
-                                        <button className="action" aria-label={`Bloqueo en ${a.title}`} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>Bloqueo</button>
-                                      </>
-                                    )}
-                                  </div>
-                                  {entry.evidence.map(file => (
-                                    <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
-                                  ))}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
                 )}
               </div>
             </section>
@@ -705,37 +764,37 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
 
           {/* Bloqueos y seguimiento completo (solo si hay bloqueos) */}
           {!isEngineerView && data.blockers.length > 0 && (
-          <section className="results-panel" aria-label="Bloqueos y seguimiento">
-            <h4>Bloqueos y ayuda requerida</h4>
-            {data.blockers.map(entry => {
-              const b = entry.blocker;
-              const age = metrics?.openBlockers.find(item => item.id === b.id)?.ageDays;
-              return (
-                <article className="results-blocker" key={b.id}>
-                  <div className="results-section-heading">
-                    <h5>{data.activities.find(e => e.activity.id === b.activity_id)?.activity.title ?? b.activity_id}</h5>
-                    <span className="results-state">{b.resolved_at ? "Resuelto" : b.first_attention_at ? "Atendido · sigue abierto" : "Pendiente de atención"}</span>
-                  </div>
-                  <p>{b.reason}</p>
-                  <p className="results-help">Ayuda requerida: {b.help_needed}</p>
-                  <p className="results-help">Reportó {entry.reported_by} · {b.reported_at}{age != null ? ` · ${age} días al corte` : ""}</p>
-                  {b.resolution_note && <p className="results-help">Solución: {b.resolution_note}</p>}
-                  {data.capabilities.can_resolve_blockers && !b.resolved_at && !closed && (
-                    <div className="results-actions">
-                      {!b.first_attention_at && (
-                        <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "attend")}>
-                          Registrar atención a {b.reason}
-                        </button>
-                      )}
-                      <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "resolve")}>
-                        Resolver {b.reason}
-                      </button>
+            <section className="results-panel" aria-label="Bloqueos y seguimiento">
+              <h4>Bloqueos y ayuda requerida</h4>
+              {data.blockers.map(entry => {
+                const b = entry.blocker;
+                const age = metrics?.openBlockers.find(item => item.id === b.id)?.ageDays;
+                return (
+                  <article className="results-blocker" key={b.id}>
+                    <div className="results-section-heading">
+                      <h5>{data.activities.find(e => e.activity.id === b.activity_id)?.activity.title ?? b.activity_id}</h5>
+                      <span className="results-state">{b.resolved_at ? "Resuelto" : b.first_attention_at ? "Atendido · sigue abierto" : "Pendiente de atención"}</span>
                     </div>
-                  )}
-                </article>
-              );
-            })}
-          </section>
+                    <p>{b.reason}</p>
+                    <p className="results-help">Ayuda requerida: {b.help_needed}</p>
+                    <p className="results-help">Reportó {entry.reported_by} · {b.reported_at}{age != null ? ` · ${age} días al corte` : ""}</p>
+                    {b.resolution_note && <p className="results-help">Solución: {b.resolution_note}</p>}
+                    {data.capabilities.can_resolve_blockers && !b.resolved_at && !closed && (
+                      <div className="results-actions">
+                        {!b.first_attention_at && (
+                          <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "attend")}>
+                            Registrar atención a {b.reason}
+                          </button>
+                        )}
+                        <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "resolve")}>
+                          Resolver {b.reason}
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </section>
           )}
 
         </>
@@ -750,19 +809,19 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
       )}
 
       {!isEngineerView && (
-      <details className="results-panel">
-        <summary>Historial del proyecto · {data.history.length} registros</summary>
-        <div className="results-table-scroll">
-          <table className="results-table" aria-label="Historial del proyecto">
-            <thead>
-              <tr><th>Fecha</th><th>Persona</th><th>Acción</th><th>Detalle</th></tr>
-            </thead>
-            <tbody>
-              {data.history.map(item => <tr key={item.revision}><td>{item.recorded_at}</td><td>{item.author_id}</td><td>{historyActionLabel[item.action] ?? "Cambio registrado"}</td><td>{item.summary}</td></tr>)}
-            </tbody>
-          </table>
-        </div>
-      </details>
+        <details className="results-panel">
+          <summary>Historial del proyecto · {data.history.length} registros</summary>
+          <div className="results-table-scroll">
+            <table className="results-table" aria-label="Historial del proyecto">
+              <thead>
+                <tr><th>Fecha</th><th>Persona</th><th>Acción</th><th>Detalle</th></tr>
+              </thead>
+              <tbody>
+                {data.history.map(item => <tr key={item.revision}><td>{item.recorded_at}</td><td>{item.author_id}</td><td>{historyActionLabel[item.action] ?? "Cambio registrado"}</td><td>{item.summary}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </>}
 
@@ -771,7 +830,13 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
       {notice && <p role="status" className="results-help">{notice}</p>}
       {modal.kind === "commitment" && (
         <form onSubmit={saveCommitment}>
-          <CommitmentEditor value={commitment} onChange={setCommitment} disabled={busy} />
+          <CommitmentEditor
+            value={commitment}
+            onChange={setCommitment}
+            disabled={busy}
+            activityStartDates={commitmentStartDates}
+            onActivityStartDateChange={(delivId, startDate) => setCommitmentStartDates(prev => ({ ...prev, [delivId]: startDate }))}
+          />
           <label className="field">Motivo de la definición o cambio<textarea required disabled={busy} value={comment} onChange={e => setComment(e.target.value)} /></label>
           {!data.commitment && data.legacy_entries.length > 0 && (
             <div className="results-warning">
@@ -856,29 +921,31 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                         ))}
                       </select>
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="field">
-                        Inicio previsto
-                        <input
-                          type="date"
-                          required
-                          value={activity.forecast_start}
-                          onChange={e => {
-                            setCustomForecastStart(true);
-                            setActivity({ ...activity, forecast_start: e.target.value });
-                          }}
-                        />
-                      </label>
-                      <label className="field">
-                        Fin previsto
-                        <input
-                          type="date"
-                          required
-                          value={activity.forecast_due}
-                          onChange={e => setActivity({ ...activity, forecast_due: e.target.value })}
-                        />
-                      </label>
-                    </div>
+                  </div>
+                )}
+                {(!previousEntry || (data.capabilities.can_plan_activities && !closed)) && (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <label className="field">
+                      Inicio previsto
+                      <input
+                        type="date"
+                        required
+                        value={activity.forecast_start}
+                        onChange={e => {
+                          setCustomForecastStart(true);
+                          setActivity({ ...activity, forecast_start: e.target.value });
+                        }}
+                      />
+                    </label>
+                    <label className="field">
+                      Fin previsto
+                      <input
+                        type="date"
+                        required
+                        value={activity.forecast_due}
+                        onChange={e => setActivity({ ...activity, forecast_due: e.target.value })}
+                      />
+                    </label>
                   </div>
                 )}
               </div>

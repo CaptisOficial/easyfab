@@ -62,8 +62,11 @@
 .results-gantt-deliverable-block{border-bottom:2px solid color-mix(in srgb,currentColor 14%,transparent)}
 .results-gantt-deliverable-block .results-gantt-row:last-child{border-bottom:none}
 
-.results-gantt-rail{position:sticky;left:0;z-index:4;background:var(--kmx-white);padding:.55rem .65rem;border-right:1px solid color-mix(in srgb,currentColor 14%,transparent);display:grid;grid-template-rows:auto;align-content:center;gap:.35rem;min-width:0}
-.results-gantt-rail-head{display:flex;flex-direction:row;align-items:center;justify-content:space-between;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:color-mix(in srgb,currentColor 70%,transparent);background:color-mix(in srgb,currentColor 3%,var(--kmx-white))}
+.results-gantt-rail{position:sticky;left:0;z-index:4;background:var(--kmx-white);padding:.5rem .65rem;border-right:1px solid color-mix(in srgb,currentColor 14%,transparent);display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:.45rem;min-width:0}
+.results-gantt-rail-head{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:color-mix(in srgb,currentColor 70%,transparent);background:color-mix(in srgb,currentColor 3%,var(--kmx-white))}
+.results-gantt-rail-col-expand{display:flex;align-items:center;justify-content:center}
+.results-gantt-rail-col-text{display:flex;flex-direction:column;gap:.2rem;min-width:0}
+.results-gantt-rail-col-action{display:flex;align-items:center;justify-content:flex-end}
 .results-gantt-row-deliverable .results-gantt-rail{background:color-mix(in srgb,currentColor 3.5%,var(--kmx-white))}
 .results-gantt-row-activity:hover .results-gantt-rail,
 .results-gantt-row-activity:hover .results-gantt-track-cell{background:color-mix(in srgb,currentColor 2%,var(--kmx-white))}
@@ -126,6 +129,7 @@
 .results-legend-swatch{display:inline-block;width:14px;height:9px;border-radius:2px}
 .results-legend-swatch.is-deliverable{background:color-mix(in srgb,var(--kmx-carbon,#222) 15%,var(--kmx-white));border:1.5px solid var(--kmx-carbon,#222)}
 .results-legend-swatch.is-activity{background:color-mix(in srgb,var(--kmx-lime,#69be28) 35%,var(--kmx-white));border:1px solid var(--kmx-lime,#69be28)}
+.results-legend-swatch.is-done{background:var(--kmx-lime,#69be28);border:1px solid var(--kmx-lime,#69be28)}
 .results-legend-swatch.is-risk{background:transparent;border:1.5px solid var(--kmx-red-racing,#ed1c24)}
 .results-legend-swatch.is-today{width:2px;height:12px;background:var(--kmx-red-racing,#ed1c24)}
 

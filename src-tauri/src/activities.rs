@@ -622,7 +622,7 @@ pub fn attach(
     )?;
     detail(dir, session, workspace_id, &input.project_id)
 }
-pub fn evidence_bytes(
+pub fn evidence_asset(
     dir: &Path,
     session: &auth::Session,
     workspace_id: &str,
@@ -630,9 +630,15 @@ pub fn evidence_bytes(
     owner_id: &str,
     activity_id: &str,
     evidence_id: &str,
-) -> Result<Vec<u8>, String> {
+) -> Result<(Evidence, Vec<u8>), String> {
     if crate::results_store::is_active(dir, project_id)? {
-        return crate::results_store::evidence_bytes(dir, session, workspace_id, project_id, evidence_id);
+        return crate::results_store::evidence_asset(
+            dir,
+            session,
+            workspace_id,
+            project_id,
+            evidence_id,
+        );
     }
     let detail = detail(dir, session, workspace_id, project_id)?;
     let entry = detail
@@ -645,7 +651,8 @@ pub fn evidence_bytes(
         .evidence
         .iter()
         .find(|e| e.id == evidence_id)
-        .ok_or("Evidencia no encontrada.")?;
+        .ok_or("Evidencia no encontrada.")?
+        .clone();
     let profile = workspace::profile_path(dir, owner_id)?;
     let parent = profile.parent().ok_or("Perfil inválido.")?;
     let relative = Path::new(&evidence.relative_path);
@@ -667,7 +674,27 @@ pub fn evidence_bytes(
     if store::hash(&bytes) != evidence.sha256 || bytes.len() != evidence.size {
         return Err("Evidencia incompleta o alterada.".into());
     }
-    Ok(bytes)
+    Ok((evidence, bytes))
+}
+pub fn evidence_bytes(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    project_id: &str,
+    owner_id: &str,
+    activity_id: &str,
+    evidence_id: &str,
+) -> Result<Vec<u8>, String> {
+    evidence_asset(
+        dir,
+        session,
+        workspace_id,
+        project_id,
+        owner_id,
+        activity_id,
+        evidence_id,
+    )
+    .map(|(_, bytes)| bytes)
 }
 pub fn review(
     dir: &Path,

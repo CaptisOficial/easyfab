@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { PlantCatalog } from "./PlantCatalog";
 import * as api from "../../lib/api";
+import { I18nProvider } from "../../lib/i18n";
+import { TopNav } from "../../components/TopNav";
 
 let reqCounter = 1;
 vi.mock("../../lib/api", () => ({
@@ -152,4 +154,185 @@ it("filtra equipos por línea en la tabla interactiva", async () => {
   // Cambiar filtro a Línea A (l1)
   fireEvent.change(filterSelect, { target: { value: "l1" } });
   expect(screen.getByLabelText("Nombre de Equipo A")).toBeTruthy();
+});
+
+describe("PlantCatalog bilingual & i18n", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  function renderWithNav() {
+    return render(
+      <I18nProvider>
+        <TopNav settings={null} user={null} logoutDisabled={false} onLogout={() => {}} />
+        <PlantCatalog />
+      </I18nProvider>,
+    );
+  }
+
+  it("switches UI reactively between es and en while pick() resolves reads with Spanish fallback", async () => {
+    vi.mocked(api.plantCatalogs).mockResolvedValue({
+      revision: "r1",
+      can_edit: true,
+      config: {
+        version: 1,
+        lines: [
+          { id: "l1", name: "Línea Prensas | Press Line", active: true },
+          { id: "l2", name: "Línea Única", active: false },
+        ],
+        machines: [
+          { id: "m1", name: "Prensa 100T | 100T Press", active: true, line_id: "l1" },
+        ],
+        failure_types: [
+          { id: "f1", name: "Falla eléctrica | Electrical fault", active: true },
+        ],
+      },
+    });
+
+    renderWithNav();
+    expect(await screen.findByText("Catálogos FAB")).toBeTruthy();
+    expect(screen.getByText("Todos los catálogos")).toBeTruthy();
+
+    const filterSelectEs = screen.getByLabelText("Filtrar por línea");
+    expect(Array.from(filterSelectEs.querySelectorAll("option")).map(o => o.textContent)).toEqual([
+      "Todas las líneas",
+      "Sin línea asignada",
+      "Línea Prensas",
+      "Línea Única (inactiva)",
+    ]);
+    const rowSelectEs = screen.getByLabelText("Línea de Prensa 100T");
+    expect(Array.from(rowSelectEs.querySelectorAll("option")).map(o => o.textContent)).toEqual([
+      "Sin línea",
+      "Línea Prensas",
+    ]);
+    expect((screen.getByLabelText("Nombre de Prensa 100T") as HTMLInputElement).value).toBe("Prensa 100T | 100T Press");
+
+    // Toggle language via TopNav
+    fireEvent.click(screen.getByRole("button", { name: "Idioma" }));
+
+    expect(screen.getByText("FAB Catalogs")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /All catalogs/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Lines/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Machines/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Failure types/ })).toBeTruthy();
+
+    const filterSelectEn = screen.getByLabelText("Filter by line");
+    expect(Array.from(filterSelectEn.querySelectorAll("option")).map(o => o.textContent)).toEqual([
+      "All lines",
+      "No line assigned",
+      "Press Line",
+      "Línea Única (inactive)",
+    ]);
+    const rowSelectEn = screen.getByLabelText("Line for 100T Press");
+    expect(Array.from(rowSelectEn.querySelectorAll("option")).map(o => o.textContent)).toEqual([
+      "No line",
+      "Press Line",
+    ]);
+    expect((screen.getByLabelText("Name of 100T Press") as HTMLInputElement).value).toBe("Prensa 100T | 100T Press");
+    expect(screen.getByText("100T Press active")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save catalogs" })).toBeTruthy();
+  });
+
+  it("preserves full 'Español | Inglés' on inline edit and quick-add in English mode", async () => {
+    vi.mocked(api.plantCatalogs).mockResolvedValue({
+      revision: "r1",
+      can_edit: true,
+      config: {
+        version: 1,
+        lines: [{ id: "l1", name: "Línea Prensas | Press Line", active: true }],
+        machines: [],
+        failure_types: [],
+      },
+    });
+    window.localStorage.setItem("easyfab.lang", "en");
+
+    renderWithNav();
+    const lineInput = (await screen.findByLabelText("Name of Press Line")) as HTMLInputElement;
+    fireEvent.change(lineInput, { target: { value: "Línea Prensas v2 | Press Line v2" } });
+    expect((screen.getByLabelText("Name of Press Line v2") as HTMLInputElement).value).toBe("Línea Prensas v2 | Press Line v2");
+
+    fireEvent.click(screen.getByRole("tab", { name: /Failure types/ }));
+    const quickInput = screen.getByLabelText("New record: Failure types");
+    fireEvent.change(quickInput, { target: { value: "Fuga de aceite | Oil leak" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add to Failure types" }));
+
+    await screen.findByText("Record added and saved in Failure types.");
+    const saved = vi.mocked(api.savePlantCatalogs).mock.calls[0][0].config;
+    expect(saved.lines[0].name).toBe("Línea Prensas v2 | Press Line v2");
+    expect(saved.failure_types[0].name).toBe("Fuga de aceite | Oil leak");
+  });
+
+  it("matches bilingual line names on TSV paste (es, en, raw, and blank-en guard)", async () => {
+    vi.mocked(api.plantCatalogs).mockResolvedValue({
+      revision: "r1",
+      can_edit: true,
+      config: {
+        version: 1,
+        lines: [
+          { id: "l1", name: "Línea A | Line A", active: true },
+          { id: "l2", name: "Línea B |   ", active: true },
+        ],
+        machines: [],
+        failure_types: [],
+      },
+    });
+    window.localStorage.setItem("easyfab.lang", "en");
+
+    renderWithNav();
+    await screen.findByText("FAB Catalogs");
+    fireEvent.click(screen.getByRole("tab", { name: /Machines/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Paste from Excel…" }));
+
+    const textarea = screen.getByPlaceholderText(/Paste rows copied from Excel/i);
+    fireEvent.change(textarea, {
+      target: {
+        value: [
+          "Robot 01 | Robot 01 EN\tlínea a",
+          "Prensa 02 | Press 02\t  LINE A  ",
+          "Soldadora 03 | Welder 03\tLínea B |   ",
+          "Cortadora 04\tlínea b",
+          "Estampadora 05\tNo match",
+        ].join("\n"),
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import rows" }));
+
+    expect(screen.getByText(/Imported 5 draft rows for Machines/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save catalogs" }));
+    await screen.findByText("Catalogs saved.");
+
+    const machines = vi.mocked(api.savePlantCatalogs).mock.calls[0][0].config.machines;
+    expect(machines.find(m => m.name === "Robot 01 | Robot 01 EN")?.line_id).toBe("l1");
+    expect(machines.find(m => m.name === "Prensa 02 | Press 02")?.line_id).toBe("l1");
+    expect(machines.find(m => m.name === "Soldadora 03 | Welder 03")?.line_id).toBe("l2");
+    expect(machines.find(m => m.name === "Cortadora 04")?.line_id).toBe("l2");
+    expect(machines.find(m => m.name === "Estampadora 05")?.line_id).toBeUndefined();
+  });
+
+  it("translates backend load and save errors via tError() and updates reactively on toggle", async () => {
+    vi.mocked(api.plantCatalogs).mockRejectedValueOnce("Acceso rechazado.");
+    window.localStorage.setItem("easyfab.lang", "en");
+
+    const view = renderWithNav();
+    expect((await screen.findByRole("alert")).textContent).toBe("Access denied.");
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
+    expect(screen.getByRole("alert").textContent).toBe("Acceso rechazado.");
+    view.unmount();
+
+    vi.mocked(api.plantCatalogs).mockResolvedValue({
+      revision: "r1",
+      can_edit: true,
+      config: { version: 1, lines: [{ id: "l1", name: "Línea A | Line A", active: true }], machines: [], failure_types: [] },
+    });
+    vi.mocked(api.savePlantCatalogs).mockRejectedValue("El catálogo cambió. Actualiza antes de guardar.");
+    window.localStorage.setItem("easyfab.lang", "en");
+
+    renderWithNav();
+    await screen.findByText("FAB Catalogs");
+    fireEvent.click(screen.getByRole("button", { name: "Save catalogs" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("The catalog changed. Refresh before saving.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
+    expect(screen.getByRole("alert").textContent).toBe("El catálogo cambió. Actualiza antes de guardar.");
+  });
 });

@@ -188,4 +188,62 @@ describe("result-planning operating measures", () => {
     expect(metrics.firstPass.rate).toBeNull();
     expect(metrics.excludedStreams).toContain("review/d1");
   });
+
+  it("translates cutoff errors and all 14 caveats into English when lang = 'en'", () => {
+    expect(() => summarizeResults(fixture(), "invalid", "en")).toThrow(
+      "Use a valid cutoff date in YYYY-MM-DD format.",
+    );
+
+    const noCommitment = fixture();
+    noCommitment.commitment = null;
+    noCommitment.baseline = null;
+    noCommitment.plan_issues = ["Issue 1"];
+    noCommitment.conflicts = [{ stream: "commitment", revisions: [] }];
+    const noCommitMetrics = summarizeResults(noCommitment, "2026-10-29", "en");
+    expect(noCommitMetrics.caveats).toEqual(
+      expect.arrayContaining([
+        "The plan has unresolved relationship issues; metrics do not certify that the project can be closed.",
+        "Conflicting versions are excluded from metrics; confirmed counts may be partial.",
+        "Current week in progress: the cutoff is partial and period deadlines are still upcoming.",
+        "The project does not have a defined commitment yet.",
+        "Without a baseline, compliance with the committed date cannot be measured.",
+      ]),
+    );
+
+    const complex = fixture();
+    complex.commitment!.revision = "b".repeat(64);
+    complex.commitment!.deliverables.push(
+      { id: "d2", title: "D2", due_date: "2026-11-01", criteria: [{ id: "c2", description: "C2", evidence_required: false }] },
+      { id: "d3", title: "D3", due_date: "2026-11-01", criteria: [{ id: "c3", description: "C3", evidence_required: false }] },
+    );
+    complex.baseline!.deliverables.push({
+      id: "d-bad-date",
+      title: "Bad date",
+      due_date: "2026-02-30",
+      criteria: [{ id: "c4", description: "C4", evidence_required: false }],
+    });
+    complex.reviews = [
+      acceptedReview("2026-10-30T12:00:00-06:00", "b".repeat(64)),
+      { ...acceptedReview("2026-10-30T12:00:00-06:00", "b".repeat(64)), revision: "dup" },
+      { ...acceptedReview("2026-10-30T12:00:00-06:00", "b".repeat(64)), deliverable_id: "d2", revision: "r2" },
+      { revision: "r3", deliverable_id: "d3", commitment_revision: "b".repeat(64), status: "submitted", submission: null, decision: null },
+    ];
+    addBlocker(complex, "invalid-ts", "2026-02-30T09:00:00-06:00");
+    addBlocker(complex, "early-attention", "2026-10-30T10:00:00-06:00", "2026-10-29T10:00:00-06:00");
+
+    const complexMetrics = summarizeResults(complex, "2026-11-01", "en");
+    expect(complexMetrics.caveats).toEqual(
+      expect.arrayContaining([
+        "The commitment changed: the baseline date is preserved and acceptances from different revisions are not mixed.",
+        "There are invalid timestamps; affected observations are not counted as complete measurements.",
+        "The projection contains more than one active review head for a deliverable; that deliverable is excluded.",
+        "History is missing to establish the first decision for some deliverables; the first-pass acceptance rate remains undetermined.",
+        "There are pending requests without a submission date in history; they cannot be assigned to a week.",
+        "There are deliverables without a baseline reference; they are shown separately from committed compliance.",
+        "There are invalid baseline dates; they cannot be assigned to the period.",
+        "Not all historical acceptances can be linked to the baseline revision; on-time compliance for that period remains undetermined.",
+        "A first-attention timestamp precedes the report; that duration is not interpreted as a valid measurement.",
+      ]),
+    );
+  });
 });

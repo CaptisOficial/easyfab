@@ -109,4 +109,32 @@ describe("CommitmentEditor", () => {
     draft.deliverables[0].criteria[0].description = "Inspección aprobada";
     expect(commitmentError(draft)).toBeNull();
   });
+
+  it("permite capturar la fecha de inicio de la actividad por entregable cuando se habilita onActivityStartDateChange", () => {
+    const commitment = emptyCommitment();
+    commitment.start_date = "2026-11-01";
+    commitment.deliverables = [
+      {
+        id: "d1",
+        title: "Dispositivo ensamble",
+        due_date: "2026-11-15",
+        criteria: [{ id: "c1", description: "Prueba de ciclo", evidence_required: true }],
+      },
+    ];
+    const onStartChange = vi.fn();
+
+    render(
+      <CommitmentEditor
+        value={commitment}
+        onChange={() => {}}
+        activityStartDates={{ d1: "2026-11-03" }}
+        onActivityStartDateChange={onStartChange}
+      />
+    );
+
+    const startInput = screen.getByLabelText("Inicio del entregable 1") as HTMLInputElement;
+    expect(startInput.value).toBe("2026-11-03");
+    fireEvent.change(startInput, { target: { value: "2026-11-05" } });
+    expect(onStartChange).toHaveBeenCalledWith("d1", "2026-11-05");
+  });
 });

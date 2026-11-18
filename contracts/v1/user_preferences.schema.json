@@ -41,6 +41,15 @@
       ],
       "default": "standard",
       "description": "Standard preserves current UI density; large increases text and controls. No reduction of accessible targets."
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "es",
+        "en"
+      ],
+      "default": "es",
+      "description": "Preferred UI language. Defaults to Spanish."
     }
   }
 }

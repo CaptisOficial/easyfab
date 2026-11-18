@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { readInitialLang, translateMessage } from "./i18n";
 import type { ResultsCapabilities } from "./project-results.generated";
 import type { OperationsDetail } from "./project-results-operations.generated";
 
@@ -23,7 +24,14 @@ export interface WorkspaceStatus {
   message: string | null;
 }
 export async function workspaceStatus(): Promise<WorkspaceStatus> {
-  if (!runningInTauri()) return { phase: "unconfigured", candidate_root: null, workspace: null, message: "Abre la aplicación de escritorio para configurar el espacio compartido." };
+  if (!runningInTauri()) {
+    return {
+      phase: "unconfigured",
+      candidate_root: null,
+      workspace: null,
+      message: translateMessage("api.desktopOnlyWorkspace", readInitialLang()),
+    };
+  }
   return invoke<WorkspaceStatus>("workspace_status");
 }
 export const configureWorkspace = (root: string) => invoke<WorkspaceInfo>("configure_workspace", { root });
@@ -90,6 +98,7 @@ export const setProjectTarget = (input: { project_id: string; target_hours: numb
 export const saveActivity = (input: ActivityInput) => invoke<ProjectDetail>("save_activity", { input });
 export const attachEvidence = (input: { project_id: string; activity_id: string; revision: string; name: string; bytes: number[] }) => invoke<ProjectDetail>("attach_evidence", { input });
 export const readEvidence = (projectId: string, ownerId: string, activityId: string, evidenceId: string) => invoke<number[]>("read_evidence", { projectId, ownerId, activityId, evidenceId });
+export const openEvidence = (projectId: string, ownerId: string, activityId: string, evidenceId: string) => invoke<void>("open_evidence", { projectId, ownerId, activityId, evidenceId });
 export const reviewActivity = (input: { project_id: string; owner_id: string; activity_id: string; revision: string; accepted: boolean; comment: string }) => invoke<ProjectDetail>("review_activity", { input });
 
 export function requestId(): string { return Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join(""); }
@@ -105,10 +114,10 @@ export interface IncidentsOverview { records: IncidentRecord[]; legacy: Record<s
 export interface IncidentInput { request_id: string; issue_id: string | null; supersedes: string[]; issue: Issue }
 export const incidentsOverview = () => invoke<IncidentsOverview>("incidents_overview");
 export const saveIncident = (input: IncidentInput) => invoke<IncidentsOverview>("save_incident", { input });
-export interface UserPreferences { version: number; workspace_id: string; user_id: string; theme: "light" | "dark" | "system"; ui_scale: "standard" | "large" }
+export interface UserPreferences { version: number; workspace_id: string; user_id: string; theme: "light" | "dark" | "system"; ui_scale: "standard" | "large"; language?: "es" | "en" }
 export interface PreferencesView { preferences: UserPreferences; revision: string | null; warning: string | null }
 export const userPreferences = () => invoke<PreferencesView>("user_preferences");
-export const saveUserPreferences = (input: { theme: UserPreferences["theme"]; ui_scale: UserPreferences["ui_scale"]; expected_revision: string | null }) => invoke<PreferencesView>("save_user_preferences", { input });
+export const saveUserPreferences = (input: { theme: UserPreferences["theme"]; ui_scale: UserPreferences["ui_scale"]; language?: "es" | "en"; expected_revision: string | null }) => invoke<PreferencesView>("save_user_preferences", { input });
 export const resetUserPreferences = () => invoke<PreferencesView>("reset_user_preferences");
 export interface WeeklySnapshot { generated_at: string; reporting_date: string; prepared_by: string; projects: ProjectDetail[]; result_projects: OperationsDetail[]; incidents: IncidentsOverview }
 export const weeklySnapshot = (reportingDate: string) => invoke<WeeklySnapshot>("weekly_snapshot", { reportingDate });

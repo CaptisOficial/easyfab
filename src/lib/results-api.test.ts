@@ -10,6 +10,8 @@ it("consulta resultados y evidencia por IDs sin enviar rutas o identidad", async
   expect(invoke).toHaveBeenLastCalledWith("results_detail", { projectId: "project_1" });
   await api.readResultsEvidence("project_1", "a".repeat(64));
   expect(invoke).toHaveBeenLastCalledWith("results_read_evidence", { projectId: "project_1", evidenceId: "a".repeat(64) });
+  await api.openResultsEvidence("project_1", "a".repeat(64));
+  expect(invoke).toHaveBeenLastCalledWith("results_open_evidence", { projectId: "project_1", evidenceId: "a".repeat(64) });
 });
 
 it("preserva revisiones y rechazos del contrato en todas las mutaciones", async () => {

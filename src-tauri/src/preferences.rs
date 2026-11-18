@@ -4,6 +4,16 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+fn default_language() -> String {
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../contracts/v1/user_preferences.schema.json"
+    ))
+    .expect("embedded schema");
+    schema["properties"]["language"]["default"]
+        .as_str()
+        .unwrap()
+        .into()
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Preferences {
@@ -12,6 +22,8 @@ pub struct Preferences {
     pub user_id: String,
     pub theme: String,
     pub ui_scale: String,
+    #[serde(default = "default_language")]
+    pub language: String,
 }
 #[derive(Serialize)]
 pub struct View {
@@ -24,6 +36,8 @@ pub struct View {
 pub struct Input {
     pub theme: String,
     pub ui_scale: String,
+    #[serde(default = "default_language")]
+    pub language: String,
     pub expected_revision: Option<String>,
 }
 fn defaults(workspace_id: &str, user_id: &str) -> Preferences {
@@ -43,6 +57,10 @@ fn defaults(workspace_id: &str, user_id: &str) -> Preferences {
             .as_str()
             .unwrap()
             .into(),
+        language: schema["properties"]["language"]["default"]
+            .as_str()
+            .unwrap()
+            .into(),
     }
 }
 fn validate(p: &Preferences, workspace_id: &str, user_id: &str) -> Result<(), String> {
@@ -51,6 +69,7 @@ fn validate(p: &Preferences, workspace_id: &str, user_id: &str) -> Result<(), St
         || p.user_id != user_id
         || !["light", "dark", "system"].contains(&p.theme.as_str())
         || !["standard", "large"].contains(&p.ui_scale.as_str())
+        || !["es", "en"].contains(&p.language.as_str())
     {
         return Err("Preferencias incompatibles o de otro propietario.".into());
     }
@@ -123,6 +142,7 @@ pub fn save(dir: &Path, s: &auth::Session, id: &str, input: Input) -> Result<Vie
     let mut preferences = defaults(id, &s.user.id);
     preferences.theme = input.theme;
     preferences.ui_scale = input.ui_scale;
+    preferences.language = input.language;
     validate(&preferences, id, &s.user.id)?;
     let target = path(&local, id, &s.user.id)?;
     fs::create_dir_all(target.parent().ok_or("Ruta inválida.")?).map_err(|e| e.to_string())?;

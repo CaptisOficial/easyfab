@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createProject, plantCatalogs, projectsOverview, reorderProjects, type CatalogItem, type NewProject, type Project, type ProjectsOverview } from "../../lib/api";
+import { useI18n } from "../../lib/i18n";
 import { saveResultsCommitment, saveResultsActivity, type ResultsDeliverable } from "../../lib/results-api";
 import { ProjectTimeline } from "./ProjectTimeline";
 import { ResultsWork } from "./ResultsWork";
@@ -10,6 +11,7 @@ import "./results-work.css";
 
 const empty: NewProject = { wbs: "", name: "", process_area: "", engineer_ids: [], start_date: "", target_date: "" };
 export function Projects() {
+  const { t, pick } = useI18n();
   const [selected, setSelected] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [data, setData] = useState<ProjectsOverview | null>(null);
@@ -143,20 +145,21 @@ export function Projects() {
   }
   return <>
     <section className="min-w-0 w-full mx-auto space-y-4" aria-labelledby="projects-title">
-      <div className="flex items-center justify-between gap-3"><h3 id="projects-title" className="sr-only">Proyectos FAB</h3>
-        <button className="border px-3 py-2" disabled={loading || saving} onClick={reload} aria-label="Actualizar proyectos"><span aria-hidden="true">⟳</span></button>
-        {data?.can_create && <button className="btn-primary" disabled={loading || saving} onClick={() => { setShowCreate(true); setError(""); }}><span aria-hidden="true">+ </span>Nuevo proyecto</button>}
+      <div className="flex items-center justify-between gap-3"><h3 id="projects-title" className="sr-only">{t("projects.title")}</h3>
+        <button className="border px-3 py-2" disabled={loading || saving} onClick={reload} aria-label={t("projects.refresh")}><span aria-hidden="true">⟳</span></button>
+        {data?.can_create && <button className="btn-primary" disabled={loading || saving} onClick={() => { setShowCreate(true); setError(""); }}><span aria-hidden="true">+ </span>{t("projects.new")}</button>}
       </div>
-      {loading && <p role="status">Cargando proyectos…</p>}
+      {loading && <p role="status">{t("projects.loading")}</p>}
       {error && !showCreate && <p role="alert" className="text-kmx-red">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       {data && <><p className="text-sm">{data.write_message}</p><ProjectTimeline data={data} onOpen={setSelected} onReorder={data.can_create ? handleReorder : undefined} /></>}
     </section>
-    {showCreate && data?.can_create && <ResultsModal title="Registrar proyecto" closeLabel="Cerrar registro de proyecto" busy={saving} onClose={() => setShowCreate(false)} wide>
+    {showCreate && data?.can_create && <ResultsModal title={t("projects.registerTitle")} closeLabel={t("projects.closeRegister")} busy={saving} onClose={() => setShowCreate(false)} wide>
       {error && <p role="alert" className="results-error">{error}</p>}
       {createdProject && <p className="results-warning">El proyecto ya se registró. Completa o reintenta guardar su definición de cierre; no se creará otro proyecto.</p>}
       <form onSubmit={submit} className="space-y-6">
         <section className="results-panel space-y-3" aria-labelledby="section-project-title">
+          <p className="results-help">{t("projects.bilingualHint")}</p>
           <fieldset disabled={saving || !!createdProject} className="project-create-grid">
             {field("name", "Título del proyecto", "text", true)}
             <label className="field project-form-wide">
@@ -231,7 +234,7 @@ export function Projects() {
         </div>
       </form>
     </ResultsModal>}
-    {selected && <ResultsModal title={data?.projects.find(p => p.id === selected)?.name ?? "Detalle del proyecto"} busy={detailBusy} onClose={closeDetail} wide hideHeader>
+    {selected && <ResultsModal title={(() => { const found = data?.projects.find(p => p.id === selected); return found ? pick(found.name) : t("projects.detail"); })()} busy={detailBusy} onClose={closeDetail} wide hideHeader>
       <ResultsWork key={selected} projectId={selected} onBack={closeDetail} onBusyChange={setDetailBusy} />
     </ResultsModal>}
   </>;

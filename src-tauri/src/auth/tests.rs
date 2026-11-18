@@ -71,3 +71,52 @@ fn password_policy_and_temporary_length() {
             .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()));
     }
 }
+
+#[test]
+fn normalized_spanish_error_messages_preserve_accents() {
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join(format!("easyfab-auth-err-{}", revision()));
+    fs::create_dir_all(dir.join("data/engineers")).unwrap();
+    fs::write(
+        dir.join("workspace.json"),
+        r#"{"version":1,"id":"00000000000000000000000000000001"}"#,
+    )
+    .unwrap();
+    let data = dir.join("data");
+    fs::write(data.join("team.json"), b"{bad").unwrap();
+    assert_eq!(team(&data).err().unwrap(), "Directorio inválido.");
+    fs::write(
+        data.join("team.json"),
+        r#"{"version":2,"updated_at":"bad","members":[]}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        team(&data).err().unwrap(),
+        "Versión o fecha de directorio inválida."
+    );
+    let key = [7u8; 32];
+    let mut m = Member {
+        id: "eng1".into(),
+        name: "Eng".into(),
+        role: "engineer".into(),
+        area: "10.FAB".into(),
+        password_hash: "h".into(),
+        role_signature: sign_role("eng1", "engineer", "active", &key),
+        status: "active".into(),
+        credential_revision: "rev1".into(),
+        temporary_expires_at: "not-a-date".into(),
+        credential_signature: String::new(),
+    };
+    seal_temporary(&mut m, &key);
+    assert_eq!(effective(&data, &m, &key).err().unwrap(), "Temporal inválida.");
+    let profile = own_path(&data, &m).unwrap();
+    fs::write(&profile, b"{corrupt").unwrap();
+    assert_eq!(effective(&data, &m, &key).err().unwrap(), "Perfil inválido.");
+    fs::write(&profile, r#"{"credential":"bad"}"#).unwrap();
+    assert_eq!(
+        effective(&data, &m, &key).err().unwrap(),
+        "Credencial inválida."
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}

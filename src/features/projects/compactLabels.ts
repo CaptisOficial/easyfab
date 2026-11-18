@@ -4,7 +4,7 @@ export interface CompactItem {
   compact: string;
 }
 
-const IGNORED_PARTICLES = new Set(["de", "del", "la", "las", "los", "y", "e"]);
+const IGNORED_PARTICLES = new Set(["de", "del", "la", "las", "los", "y", "e", "of", "the", "and", "in", "for", "on", "to", "by", "at"]);
 
 /** Convierte un nombre completo o identificador en iniciales compactas (máx. 4 caracteres en fallback). */
 export function toInitials(nameOrId: string): string {

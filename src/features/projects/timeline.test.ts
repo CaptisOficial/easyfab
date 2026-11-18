@@ -21,3 +21,9 @@ it("incluye extremos, proyectos de un día y planes que atraviesan el periodo", 
   expect(overlaps("2025-01-01", "2027-01-01", "2026-10-01", "2026-10-31")).toBe(true);
   expect(overlaps("2026-11-01", "2026-11-02", "2026-10-01", "2026-10-31")).toBe(false);
 });
+it("formatea etiquetas de columnas según el locale del idioma", () => {
+  const esYear = periodRange("2026-01-15", "year", "es-MX");
+  const enYear = periodRange("2026-01-15", "year", "en-US");
+  expect(esYear.columns[0].label.toLowerCase()).toContain("ene");
+  expect(enYear.columns[0].label.toLowerCase()).toContain("jan");
+});

@@ -62,8 +62,10 @@ pub(crate) fn active(dir: &Path, expected: &str) -> Result<(), String> {
     let info = workspace::open(root, Some(expected))?;
     if Path::new(&info.data_dir)
         .canonicalize()
-        .map_err(|e| e.to_string())?
-        != dir.canonicalize().map_err(|e| e.to_string())?
+        .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?
+        != dir
+            .canonicalize()
+            .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?
     {
         return Err("Datos fuera del espacio activo.".into());
     }

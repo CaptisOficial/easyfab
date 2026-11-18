@@ -2,7 +2,7 @@ export type Period = "week" | "month" | "year";
 const day = 86400000;
 export const dateKey = (date: Date) => date.toISOString().slice(0, 10);
 export const todayKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-export function periodRange(anchor: string, period: Period) {
+export function periodRange(anchor: string, period: Period, locale = "es-MX") {
   const start = new Date(`${anchor}T00:00:00Z`);
   if (period === "week") start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
   else { start.setUTCDate(1); if (period === "year") start.setUTCMonth(0); }
@@ -15,7 +15,7 @@ export function periodRange(anchor: string, period: Period) {
     const next = new Date(cursor);
     if (period === "year") next.setUTCMonth(next.getUTCMonth() + 1);
     else next.setUTCDate(next.getUTCDate() + 1);
-    columns.push({ start: dateKey(cursor), end: dateKey(new Date(next.getTime() - day)), label: new Intl.DateTimeFormat("es-MX", period === "year" ? { month: "short", timeZone: "UTC" } : { weekday: "short", day: "2-digit", timeZone: "UTC" }).format(cursor) });
+    columns.push({ start: dateKey(cursor), end: dateKey(new Date(next.getTime() - day)), label: new Intl.DateTimeFormat(locale, period === "year" ? { month: "short", timeZone: "UTC" } : { weekday: "short", day: "2-digit", timeZone: "UTC" }).format(cursor) });
     cursor = next;
   }
   return { start: dateKey(start), end: dateKey(new Date(end.getTime() - day)), columns };

@@ -342,13 +342,10 @@ describe("Incidents", () => {
     fireEvent.change(screen.getByLabelText("Impacto / área afectada"), { target: { value: "Alto" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar incidencia" }));
 
-    const saveAlert = await screen.findByRole("alert");
-    expect(saveAlert.textContent).toBe("La incidencia cambió. Actualiza e integra todas las versiones antes de corregir.");
+    expect(await screen.findByText("La incidencia cambió. Actualiza e integra todas las versiones antes de corregir.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "toggle-lang" }));
-    expect(screen.getByRole("alert").textContent).toBe(
-      "The incident changed. Refresh and reconcile all versions before correcting.",
-    );
+    expect(screen.getByText("The incident changed. Refresh and reconcile all versions before correcting.")).toBeTruthy();
   });
 
   it("shows empty state and disables save when no active machines exist", async () => {

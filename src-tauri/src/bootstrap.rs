@@ -57,7 +57,8 @@ pub fn bootstrap(data_dir: &Path) -> Result<BootstrapReport, String> {
         let path = data_dir.join(name);
         match OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(mut f) => {
-                let body = serde_json::to_string_pretty(&content).map_err(|e| e.to_string())?;
+                let body = serde_json::to_string_pretty(&content)
+                    .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
                 f.write_all(body.as_bytes())
                     .and_then(|_| f.write_all(b"\n"))
                     .map_err(|e| format!("No se pudo escribir {}: {e}", path.display()))?;

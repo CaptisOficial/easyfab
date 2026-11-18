@@ -25,7 +25,7 @@ Cambiar a otro ID no importa preferencias. No se sincronizan entre equipos.
 
 ## Opciones y defaults
 
-Tema: light, dark o system; default light. Tamaño: standard o large; default standard.
+Tema: light, dark o system; default light. Tamaño: standard o large; default standard. Idioma: es o en; default es.
 El esquema es la única definición de valores/defaults; su anotación `default` no
 inserta datos ni repara documentos automáticamente. Los futuros consumidores deben
 proyectar y verificar esos valores; no duplicarlos sin prueba de paridad.

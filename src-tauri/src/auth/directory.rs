@@ -15,10 +15,10 @@ pub fn read_key() -> Result<Vec<u8>, String> {
     fs::File::open(std::path::PathBuf::from(root).join("EasyFAB/master.key"))
         .and_then(|f| f.take(33).read_to_end(&mut key))
         .map_err(|_| {
-            "Falta la llave de confianza. Solicita provision al administrador.".to_string()
+            "Falta la llave de confianza. Solicita provisión al administrador.".to_string()
         })?;
     if key.len() != 32 {
-        return Err("Llave de confianza invalida.".into());
+        return Err("Llave de confianza inválida.".into());
     }
     Ok(key)
 }
@@ -31,18 +31,18 @@ pub fn create_master_key(path: &Path) -> Result<(), String> {
         .write(true)
         .create_new(true)
         .open(path)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("No se pudo crear el archivo: {e}"))?;
     file.write_all(&bytes)
         .and_then(|_| file.sync_all())
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("No se pudo escribir el archivo: {e}"))
 }
 pub fn team(dir: &Path) -> Result<Team, String> {
     let team: Team = serde_json::from_slice(
         &fs::read(dir.join("team.json")).map_err(|_| "No se pudo leer team.json.")?,
     )
-    .map_err(|_| "Directorio invalido.")?;
+    .map_err(|_| "Directorio inválido.")?;
     if team.version != 1 || chrono::DateTime::parse_from_rfc3339(&team.updated_at).is_err() {
-        return Err("Version o fecha de directorio invalida.".into());
+        return Err("Versión o fecha de directorio inválida.".into());
     }
     let mut ids = std::collections::HashSet::new();
     if team.members.iter().any(|m| {
@@ -52,7 +52,7 @@ pub fn team(dir: &Path) -> Result<Team, String> {
             || !["admin", "supervisor", "engineer"].contains(&m.role.as_str())
             || !["active", "inactive"].contains(&m.status.as_str())
     }) {
-        return Err("Directorio invalido o IDs duplicados.".into());
+        return Err("Directorio inválido o IDs duplicados.".into());
     }
     Ok(team)
 }
@@ -70,7 +70,8 @@ pub(super) fn atomic_json(path: &Path, value: &serde_json::Value) -> Result<(), 
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
         Err(error) => return Err(format!("No se pudo leer el archivo: {error}")),
     };
-    let bytes = serde_json::to_vec_pretty(value).map_err(|e| e.to_string())?;
+    let bytes = serde_json::to_vec_pretty(value)
+        .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
     crate::data_store::publish(path, &bytes, previous.as_deref(), || Ok(()))
 }
 

@@ -21,7 +21,7 @@ pub(crate) fn workspace_id(state: &AppState) -> Result<String, String> {
         .map_err(|_| "Estado no disponible.")?
         .as_ref()
         .map(|w| w.id.clone())
-        .ok_or("Configura el espacio primero.".into())
+        .ok_or("Configura el espacio EasyFAB primero.".into())
 }
 #[tauri::command]
 pub(crate) fn projects_overview(state: State<'_, AppState>) -> Result<projects::Overview, String> {

@@ -34,7 +34,8 @@ fn save(dir: &Path, session: &Session, mut team: Team) -> Result<(), String> {
     team.updated_at = chrono::Utc::now().to_rfc3339();
     atomic_json(
         &dir.join("team.json"),
-        &serde_json::to_value(team).map_err(|e| e.to_string())?,
+        &serde_json::to_value(team)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
     )
 }
 pub fn list_users(dir: &Path, session: &Session) -> Result<Vec<DirectoryUser>, String> {
@@ -148,7 +149,8 @@ pub fn provision_initial_admin(dir: &Path, id: String, name: String) -> Result<S
         std::env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA no disponible.")?,
     )
     .join("EasyFAB");
-    std::fs::create_dir_all(&local).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&local)
+        .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let key_path = local.join("master.key");
     if !key_path.exists() {
         create_master_key(&key_path)?;
@@ -170,7 +172,8 @@ pub fn provision_initial_admin(dir: &Path, id: String, name: String) -> Result<S
     directory.updated_at = chrono::Utc::now().to_rfc3339();
     atomic_json(
         &dir.join("team.json"),
-        &serde_json::to_value(directory).map_err(|e| e.to_string())?,
+        &serde_json::to_value(directory)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
     )?;
     Ok(temporary)
 }

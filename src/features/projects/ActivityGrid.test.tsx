@@ -4,8 +4,12 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ActivityGrid, emptyRow, type ActivityRow } from "./ActivityGrid";
 import type { ResultsDeliverable } from "../../lib/results-api";
+import { I18nProvider } from "../../lib/i18n";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem("easyfab.lang");
+});
 
 const mockDeliverables: ResultsDeliverable[] = [
   { id: "deliv_1", title: "Prototipo validado", due_date: "2026-11-15", criteria: [] },
@@ -147,8 +151,8 @@ describe("ActivityGrid", () => {
     );
 
     // Encabezado unificado de subactividades y entregables
-    expect(screen.getByText("Subactividades y entregables (1)")).toBeTruthy();
-    expect(screen.getByText(/embebe su condición de cierre verificable/i)).toBeTruthy();
+    expect(screen.getByText("Subactividad / Entregable (Sprint o Historia)")).toBeTruthy();
+    expect(screen.getByText("Condición de cierre / Criterio")).toBeTruthy();
 
     // Inputs embebidos en la fila
     expect(screen.getByDisplayValue("Sprint 1: Maquinado CNC")).toBeTruthy();
@@ -213,5 +217,47 @@ describe("ActivityGrid", () => {
     expect(pasted[1].title).toBe("Paso A");
     expect(pasted[1].criterion).toBe("Foto");
     expect(pasted[2].title).toBe("Paso B");
+  });
+
+  it("en inglés usa pick() en opciones de entregables pero conserva el texto bilingüe completo en inputs y TSV", () => {
+    window.localStorage.setItem("easyfab.lang", "en");
+    const onChange = vi.fn();
+    const rows: ActivityRow[] = [
+      {
+        id: "act_bi",
+        wbs: "1.1",
+        title: "Diseño 3D | 3D Design",
+        deliverable_id: "deliv_1",
+        criterion: "Plano firmado | Signed drawing",
+        evidence_required: true,
+        start_date: "2026-11-01",
+        due_date: "2026-11-05",
+        status: "not_started",
+        at_risk: false,
+      },
+    ];
+    const bilingualDeliverables: ResultsDeliverable[] = [
+      { id: "deliv_1", title: "Prototipo validado | Validated prototype", due_date: "2026-11-15", criteria: [] },
+    ];
+
+    render(
+      <I18nProvider>
+        <ActivityGrid rows={rows} onChange={onChange} deliverables={bilingualDeliverables} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "+ Add sub-activity" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Deliverable 1: Validated prototype" })).toBeTruthy();
+    const titleInput = screen.getByLabelText("Deliverable 1 name") as HTMLInputElement;
+    expect(titleInput.value).toBe("Diseño 3D | 3D Design");
+
+    fireEvent.paste(titleInput, {
+      clipboardData: {
+        getData: () => "Ensamble | Assembly\t2026-11-02\t2026-11-04\tPrueba | Test",
+      },
+    });
+    const pasted = onChange.mock.calls[0][0] as ActivityRow[];
+    expect(pasted[1].title).toBe("Ensamble | Assembly");
+    expect(pasted[1].criterion).toBe("Prueba | Test");
   });
 });

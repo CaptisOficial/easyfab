@@ -48,7 +48,8 @@ pub(crate) fn write_temp_preview(
     evidence: &Evidence,
     bytes: &[u8],
 ) -> Result<PathBuf, String> {
-    fs::create_dir_all(temp_root).map_err(|e| e.to_string())?;
+    fs::create_dir_all(temp_root)
+        .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let safe_name = sanitize_filename(&evidence.name, &evidence.relative_path);
     let id_prefix: String = evidence
         .id
@@ -62,9 +63,12 @@ pub(crate) fn write_temp_preview(
         format!("{id_prefix}_{safe_name}")
     };
     let target = temp_root.join(file_name);
-    let mut file = fs::File::create(&target).map_err(|e| e.to_string())?;
-    file.write_all(bytes).map_err(|e| e.to_string())?;
-    file.sync_all().map_err(|e| e.to_string())?;
+    let mut file = fs::File::create(&target)
+        .map_err(|e| format!("No se pudo crear el archivo: {e}"))?;
+    file.write_all(bytes)
+        .map_err(|e| format!("No se pudo escribir el archivo: {e}"))?;
+    file.sync_all()
+        .map_err(|e| format!("No se pudo guardar el archivo: {e}"))?;
     Ok(target)
 }
 

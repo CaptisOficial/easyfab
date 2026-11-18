@@ -28,7 +28,7 @@ struct Layout {
 fn layout() -> Result<Layout, String> {
     let value: Layout =
         serde_json::from_str(include_str!("../../contracts/v1/workspace.layout.json"))
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Error de formato JSON: {e}"))?;
     for path in [
         &value.folder,
         &value.manifest,
@@ -112,21 +112,28 @@ pub(crate) fn enable_results_version(
     let l = layout()?;
     let path = space.join(l.manifest);
     crate::data_store::contained(space, &path)?;
-    let previous = fs::read(&path).map_err(|e| e.to_string())?;
-    let mut manifest: Manifest = serde_json::from_slice(&previous).map_err(|e| e.to_string())?;
+    let previous = fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
+    let mut manifest: Manifest = serde_json::from_slice(&previous)
+        .map_err(|e| format!("Error de formato JSON: {e}"))?;
     validate_manifest(&manifest)?;
     if manifest.id != workspace_id { return Err("Identidad del espacio distinta.".into()); }
     check()?;
     if manifest.project_results_version == Some(1) { return Ok(()); }
     let backup = space.join(l.backups).join(format!("results-format-{}", crate::auth::revision()));
     crate::data_store::contained(space, &backup)?;
-    fs::create_dir_all(&backup).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&backup).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     crate::data_store::publish(&backup.join("workspace.json"), &previous, None, &check)?;
     manifest.project_results_version = Some(1);
-    crate::data_store::publish(&path, &serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?, Some(&previous), || {
-        check()?;
-        crate::data_store::contained(space, &path)
-    })
+    crate::data_store::publish(
+        &path,
+        &serde_json::to_vec_pretty(&manifest)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
+        Some(&previous),
+        || {
+            check()?;
+            crate::data_store::contained(space, &path)
+        },
+    )
 }
 
 /// El llamador ya validó el espacio activo. Nunca deducir versión de archivos existentes.
@@ -141,12 +148,14 @@ pub(crate) fn profile_path(data: &Path, id: &str) -> Result<PathBuf, String> {
     let base = data.join(&l.profiles);
     let legacy = base.join(format!("{id}.json"));
     let current = base.join(id).join(&l.profile);
-    let canonical_data = data.canonicalize().map_err(|e| e.to_string())?;
+    let canonical_data = data
+        .canonicalize()
+        .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?;
     for path in [&base, &base.join(id), &current, &legacy] {
         if path.exists()
             && !path
                 .canonicalize()
-                .map_err(|e| e.to_string())?
+                .map_err(|e| format!("No se pudo completar la operación: {e}"))?
                 .starts_with(&canonical_data)
         {
             return Err("Perfil fuera del espacio validado.".into());
@@ -170,19 +179,23 @@ pub(crate) fn prepare_profile_directory(data: &Path, id: &str) -> Result<(), Str
     let path = profile_path(data, id)?;
     let l = layout()?;
     let parent = path.parent().ok_or("Ruta de perfil inválida.")?;
-    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     // Solo layout 2 tiene carpeta personal; legacy mantiene su estructura sin alterarla.
     if parent == data.join(&l.profiles).join(id) {
         let evidence = parent.join(l.evidence);
         if evidence.exists()
             && !evidence
                 .canonicalize()
-                .map_err(|e| e.to_string())?
-                .starts_with(parent.canonicalize().map_err(|e| e.to_string())?)
+                .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?
+                .starts_with(
+                    parent
+                        .canonicalize()
+                        .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?,
+                )
         {
             return Err("Evidencia fuera del perfil.".into());
         }
-        fs::create_dir_all(evidence).map_err(|e| e.to_string())?;
+        fs::create_dir_all(evidence).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     }
     Ok(())
 }
@@ -255,13 +268,16 @@ fn write_json(path: &Path, value: &impl Serialize, replace: bool) -> Result<(), 
         .write(true)
         .create_new(true)
         .open(&target)
-        .map_err(|e| e.to_string())?;
-    file.write_all(&serde_json::to_vec_pretty(value).map_err(|e| e.to_string())?)
-        .and_then(|_| file.sync_all())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("No se pudo crear el archivo: {e}"))?;
+    file.write_all(
+        &serde_json::to_vec_pretty(value)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
+    )
+    .and_then(|_| file.sync_all())
+    .map_err(|e| format!("No se pudo escribir el archivo: {e}"))?;
     drop(file);
     if replace {
-        fs::rename(target, path).map_err(|e| e.to_string())?;
+        fs::rename(target, path).map_err(|e| format!("No se pudo guardar el archivo: {e}"))?;
     }
     Ok(())
 }
@@ -313,7 +329,8 @@ pub fn initialize(root: &Path, local_dir: &Path) -> Result<WorkspaceInfo, String
             return Err("Hay datos EasyFAB previos en Management/Data. Trasládalos antes de crear el espacio para conservar una sola fuente de datos.".into());
         }
         for relative in [&l.data, &l.docs, &l.software, &l.exports, &l.backups] {
-            fs::create_dir_all(path.join(relative)).map_err(|e| e.to_string())?;
+            fs::create_dir_all(path.join(relative))
+                .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
         }
         crate::bootstrap::bootstrap(&path.join(&l.data))?;
         crate::workspace_assets::install(&path.join(&l.docs), &path.join(&l.contracts))?;
@@ -327,7 +344,7 @@ pub fn initialize(root: &Path, local_dir: &Path) -> Result<WorkspaceInfo, String
         write_json(&path.join(&l.manifest), &manifest, false)?;
     }
     let info = open(&root, None)?;
-    fs::create_dir_all(local_dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(local_dir).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     write_json(
         &local_dir.join("installation.json"),
         &Installation {

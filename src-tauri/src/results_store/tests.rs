@@ -1360,3 +1360,63 @@ fn unrelated_corruption_does_not_block_target(f: &Fixture) {
     );
     fs::write(path, bytes).unwrap();
 }
+
+#[test]
+fn commitment_summary_joins_deliverables_with_double_pipe_delimiter() {
+    let event = Event {
+        version: 1,
+        id: "a".repeat(64),
+        project_id: "PRJ-1".into(),
+        stream: "commitment".into(),
+        parents: vec![],
+        base_commitment: None,
+        action: "activate".into(),
+        author_id: "sup".into(),
+        author_role: "supervisor".into(),
+        recorded_at: "2026-11-18T10:00:00Z".into(),
+        comment: "Motivo | Reason".into(),
+        payload: Payload::Commitment(domain::Commitment {
+            revision: "a".repeat(64),
+            final_outcome: "Meta | Goal".into(),
+            scope: "Línea | Line".into(),
+            start_date: "2026-11-01".into(),
+            target_date: "2026-11-30".into(),
+            engineer_ids: vec!["eng1".into()],
+            deliverables: vec![
+                domain::Deliverable {
+                    id: "d1".into(),
+                    title: "Diseño | Design".into(),
+                    due_date: "2026-11-10".into(),
+                    criteria: vec![
+                        domain::Criterion {
+                            id: "c1".into(),
+                            description: "Plano | Drawing".into(),
+                            evidence_required: true,
+                        },
+                        domain::Criterion {
+                            id: "c2".into(),
+                            description: "Lista | BOM".into(),
+                            evidence_required: false,
+                        },
+                    ],
+                },
+                domain::Deliverable {
+                    id: "d2".into(),
+                    title: "Prueba | Test".into(),
+                    due_date: "2026-11-20".into(),
+                    criteria: vec![domain::Criterion {
+                        id: "c3".into(),
+                        description: "Cero fugas | Zero leaks".into(),
+                        evidence_required: true,
+                    }],
+                },
+            ],
+        }),
+        signature: String::new(),
+    };
+    let text = summary(&event);
+    assert_eq!(
+        text,
+        "Meta | Goal · Alcance: Línea | Line · 2026-11-01 → 2026-11-30 · Ingenieros: eng1 · Diseño | Design (2026-11-10): Plano | Drawing; Lista | BOM || Prueba | Test (2026-11-20): Cero fugas | Zero leaks · Motivo | Reason"
+    );
+}

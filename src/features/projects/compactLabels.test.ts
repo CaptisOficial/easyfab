@@ -15,6 +15,7 @@ describe("compactLabels", () => {
     expect(compactArea("FAB")).toBe("FAB");
     expect(compactArea("Chasis")).toBe("Chasis");
     expect(compactArea("Soldadura de Cuadros")).toBe("SC");
+    expect(compactArea("Frame and Body Welding")).toBe("FBW");
     expect(compactArea("EnsamblajeFinal")).toBe("Ensamb…");
   });
 

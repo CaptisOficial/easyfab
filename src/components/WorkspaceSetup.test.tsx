@@ -331,7 +331,7 @@ it("traduce WorkspaceStatus.message y errores de configureWorkspace en es y en r
 
   render(<I18nProvider><WorkspaceSetup /></I18nProvider>);
   expect((await screen.findByRole("alert")).textContent).toBe(
-    "The workspace is incomplete (team.json). Restore its data; no new empty directory will be created."
+    "The workspace is incomplete (team.json). Restore its data; a new empty directory will not be created."
   );
 
   await user.click(screen.getByRole("button", { name: "Language" }));

@@ -1,5 +1,6 @@
 import { AlertTriangle, Calendar, Clock, User } from "lucide-react";
 import { durationDays } from "./compactLabels";
+import { useI18n } from "../../lib/i18n";
 
 export interface GanttTooltipData {
   kindLabel: string;
@@ -24,6 +25,7 @@ export function GanttTooltip({
   anchorLeftPct?: number;
   placement?: "top" | "bottom";
 }) {
+  const { t } = useI18n();
   const days = durationDays(data.startDate, data.endDate);
   const clampedLeft = Math.max(12, Math.min(88, anchorLeftPct));
 
@@ -40,7 +42,7 @@ export function GanttTooltip({
           {data.atRisk && (
             <span className="gantt-tooltip-badge is-risk">
               <AlertTriangle size={11} aria-hidden="true" />
-              <span>En riesgo</span>
+              <span>{t("common.atRisk")}</span>
             </span>
           )}
         </div>
@@ -52,14 +54,14 @@ export function GanttTooltip({
         <div>
           <dt>
             <Calendar size={12} aria-hidden="true" />
-            <span>Inicio</span>
+            <span>{t("gantt.tooltip.start")}</span>
           </dt>
           <dd className="tabular-nums">{data.startDate || "—"}</dd>
         </div>
         <div>
           <dt>
             <Calendar size={12} aria-hidden="true" />
-            <span>{data.endLabel ?? "Fin"}</span>
+            <span>{data.endLabel ?? t("gantt.tooltip.end")}</span>
           </dt>
           <dd className="tabular-nums">{data.endDate || "—"}</dd>
         </div>
@@ -67,10 +69,10 @@ export function GanttTooltip({
           <div>
             <dt>
               <Clock size={12} aria-hidden="true" />
-              <span>Duración</span>
+              <span>{t("gantt.tooltip.duration")}</span>
             </dt>
             <dd className="tabular-nums">
-              {days} {days === 1 ? "día" : "días"}
+              {days} {days === 1 ? t("gantt.tooltip.day") : t("gantt.tooltip.days")}
             </dd>
           </div>
         )}
@@ -80,12 +82,12 @@ export function GanttTooltip({
         <div className="gantt-tooltip-meta">
           {data.progress !== undefined && (
             <span>
-              Avance: <strong className="tabular-nums">{data.progress}%</strong>
+              {t("results.col.progress")}: <strong className="tabular-nums">{data.progress}%</strong>
             </span>
           )}
           {data.area && (
             <span>
-              Área: <strong>{data.area}</strong>
+              {t("timeline.col.area")}: <strong>{data.area}</strong>
             </span>
           )}
           {data.people && data.people.length > 0 && (

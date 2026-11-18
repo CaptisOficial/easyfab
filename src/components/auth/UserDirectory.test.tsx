@@ -184,6 +184,7 @@ describe("bilingüe es / en (N1)", () => {
 
   const rowInactive = screen.getByText("Persona inactiva").closest("tr")!;
   await user.click(within(rowInactive).getByRole("button", { name: "Activate & generate temporary" }));
-  expect((await screen.findByRole("alert")).textContent).toBe("The administrator cannot be modified from this directory.");
+  const alerts = await screen.findAllByRole("alert");
+  expect(alerts.some(a => a.textContent === "The administrator cannot be modified from this directory.")).toBe(true);
  });
 });

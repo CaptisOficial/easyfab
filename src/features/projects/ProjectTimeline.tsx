@@ -1,22 +1,11 @@
 import { useState } from "react";
 import type { ProjectsOverview } from "../../lib/api";
-import { useI18n } from "../../lib/i18n";
+import { localeForLang, useI18n } from "../../lib/i18n";
 import { compactArea, formatStackedGroup } from "./compactLabels";
 import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
 import { movePeriod, overlaps, periodRange, todayKey, type Period } from "./timeline";
 
 type StatusFilter = "active" | "in_progress" | "completed";
-const statuses = {
-  "Not Started": "Sin iniciar",
-  "In Progress": "En curso",
-  Completed: "Completado",
-  "On Hold": "En pausa",
-};
-const statusFilterLabels: Record<StatusFilter, string> = {
-  active: "activos",
-  in_progress: "en curso",
-  completed: "completados",
-};
 
 interface HoveredProjectBar {
   projectId: string;
@@ -34,12 +23,24 @@ export function ProjectTimeline({
   onOpen: (id: string) => void;
   onReorder?: (projectIds: string[]) => void;
 }) {
-  const { pick } = useI18n();
+  const { lang, t, pick } = useI18n();
+  const locale = localeForLang(lang);
+  const statuses = {
+    "Not Started": t("common.status.notStarted"),
+    "In Progress": t("common.status.inProgress"),
+    Completed: t("common.status.completed"),
+    "On Hold": t("common.status.onHold"),
+  };
+  const statusFilterLabels: Record<StatusFilter, string> = {
+    active: t("timeline.filterLabel.active"),
+    in_progress: t("timeline.filterLabel.inProgress"),
+    completed: t("timeline.filterLabel.completed"),
+  };
   const [period, setPeriod] = useState<Period>("week");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [anchor, setAnchor] = useState(todayKey);
   const [hoveredBar, setHoveredBar] = useState<HoveredProjectBar | null>(null);
-  const range = periodRange(anchor, period);
+  const range = periodRange(anchor, period, locale);
   const today = todayKey();
   const statusProjects = data.projects.filter(p => {
     if (statusFilter === "in_progress") return p.status === "In Progress";
@@ -63,12 +64,12 @@ export function ProjectTimeline({
   return (
     <div className="project-schedule">
       <div className="schedule-toolbar">
-        <div role="group" aria-label="Periodo del cronograma" className="schedule-periods">
+        <div role="group" aria-label={t("timeline.periodGroupLabel")} className="schedule-periods">
           {(
             [
-              ["week", "Semana"],
-              ["month", "Mes"],
-              ["year", "Año"],
+              ["week", t("timeline.period.week")],
+              ["month", t("timeline.period.month")],
+              ["year", t("timeline.period.year")],
             ] as const
           ).map(([value, label]) => (
             <button key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>
@@ -76,12 +77,12 @@ export function ProjectTimeline({
             </button>
           ))}
         </div>
-        <div role="group" aria-label="Filtrar proyectos por estado" className="schedule-periods">
+        <div role="group" aria-label={t("timeline.statusFilterGroupLabel")} className="schedule-periods">
           {(
             [
-              ["active", "Activos"],
-              ["in_progress", "En curso"],
-              ["completed", "Completados"],
+              ["active", t("timeline.filter.active")],
+              ["in_progress", t("common.status.inProgress")],
+              ["completed", t("timeline.filter.completed")],
             ] as const
           ).map(([value, label]) => (
             <button key={value} type="button" aria-pressed={statusFilter === value} onClick={() => setStatusFilter(value)}>
@@ -90,17 +91,17 @@ export function ProjectTimeline({
           ))}
         </div>
         <div className="schedule-navigation">
-          <button className="action" aria-label="Periodo anterior" onClick={() => setAnchor(movePeriod(anchor, period, -1))}>
+          <button className="action" aria-label={t("timeline.prevPeriod")} onClick={() => setAnchor(movePeriod(anchor, period, -1))}>
             ←
           </button>
           <button className="action" onClick={() => setAnchor(todayKey())}>
-            Hoy
+            {t("timeline.today")}
           </button>
-          <button className="action" aria-label="Periodo siguiente" onClick={() => setAnchor(movePeriod(anchor, period, 1))}>
+          <button className="action" aria-label={t("timeline.nextPeriod")} onClick={() => setAnchor(movePeriod(anchor, period, 1))}>
             →
           </button>
           <label>
-            Fecha de referencia{" "}
+            {t("timeline.referenceDate")}{" "}
             <input
               type="date"
               value={anchor}
@@ -113,45 +114,45 @@ export function ProjectTimeline({
       </div>
 
       <p className="schedule-summary tabular-nums" role="status">
-        {range.start} — {range.end} · {projects.length} de {statusProjects.length} proyectos {statusFilterLabels[statusFilter]} en el periodo
+        {t("timeline.summary", { start: range.start, end: range.end, shown: projects.length, total: statusProjects.length, status: statusFilterLabels[statusFilter] })}
       </p>
 
       {data.projects.length === 0 ? (
-        <p className="empty-state">No hay proyectos registrados.</p>
+        <p className="empty-state">{t("timeline.emptyAll")}</p>
       ) : statusProjects.length === 0 ? (
-        <p className="empty-state">No hay proyectos {statusFilterLabels[statusFilter]}.</p>
+        <p className="empty-state">{t("timeline.emptyFiltered", { status: statusFilterLabels[statusFilter] })}</p>
       ) : projects.length === 0 ? (
-        <p className="empty-state">No hay proyectos planificados en este periodo.</p>
+        <p className="empty-state">{t("timeline.emptyPeriod")}</p>
       ) : (
-        <div className="schedule-scroll" tabIndex={0} role="region" aria-label="Cronograma de proyectos; desplaza para ver todas las fechas">
+        <div className="schedule-scroll" tabIndex={0} role="region" aria-label={t("timeline.regionLabel")}>
           <table className="schedule-table">
             <caption className="sr-only">
-              Proyectos y mejoras de línea, del {range.start} al {range.end}
+              {t("timeline.caption", { start: range.start, end: range.end })}
             </caption>
             <thead>
               <tr>
                 <th scope="col" rowSpan={2}>
-                  Prioridad
+                  {t("timeline.col.priority")}
                 </th>
                 <th scope="col" rowSpan={2}>
-                  WBS / Proyecto
+                  {t("timeline.col.wbsProject")}
                 </th>
                 <th scope="col" rowSpan={2}>
-                  Área
+                  {t("timeline.col.area")}
                 </th>
                 <th scope="col" rowSpan={2}>
-                  Fechas
+                  {t("timeline.col.dates")}
                 </th>
                 <th scope="col" rowSpan={2}>
-                  Estado
+                  {t("common.status")}
                 </th>
                 <th scope="col" rowSpan={2}>
-                  Resp.
+                  {t("timeline.col.ownerShort")}
                 </th>
                 <th scope="colgroup" colSpan={range.columns.length} className="schedule-range">
                   {period === "year"
                     ? anchor.slice(0, 4)
-                    : new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+                    : new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
                         new Date(`${anchor}T00:00:00Z`)
                       )}
                 </th>
@@ -175,7 +176,7 @@ export function ProjectTimeline({
                 const stackedPeople = formatStackedGroup(peopleList, 2);
                 const areaItems = p.process_area
                   .split(/[,;/]+/)
-                  .map(s => s.trim())
+                  .map(s => pick(s.trim()))
                   .filter(Boolean)
                   .map((area, idx) => ({ id: `${p.id}-area-${idx}`, label: area, compact: compactArea(area) }));
                 const stackedAreas = formatStackedGroup(areaItems, 2);
@@ -187,10 +188,10 @@ export function ProjectTimeline({
                   statusLabel: statuses[p.status],
                   startDate: p.start_date,
                   endDate: p.target_date,
-                  endLabel: "Objetivo",
-                  area: p.process_area,
+                  endLabel: t("timeline.targetLabel"),
+                  area: stackedAreas.fullText || pick(p.process_area),
                   people: peopleList.map(item => item.label),
-                  actionHint: "Clic en el proyecto para ver actividades",
+                  actionHint: t("timeline.tooltipHint"),
                 };
 
                 const activeFlags = range.columns.map(c => overlaps(p.start_date, p.target_date, c.start, c.end));
@@ -200,7 +201,7 @@ export function ProjectTimeline({
                     <td className="schedule-priority whitespace-nowrap tabular-nums">
                       <span
                         className="font-semibold text-xs px-1.5 py-0.5 rounded bg-kmx-gray-100 text-kmx-carbon border border-kmx-gray-300"
-                        title={`Prioridad activa #${rank}`}
+                        title={t("timeline.activePriorityTitle", { rank })}
                       >
                         #{rank}
                       </span>
@@ -213,8 +214,8 @@ export function ProjectTimeline({
                               e.stopPropagation();
                               moveProject(p.id, -1);
                             }}
-                            aria-label={`Subir prioridad de ${p.wbs}`}
-                            title="Subir prioridad"
+                            aria-label={t("timeline.movePriorityUpAria", { wbs: p.wbs })}
+                            title={t("timeline.movePriorityUp")}
                             className="px-1 py-0.5 text-xs border rounded hover:bg-kmx-gray-100 disabled:opacity-30 disabled:pointer-events-none"
                           >
                             ▲
@@ -226,8 +227,8 @@ export function ProjectTimeline({
                               e.stopPropagation();
                               moveProject(p.id, 1);
                             }}
-                            aria-label={`Bajar prioridad de ${p.wbs}`}
-                            title="Bajar prioridad"
+                            aria-label={t("timeline.movePriorityDownAria", { wbs: p.wbs })}
+                            title={t("timeline.movePriorityDown")}
                             className="px-1 py-0.5 text-xs border rounded hover:bg-kmx-gray-100 disabled:opacity-30 disabled:pointer-events-none"
                           >
                             ▼
@@ -237,12 +238,12 @@ export function ProjectTimeline({
                     </td>
 
                     <th scope="row">
-                      <button onClick={() => onOpen(p.id)} title={`Abrir ${p.wbs} · ${displayName}`}>
+                      <button onClick={() => onOpen(p.id)} title={t("timeline.openProjectTitle", { wbs: p.wbs, name: displayName })}>
                         {p.wbs} · {displayName}
                       </button>
                     </th>
 
-                    <td className="schedule-compact-cell" aria-label={p.process_area} title={p.process_area}>
+                    <td className="schedule-compact-cell" aria-label={stackedAreas.fullText || pick(p.process_area)} title={stackedAreas.fullText || pick(p.process_area)}>
                       <div className="schedule-stacked-list">
                         {stackedAreas.visible.map(item => (
                           <span key={item.id} className="schedule-compact-pill">
@@ -257,7 +258,7 @@ export function ProjectTimeline({
                       </div>
                     </td>
 
-                    <td className="schedule-dates-cell tabular-nums" title={`Inicio: ${p.start_date} · Objetivo: ${p.target_date}`}>
+                    <td className="schedule-dates-cell tabular-nums" title={t("timeline.datesTitle", { start: p.start_date, target: p.target_date })}>
                       <div className="schedule-dates-stack">
                         <span>{p.start_date}</span>
                         <span className="schedule-date-end">{p.target_date}</span>
@@ -293,7 +294,7 @@ export function ProjectTimeline({
                         <td
                           key={c.start}
                           className={`schedule-day ${overlaps(c.start, c.end, today, today) ? "schedule-today" : ""}`}
-                          aria-label={`${c.label}: ${active ? "Planificado" : "Sin planificación"}`}
+                          aria-label={t(active ? "timeline.cellScheduled" : "timeline.cellUnscheduled", { label: c.label })}
                         >
                           {active && (
                             <span
@@ -301,7 +302,7 @@ export function ProjectTimeline({
                               className={`schedule-bar ${p.status === "Completed" ? "is-complete" : p.status === "On Hold" ? "is-paused" : ""} ${
                                 !prevActive ? "is-start" : ""
                               } ${!nextActive ? "is-end" : ""}`}
-                              aria-label={`${displayName}: ${p.start_date} a ${p.target_date}`}
+                              aria-label={t("timeline.barAriaLabel", { name: displayName, start: p.start_date, end: p.target_date })}
                               onMouseEnter={() =>
                                 setHoveredBar({ projectId: p.id, colIndex, rowIndex, data: tooltipData })
                               }
@@ -339,8 +340,8 @@ export function ProjectTimeline({
       )}
 
       <p className="schedule-legend">
-        <span /> Periodo planificado entre inicio y objetivo (pasa el mouse o enfoca la barra para ver fechas exactas) · Selecciona un proyecto para consultar actividades.
-        {data.can_create && " · Usa ▲ y ▼ para ajustar la prioridad activa del área."}
+        <span /> {t("timeline.legendBase")}
+        {data.can_create && t("timeline.legendReorder")}
       </p>
     </div>
   );

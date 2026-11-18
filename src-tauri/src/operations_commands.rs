@@ -30,7 +30,7 @@ pub(crate) async fn export_weekly<R: tauri::Runtime>(
         )
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("No se pudo completar la operación: {e}"))?
 }
 #[tauri::command]
 pub(crate) fn user_preferences(

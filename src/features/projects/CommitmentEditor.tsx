@@ -1,4 +1,5 @@
 import type { OperationsCommitmentDraft, ResultsCriterion, ResultsDeliverable } from "../../lib/results-api";
+import { translateMessage, useI18n, type Lang } from "../../lib/i18n";
 
 const id = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
 
@@ -10,9 +11,9 @@ export function emptyCommitment(): OperationsCommitmentDraft {
   return { final_outcome: "", scope: "", start_date: "", target_date: "", engineer_ids: [], deliverables: [newDeliverable()] };
 }
 
-export function commitmentError(value: OperationsCommitmentDraft): string | null {
-  if (!value.final_outcome.trim() || !value.scope.trim()) return "Define el resultado esperado y alcance del proyecto.";
-  if (!value.deliverables.length || value.deliverables.some(d => !d.title.trim() || !d.due_date || !d.criteria.length || d.criteria.some(c => !c.description.trim()))) return "Completa los entregables, sus fechas y criterios de aceptación.";
+export function commitmentError(value: OperationsCommitmentDraft, lang: Lang = "es"): string | null {
+  if (!value.final_outcome.trim() || !value.scope.trim()) return translateMessage("commitment.error.noOutcome", lang);
+  if (!value.deliverables.length || value.deliverables.some(d => !d.title.trim() || !d.due_date || !d.criteria.length || d.criteria.some(c => !c.description.trim()))) return translateMessage("commitment.error.incompleteDeliverables", lang);
   return null;
 }
 
@@ -25,6 +26,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
   activityStartDates?: Record<string, string>;
   onActivityStartDateChange?: (deliverableId: string, startDate: string) => void;
 }) {
+  const { t } = useI18n();
   function updateDeliverable(index: number, patch: Partial<ResultsDeliverable>) {
     onChange({ ...value, deliverables: value.deliverables.map((d, i) => i === index ? { ...d, ...patch } : d) });
   }
@@ -65,19 +67,19 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
 
   return (
     <fieldset className="results-commitment-editor space-y-4" disabled={disabled}>
-      <legend className="sr-only">Definición de cierre · DoD</legend>
+      <legend className="sr-only">{t("commitment.legend")}</legend>
       <p className="results-help">
-        Describe el resultado final verificable y el alcance que debe alcanzarse. Los ingenieros desarrollarán las actividades para conseguirlo.
+        {t("commitment.help")}
       </p>
 
       {/* Consolidación de Resultado esperado y Alcance en un solo campo */}
       <label className="field">
-        Resultado esperado y alcance
+        {t("commitment.outcomeScope")}
         <textarea
           required
           rows={3}
           value={outcomeScopeValue}
-          placeholder="Describe el resultado final verificable y el alcance general del proyecto..."
+          placeholder={t("commitment.outcomeScopePlaceholder")}
           onChange={e => {
             const val = e.target.value;
             onChange({ ...value, final_outcome: val, scope: val });
@@ -88,7 +90,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
       {showSchedule && (
         <div className="results-fields-row">
           <label className="field">
-            Inicio comprometido
+            {t("commitment.committedStart")}
             <input
               required
               type="date"
@@ -97,7 +99,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
             />
           </label>
           <label className="field">
-            Fecha compromiso
+            {t("commitment.targetDate")}
             <input
               required
               type="date"
@@ -113,10 +115,10 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-kmx-gray-500">
-              Entregables y criterios de aceptación ({value.deliverables.length})
+              {t("commitment.deliverablesHeading", { count: value.deliverables.length })}
             </span>
             <p className="results-help">
-              Cada entregable define un resultado verificable con fecha límite y sus criterios de aceptación.
+              {t("commitment.deliverablesHelp")}
             </p>
           </div>
           <button
@@ -125,7 +127,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
             disabled={disabled}
             onClick={addDeliverable}
           >
-            + Añadir entregable
+            {t("commitment.addDeliverable")}
           </button>
         </div>
 
@@ -133,14 +135,14 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
           <table className="results-table w-full">
             <thead>
               <tr className="bg-kmx-gray-50 text-left text-xs font-semibold text-kmx-gray-600 border-b">
-                <th className="p-2 w-12 text-center" title="Número de entregable">#</th>
-                <th className="p-2 min-w-[200px]">Nombre del entregable</th>
-                <th className="p-2 min-w-[260px]">Criterio de aceptación</th>
+                <th className="p-2 w-12 text-center" title={t("commitment.col.numberTitle")}>#</th>
+                <th className="p-2 min-w-[200px]">{t("commitment.col.deliverableName")}</th>
+                <th className="p-2 min-w-[260px]">{t("commitment.col.criterion")}</th>
                 <th className={onActivityStartDateChange ? "p-2 min-w-[220px]" : "p-2 w-36"}>
-                  {onActivityStartDateChange ? "Fechas (Inicio → Límite)" : "Fecha límite"}
+                  {onActivityStartDateChange ? t("commitment.col.datesRange") : t("commitment.col.dueDate")}
                 </th>
-                <th className="p-2 w-28 text-center">Evidencia</th>
-                <th className="p-2 w-16 text-center">Acción</th>
+                <th className="p-2 w-28 text-center">{t("commitment.col.evidence")}</th>
+                <th className="p-2 w-16 text-center">{t("common.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -149,7 +151,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                   <td className="p-2 text-center align-middle">
                     <span
                       className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-kmx-gray-100 text-kmx-carbon border"
-                      title={`Entregable ${index + 1}`}
+                      title={t("commitment.deliverableNumber", { index: index + 1 })}
                     >
                       {index + 1}
                     </span>
@@ -157,11 +159,11 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                   <td className="p-2">
                     <input
                       type="text"
-                      aria-label={`Nombre del entregable ${index + 1}`}
+                      aria-label={t("commitment.deliverableNameAria", { index: index + 1 })}
                       disabled={disabled}
                       required
                       className="w-full p-1.5 border rounded text-xs"
-                      placeholder="Nombre del entregable..."
+                      placeholder={t("commitment.deliverableNamePlaceholder")}
                       value={d.title}
                       onChange={e => updateDeliverable(index, { title: e.target.value })}
                     />
@@ -172,24 +174,24 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                         <div key={c.id} className="space-y-1">
                           {d.criteria.length > 1 && (
                             <div className="flex items-center justify-between text-[11px] text-kmx-gray-500">
-                              <span>Criterio {index + 1}.{ci + 1}</span>
+                              <span>{t("commitment.criterionLabel", { dIndex: index + 1, cIndex: ci + 1 })}</span>
                               <button
                                 type="button"
                                 disabled={disabled}
                                 className="text-kmx-red hover:underline text-[11px]"
                                 onClick={() => removeCriterion(index, ci)}
                               >
-                                Quitar
+                                {t("common.remove")}
                               </button>
                             </div>
                           )}
                           <textarea
-                            aria-label={`Criterio ${index + 1}.${ci + 1}`}
+                            aria-label={t("commitment.criterionLabel", { dIndex: index + 1, cIndex: ci + 1 })}
                             disabled={disabled}
                             required
                             rows={2}
                             className="w-full p-1.5 border rounded text-xs resize-y"
-                            placeholder="Criterio verificable de aceptación..."
+                            placeholder={t("commitment.criterionPlaceholder")}
                             value={c.description}
                             onChange={e => updateCriterion(index, ci, { description: e.target.value })}
                           />
@@ -197,12 +199,12 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                             <label className="inline-flex items-center gap-1 text-[11px] cursor-pointer">
                               <input
                                 type="checkbox"
-                                aria-label={`Evidencia requerida para criterio ${index + 1}.${ci + 1}`}
+                                aria-label={t("commitment.evidenceRequiredAria", { dIndex: index + 1, cIndex: ci + 1 })}
                                 disabled={disabled}
                                 checked={c.evidence_required}
                                 onChange={e => updateCriterion(index, ci, { evidence_required: e.target.checked })}
                               />
-                              <span>Evidencia requerida</span>
+                              <span>{t("common.evidenceRequired")}</span>
                             </label>
                           )}
                         </div>
@@ -213,7 +215,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                         className="text-[11px] text-kmx-carbon font-semibold hover:underline block"
                         onClick={() => addCriterion(index)}
                       >
-                        + Añadir criterio al entregable {index + 1}
+                        {t("commitment.addCriterion", { index: index + 1 })}
                       </button>
                     </div>
                   </td>
@@ -223,10 +225,10 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                         <>
                           <input
                             type="date"
-                            aria-label={`Inicio del entregable ${index + 1}`}
+                            aria-label={t("commitment.deliverableStartAria", { index: index + 1 })}
                             disabled={disabled}
                             className="p-1 border rounded text-xs w-full"
-                            title="Fecha de inicio de la actividad"
+                            title={t("commitment.activityStartTitle")}
                             value={activityStartDates?.[d.id] ?? value.start_date}
                             onChange={e => onActivityStartDateChange(d.id, e.target.value)}
                           />
@@ -235,11 +237,11 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                       )}
                       <input
                         type="date"
-                        aria-label={`Fecha del entregable ${index + 1}`}
+                        aria-label={t("commitment.deliverableDueAria", { index: index + 1 })}
                         disabled={disabled}
                         required
                         className="p-1 border rounded text-xs w-full"
-                        title="Fecha límite del entregable"
+                        title={t("commitment.deliverableDueTitle")}
                         value={d.due_date || defaultDueDate}
                         onChange={e => updateDeliverable(index, { due_date: e.target.value })}
                       />
@@ -250,18 +252,18 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                       <label className="inline-flex items-center gap-1 text-xs cursor-pointer select-none">
                         <input
                           type="checkbox"
-                          aria-label={`Evidencia requerida para criterio ${index + 1}.1`}
+                          aria-label={t("commitment.evidenceRequiredAria", { dIndex: index + 1, cIndex: 1 })}
                           disabled={disabled}
                           checked={d.criteria[0]?.evidence_required ?? true}
                           onChange={e => updateCriterion(index, 0, { evidence_required: e.target.checked })}
                         />
                         <span className={d.criteria[0]?.evidence_required ? "text-kmx-carbon font-medium" : "text-kmx-gray-500"}>
-                          Requerida
+                          {t("commitment.requiredShort")}
                         </span>
                       </label>
                     ) : (
                       <span className="text-[11px] text-kmx-gray-500">
-                        {d.criteria.filter(c => c.evidence_required).length}/{d.criteria.length} req.
+                        {t("commitment.requiredRatio", { required: d.criteria.filter(c => c.evidence_required).length, total: d.criteria.length })}
                       </span>
                     )}
                   </td>
@@ -271,9 +273,9 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
                       disabled={disabled || value.deliverables.length <= 1}
                       className="text-kmx-red hover:underline text-xs disabled:opacity-30 disabled:no-underline"
                       onClick={() => removeDeliverable(index)}
-                      title="Quitar entregable"
+                      title={t("commitment.removeDeliverableTitle")}
                     >
-                      Quitar
+                      {t("common.remove")}
                     </button>
                   </td>
                 </tr>

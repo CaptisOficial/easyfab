@@ -79,7 +79,7 @@ pub fn validate(config: &Config) -> Result<(), String> {
 pub fn read(dir: &Path) -> Result<(Config, Vec<u8>), String> {
     let path = dir.join("config_plant.json");
     store::contained(dir, &path)?;
-    let bytes = fs::read(path).map_err(|e| e.to_string())?;
+    let bytes = fs::read(path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
     let config: Config = serde_json::from_slice(&bytes)
         .map_err(|_| "Catálogos inválidos; no se reinicializaron.")?;
     validate(&config)?;
@@ -117,7 +117,8 @@ pub fn save(dir: &Path, s: &auth::Session, id: &str, input: Input) -> Result<Vie
     let path = dir.join("config_plant.json");
     store::publish(
         &path,
-        &serde_json::to_vec_pretty(&input.config).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&input.config)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         Some(&bytes),
         || {
             context(dir, s, id)?;

@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 fn publish(dir: &Path, files: &[(&str, &str)]) -> Result<(), String> {
-    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(dir).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     for (name, body) in files {
         match fs::OpenOptions::new()
             .write(true)
@@ -15,9 +15,9 @@ fn publish(dir: &Path, files: &[(&str, &str)]) -> Result<(), String> {
             Ok(mut file) => file
                 .write_all(body.as_bytes())
                 .and_then(|_| file.sync_all())
-                .map_err(|e| e.to_string())?,
+                .map_err(|e| format!("No se pudo escribir el archivo: {e}"))?,
             Err(error) if error.kind() == ErrorKind::AlreadyExists => (),
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(format!("No se pudo crear el archivo: {error}")),
         }
     }
     Ok(())

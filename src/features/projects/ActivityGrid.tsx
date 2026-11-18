@@ -1,5 +1,6 @@
 import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import type { ResultsDeliverable } from "../../lib/results-api";
+import { useI18n } from "../../lib/i18n";
 
 export interface ActivityRow {
   id: string;
@@ -97,6 +98,7 @@ export function ActivityGrid({
   defaultStartDate?: string;
   defaultDueDate?: string;
 }) {
+  const { t, pick } = useI18n();
   const [pasteBuffer, setPasteBuffer] = useState("");
   const [showPaste, setShowPaste] = useState(false);
   const showResponsible = engineers.length > 1;
@@ -186,7 +188,7 @@ export function ActivityGrid({
             disabled={disabled}
             onClick={() => setShowPaste(open => !open)}
           >
-            {showPaste ? "Ocultar pegado" : "Pegar desde Excel…"}
+            {showPaste ? t("common.hidePaste") : t("common.pasteFromExcel")}
           </button>
           <button
             type="button"
@@ -194,7 +196,7 @@ export function ActivityGrid({
             disabled={disabled}
             onClick={addRow}
           >
-            + Añadir subactividad
+            {t("activityGrid.addRow")}
           </button>
         </div>
       </div>
@@ -202,13 +204,13 @@ export function ActivityGrid({
       {showPaste && (
         <div className="p-3 bg-kmx-gray-50 border border-kmx-gray-300 rounded space-y-2">
           <label className="text-xs font-semibold block text-kmx-carbon">
-            Pegar filas desde Excel (separadas por Tabulador)
+            {t("activityGrid.pasteLabel")}
             <textarea
               className="mt-1 border p-2 w-full text-xs font-mono rounded"
               rows={3}
               value={pasteBuffer}
               onChange={e => setPasteBuffer(e.target.value)}
-              placeholder="Pega aquí las filas copiadas desde Excel (Título [Tab] Fecha inicio [Tab] Fecha fin [Tab] Criterio)..."
+              placeholder={t("activityGrid.pastePlaceholder")}
               disabled={disabled}
             />
           </label>
@@ -218,7 +220,7 @@ export function ActivityGrid({
               className="action text-xs"
               onClick={() => { setPasteBuffer(""); setShowPaste(false); }}
             >
-              Cancelar
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -226,7 +228,7 @@ export function ActivityGrid({
               disabled={disabled || !pasteBuffer.trim()}
               onClick={() => handlePasteText(pasteBuffer)}
             >
-              Importar filas
+              {t("common.importRows")}
             </button>
           </div>
         </div>
@@ -236,39 +238,39 @@ export function ActivityGrid({
         <table className="results-table activity-grid-table w-full">
           <thead>
             <tr className="bg-kmx-gray-50 text-left text-xs font-semibold text-kmx-gray-600 border-b">
-              <th className="p-2 w-12 text-center" title="Número autogenerado">#</th>
-              <th className="p-2 min-w-[200px]">{embedDeliverable ? "Subactividad / Entregable (Sprint o Historia)" : "Título de la subactividad"}</th>
+              <th className="p-2 w-12 text-center" title={t("activityGrid.col.numberTitle")}>#</th>
+              <th className="p-2 min-w-[200px]">{embedDeliverable ? t("activityGrid.col.embeddedTitle") : t("activityGrid.col.title")}</th>
               {embedDeliverable ? (
-                <th className="p-2 min-w-[240px]">Condición de cierre / Criterio</th>
+                <th className="p-2 min-w-[240px]">{t("activityGrid.col.criterion")}</th>
               ) : (
-                deliverables.length > 0 && <th className="p-2 min-w-[180px]">Entregable asociado</th>
+                deliverables.length > 0 && <th className="p-2 min-w-[180px]">{t("activityGrid.col.deliverable")}</th>
               )}
-              {showResponsible && <th className="p-2 min-w-[150px]">Responsable</th>}
-              <th className="p-2 min-w-[220px]">Fechas (Inicio → Fin)</th>
-              <th className="p-2 w-28">Estado</th>
-              <th className="p-2 w-20 text-center">Riesgo</th>
-              <th className="p-2 w-16 text-center">Acción</th>
+              {showResponsible && <th className="p-2 min-w-[150px]">{t("common.responsible")}</th>}
+              <th className="p-2 min-w-[220px]">{t("activityGrid.col.dates")}</th>
+              <th className="p-2 w-28">{t("common.status")}</th>
+              <th className="p-2 w-20 text-center">{t("activityGrid.risk")}</th>
+              <th className="p-2 w-16 text-center">{t("common.action")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, idx) => (
               <tr key={row.id} className="border-b last:border-b-0 hover:bg-kmx-gray-50/50 align-top">
-                <td className="p-2 text-center align-middle" data-label="Número">
+                <td className="p-2 text-center align-middle" data-label={t("activityGrid.dataLabel.number")}>
                   <span
                     className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-kmx-gray-100 text-kmx-carbon border"
-                    title={`Número: ${row.wbs}`}
+                    title={t("activityGrid.numberTitle", { wbs: row.wbs })}
                   >
                     {row.wbs}
                   </span>
                 </td>
-                <td className="p-2 align-middle" data-label={embedDeliverable ? "Subactividad / Entregable" : "Título"}>
+                <td className="p-2 align-middle" data-label={embedDeliverable ? t("activityGrid.dataLabel.embedded") : t("activityGrid.dataLabel.title")}>
                   <input
                     type="text"
                     disabled={disabled}
                     required
-                    aria-label={`Nombre del entregable ${idx + 1}`}
+                    aria-label={t("commitment.deliverableNameAria", { index: idx + 1 })}
                     className="w-full p-1.5 border rounded text-xs"
-                    placeholder={embedDeliverable ? "Título de la subactividad o entregable..." : "Descripción de la subactividad..."}
+                    placeholder={embedDeliverable ? t("activityGrid.placeholder.embedded") : t("activityGrid.placeholder.title")}
                     value={row.title}
                     onChange={e => updateRow(idx, { title: e.target.value })}
                     onKeyDown={e => handleRowKeyDown(idx, e)}
@@ -276,14 +278,14 @@ export function ActivityGrid({
                   />
                 </td>
                 {embedDeliverable ? (
-                  <td className="p-2 align-middle" data-label="Condición de cierre / Criterio">
+                  <td className="p-2 align-middle" data-label={t("activityGrid.col.criterion")}>
                     <div className="space-y-1">
                       <input
                         type="text"
                         disabled={disabled}
-                        aria-label={`Criterio ${idx + 1}.1`}
+                        aria-label={t("commitment.criterionLabel", { dIndex: idx + 1, cIndex: 1 })}
                         className="w-full p-1.5 border rounded text-xs"
-                        placeholder="Criterio verificable (opcional; si se omite usa el título)..."
+                        placeholder={t("activityGrid.criterionPlaceholder")}
                         value={row.criterion ?? ""}
                         onChange={e => updateRow(idx, { criterion: e.target.value })}
                         onKeyDown={e => handleRowKeyDown(idx, e)}
@@ -292,27 +294,27 @@ export function ActivityGrid({
                         <input
                           type="checkbox"
                           disabled={disabled}
-                          aria-label={`Evidencia requerida para criterio ${idx + 1}.1`}
+                          aria-label={t("commitment.evidenceRequiredAria", { dIndex: idx + 1, cIndex: 1 })}
                           checked={row.evidence_required ?? true}
                           onChange={e => updateRow(idx, { evidence_required: e.target.checked })}
                         />
-                        <span>Evidencia requerida</span>
+                        <span>{t("common.evidenceRequired")}</span>
                       </label>
                     </div>
                   </td>
                 ) : (
                   deliverables.length > 0 && (
-                    <td className="p-2 align-middle" data-label="Entregable asociado">
+                    <td className="p-2 align-middle" data-label={t("activityGrid.col.deliverable")}>
                       <select
                         disabled={disabled}
                         className="w-full p-1.5 border rounded text-xs"
                         value={row.deliverable_id}
                         onChange={e => updateRow(idx, { deliverable_id: e.target.value })}
                       >
-                        <option value="">Selecciona entregable...</option>
+                        <option value="">{t("activityGrid.selectDeliverable")}</option>
                         {deliverables.map((d, dIdx) => (
                           <option key={d.id} value={d.id}>
-                            Entregable {dIdx + 1}: {d.title || "(Sin título)"}
+                            {t("activityGrid.deliverableOption", { index: dIdx + 1, title: pick(d.title) || t("activityGrid.untitledDeliverable") })}
                           </option>
                         ))}
                       </select>
@@ -320,15 +322,15 @@ export function ActivityGrid({
                   )
                 )}
                 {showResponsible && (
-                  <td className="p-2 align-middle" data-label="Responsable">
+                  <td className="p-2 align-middle" data-label={t("common.responsible")}>
                     <select
                       disabled={disabled}
-                      aria-label={`Responsable ${idx + 1}`}
+                      aria-label={t("activityGrid.ownerAria", { index: idx + 1 })}
                       className="w-full p-1.5 border rounded text-xs"
                       value={row.responsible_id ?? ""}
                       onChange={e => updateRow(idx, { responsible_id: e.target.value || undefined })}
                     >
-                      <option value="">Automático (equitativo)</option>
+                      <option value="">{t("activityGrid.ownerAuto")}</option>
                       {engineers.map(eng => (
                         <option key={eng.id} value={eng.id}>
                           {eng.name} · {eng.id}
@@ -337,14 +339,14 @@ export function ActivityGrid({
                     </select>
                   </td>
                 )}
-                <td className="p-2 align-middle" data-label="Fechas (Inicio → Fin)">
+                <td className="p-2 align-middle" data-label={t("activityGrid.col.dates")}>
                   <div className="activity-grid-dates-cell flex items-center gap-1.5">
                     <input
                       type="date"
                       disabled={disabled}
                       className="p-1 border rounded text-xs w-full"
                       value={row.start_date || defaultStartDate}
-                      title="Fecha inicio prevista"
+                      title={t("activityGrid.forecastStartTitle")}
                       onChange={e => updateRow(idx, { start_date: e.target.value })}
                     />
                     <span className="text-kmx-gray-400 text-xs">→</span>
@@ -352,26 +354,26 @@ export function ActivityGrid({
                       type="date"
                       disabled={disabled}
                       required
-                      aria-label={`Fecha del entregable ${idx + 1}`}
+                      aria-label={t("commitment.deliverableDueAria", { index: idx + 1 })}
                       className="p-1 border rounded text-xs w-full"
                       value={row.due_date || defaultDueDate}
-                      title="Fecha fin / entrega"
+                      title={t("activityGrid.forecastEndTitle")}
                       onChange={e => updateRow(idx, { due_date: e.target.value })}
                     />
                   </div>
                 </td>
-                <td className="p-2 align-middle" data-label="Estado">
+                <td className="p-2 align-middle" data-label={t("common.status")}>
                   <select
                     disabled={disabled}
                     className="w-full p-1.5 border rounded text-xs"
                     value={row.status}
                     onChange={e => updateRow(idx, { status: e.target.value as ActivityRow["status"] })}
                   >
-                    <option value="not_started">Sin iniciar</option>
-                    <option value="in_progress">En curso</option>
+                    <option value="not_started">{t("common.status.notStarted")}</option>
+                    <option value="in_progress">{t("common.status.inProgress")}</option>
                   </select>
                 </td>
-                <td className="p-2 text-center align-middle" data-label="Riesgo">
+                <td className="p-2 text-center align-middle" data-label={t("activityGrid.risk")}>
                   <label className="inline-flex items-center gap-1 text-xs cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -380,19 +382,19 @@ export function ActivityGrid({
                       onChange={e => updateRow(idx, { at_risk: e.target.checked })}
                     />
                     <span className={row.at_risk ? "text-kmx-red font-semibold" : "text-kmx-gray-600"}>
-                      Riesgo
+                      {t("activityGrid.risk")}
                     </span>
                   </label>
                 </td>
-                <td className="p-2 text-center align-middle" data-label="Acción">
+                <td className="p-2 text-center align-middle" data-label={t("common.action")}>
                   <button
                     type="button"
                     disabled={disabled || rows.length <= 1}
                     className="text-kmx-red hover:underline text-xs disabled:opacity-30 disabled:no-underline"
                     onClick={() => removeRow(idx)}
-                    title="Quitar subactividad"
+                    title={t("activityGrid.removeRowTitle")}
                   >
-                    Quitar
+                    {t("common.remove")}
                   </button>
                 </td>
               </tr>

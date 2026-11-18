@@ -54,7 +54,10 @@ pub(super) fn read(dir: &Path) -> Result<(Projects, Vec<u8>), String> {
     let canonical = path
         .canonicalize()
         .map_err(|_| "No se pudo leer projects.json.")?;
-    if !canonical.starts_with(dir.canonicalize().map_err(|e| e.to_string())?) {
+    if !canonical.starts_with(
+        dir.canonicalize()
+            .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?,
+    ) {
         return Err("projects.json está fuera del espacio activo.".into());
     }
     let bytes = fs::read(&path).map_err(|_| "No se pudo leer projects.json.")?;
@@ -83,7 +86,8 @@ pub(super) fn save(
     before_publish: impl FnOnce() -> Result<(), String>,
 ) -> Result<(), String> {
     let path = dir.join("projects.json");
-    let bytes = serde_json::to_vec_pretty(doc).map_err(|e| e.to_string())?;
+    let bytes = serde_json::to_vec_pretty(doc)
+        .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
     crate::data_store::publish(&path, &bytes, Some(previous), || {
         before_publish()?;
         if read(dir)?.1 != previous {

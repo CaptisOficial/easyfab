@@ -11,7 +11,7 @@ import "./results-work.css";
 
 const empty: NewProject = { wbs: "", name: "", process_area: "", engineer_ids: [], start_date: "", target_date: "" };
 export function Projects() {
-  const { t, pick } = useI18n();
+  const { lang, t, pick, tError } = useI18n();
   const [selected, setSelected] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [data, setData] = useState<ProjectsOverview | null>(null);
@@ -29,7 +29,7 @@ export function Projects() {
   useEffect(() => {
     let active = true;
     projectsOverview().then(value => { if (active) setData(value); })
-      .catch(e => { if (active) setError(String(e)); })
+      .catch(e => { if (active) setError(tError(e)); })
       .finally(() => { if (active) setLoading(false); });
     plantCatalogs().then(cat => {
       if (active) setLines(cat.config.lines.filter(l => l.active));
@@ -46,18 +46,18 @@ export function Projects() {
       setData(pData);
       if (catData) setLines(catData.config.lines.filter(l => l.active));
     }
-    catch (e) { setError(String(e)); }
+    catch (e) { setError(tError(e)); }
     finally { setLoading(false); }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (sending.current || !data?.can_create) return;
-    if (!input.engineer_ids.length) { setError("Selecciona al menos un ingeniero responsable."); return; }
-    if (!commitment.final_outcome.trim()) { setError("Define el resultado esperado y alcance del proyecto."); return; }
+    if (!input.engineer_ids.length) { setError(t("projects.error.noEngineer")); return; }
+    if (!commitment.final_outcome.trim()) { setError(t("commitment.error.noOutcome")); return; }
 
     const validRows = activityRows.filter(r => r.title.trim().length > 0);
     if (!validRows.length) {
-      setError("Registra al menos una subactividad o entregable para el plan.");
+      setError(t("projects.error.noActivities"));
       return;
     }
 
@@ -83,7 +83,7 @@ export function Projects() {
       engineer_ids: input.engineer_ids,
       deliverables,
     };
-    const validation = commitmentError(draft);
+    const validation = commitmentError(draft, lang);
     if (validation) { setError(validation); return; }
     sending.current = true; setSaving(true); setError(""); setNotice("");
     try {
@@ -92,7 +92,7 @@ export function Projects() {
         setCreatedProject(project);
         setData(current => current ? { ...current, projects: [...current.projects.filter(p => p.id !== project.id), project] } : current);
       }
-      await saveResultsCommitment({ project_id: project.id, expected_revision: null, commitment: draft, change_reason: "Definición inicial del proyecto", legacy_deliverable_id: null });
+      await saveResultsCommitment({ project_id: project.id, expected_revision: null, commitment: draft, change_reason: t("projects.initialDefinitionReason"), legacy_deliverable_id: null });
       for (const [idx, row] of validRows.entries()) {
         const assignedEngineerId = row.responsible_id && input.engineer_ids.includes(row.responsible_id)
           ? row.responsible_id
@@ -121,8 +121,8 @@ export function Projects() {
       }
 
       setCreatedProject(null); setInput(empty); setCommitment(emptyCommitment()); setActivityRows([emptyActivityRow()]); setShowCreate(false);
-      setNotice("Proyecto guardado con condiciones de cierre.");
-    } catch (e) { setError(String(e)); }
+      setNotice(t("projects.savedNotice"));
+    } catch (e) { setError(tError(e)); }
     finally { sending.current = false; setSaving(false); }
   }
   function field(key: Exclude<keyof NewProject, "engineer_ids">, label: string, type = "text", wide = false) {
@@ -136,9 +136,9 @@ export function Projects() {
     try {
       const updated = await reorderProjects(projectIds);
       setData(updated);
-      setNotice("Prioridad de proyectos actualizada.");
+      setNotice(t("projects.reorderedNotice"));
     } catch (e) {
-      setError(String(e));
+      setError(tError(e));
     } finally {
       setSaving(false);
     }
@@ -152,24 +152,24 @@ export function Projects() {
       {loading && <p role="status">{t("projects.loading")}</p>}
       {error && !showCreate && <p role="alert" className="text-kmx-red">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      {data && <><p className="text-sm">{data.write_message}</p><ProjectTimeline data={data} onOpen={setSelected} onReorder={data.can_create ? handleReorder : undefined} /></>}
+      {data && <><p className="text-sm">{tError(data.write_message)}</p><ProjectTimeline data={data} onOpen={setSelected} onReorder={data.can_create ? handleReorder : undefined} /></>}
     </section>
     {showCreate && data?.can_create && <ResultsModal title={t("projects.registerTitle")} closeLabel={t("projects.closeRegister")} busy={saving} onClose={() => setShowCreate(false)} wide>
       {error && <p role="alert" className="results-error">{error}</p>}
-      {createdProject && <p className="results-warning">El proyecto ya se registró. Completa o reintenta guardar su definición de cierre; no se creará otro proyecto.</p>}
+      {createdProject && <p className="results-warning">{t("projects.createdPendingClosure")}</p>}
       <form onSubmit={submit} className="space-y-6">
         <section className="results-panel space-y-3" aria-labelledby="section-project-title">
           <p className="results-help">{t("projects.bilingualHint")}</p>
           <fieldset disabled={saving || !!createdProject} className="project-create-grid">
-            {field("name", "Título del proyecto", "text", true)}
+            {field("name", t("projects.field.title"), "text", true)}
             <label className="field project-form-wide">
-              Objetivo
+              {t("projects.field.objective")}
               <textarea
-                aria-label="Resultado esperado y alcance"
+                aria-label={t("commitment.outcomeScope")}
                 className="mt-1 block w-full border p-2"
                 required
                 rows={3}
-                placeholder="Describe el objetivo general y alcance del proyecto..."
+                placeholder={t("projects.field.objectivePlaceholder")}
                 value={commitment.final_outcome}
                 onChange={e => {
                   const val = e.target.value;
@@ -177,19 +177,19 @@ export function Projects() {
                 }}
               />
             </label>
-            <label className="field">Área de proceso
+            <label className="field">{t("projects.field.processArea")}
               <select className="mt-1 block w-full border p-2" required value={input.process_area}
                 onChange={e => setInput({ ...input, process_area: e.target.value })}>
-                <option value="">Selecciona línea de proceso</option>
-                {lines.map(line => <option key={line.id} value={line.name}>{line.name}</option>)}
+                <option value="">{t("projects.field.selectLine")}</option>
+                {lines.map(line => <option key={line.id} value={line.name}>{pick(line.name)}</option>)}
                 {input.process_area && !lines.some(line => line.name === input.process_area) && (
-                  <option value={input.process_area}>{input.process_area}</option>
+                  <option value={input.process_area}>{pick(input.process_area)}</option>
                 )}
               </select>
-              {!lines.length && <span className="results-help">No hay líneas activas registradas en Catálogos FAB.</span>}
+              {!lines.length && <span className="results-help">{t("projects.field.noActiveLines")}</span>}
             </label>
             <fieldset className="space-y-2 min-w-0 border border-kmx-gray-300 p-3">
-              <legend className="px-1 text-sm font-bold">Responsable(s)</legend>
+              <legend className="px-1 text-sm font-bold">{t("projects.field.owners")}</legend>
               <div className="max-h-40 space-y-2 overflow-y-auto">
                 {data.leads.map(m => (
                   <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -214,8 +214,8 @@ export function Projects() {
                 ))}
               </div>
             </fieldset>
-            {field("start_date", "Fecha de inicio", "date")}
-            {field("target_date", "Fecha objetivo", "date")}
+            {field("start_date", t("projects.field.startDate"), "date")}
+            {field("target_date", t("projects.field.targetDate"), "date")}
           </fieldset>
 
           <ActivityGrid
@@ -230,7 +230,7 @@ export function Projects() {
         </section>
 
         <div className="results-modal-sticky-actions">
-          <button disabled={saving || !data.leads.length} className="btn-primary">{saving ? "Guardando…" : createdProject ? "Reintentar definición de cierre" : "Guardar proyecto"}</button>
+          <button disabled={saving || !data.leads.length} className="btn-primary">{saving ? t("common.saving") : createdProject ? t("projects.retryClosure") : t("projects.save")}</button>
         </div>
       </form>
     </ResultsModal>}

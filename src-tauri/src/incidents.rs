@@ -92,26 +92,32 @@ fn read_events(dir: &Path) -> Result<Vec<Event>, String> {
     let key = auth::read_key()?;
     let mut result = vec![];
     let mut ids = HashSet::new();
-    for author in fs::read_dir(&folder).map_err(|e| e.to_string())? {
-        let author = author.map_err(|e| e.to_string())?.path();
+    for author in fs::read_dir(&folder).map_err(|e| format!("No se pudo leer la carpeta: {e}"))? {
+        let author = author
+            .map_err(|e| format!("No se pudo leer la carpeta: {e}"))?
+            .path();
         store::contained(dir, &author)?;
         if !author.is_dir() {
             continue;
         }
-        for item in fs::read_dir(&author).map_err(|e| e.to_string())? {
-            let path = item.map_err(|e| e.to_string())?.path();
+        for item in fs::read_dir(&author).map_err(|e| format!("No se pudo leer la carpeta: {e}"))? {
+            let path = item
+                .map_err(|e| format!("No se pudo leer la carpeta: {e}"))?
+                .path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
             store::contained(dir, &path)?;
-            let mut event: Event =
-                serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
-                    .map_err(|_| "Evento de incidencia inválido.")?;
+            let mut event: Event = serde_json::from_slice(
+                &fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?,
+            )
+            .map_err(|_| "Evento de incidencia inválido.")?;
             let signature = event.signature.clone();
             event.signature.clear();
             if !auth::verify_role(
                 "issue-event-v1",
-                &serde_json::to_string(&event).map_err(|e| e.to_string())?,
+                &serde_json::to_string(&event)
+                    .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
                 "sealed",
                 &signature,
                 &key,
@@ -180,9 +186,10 @@ pub fn overview(dir: &Path, s: &auth::Session, id: &str) -> Result<Overview, Str
     plant::context(dir, s, id)?;
     let legacy_path = dir.join("issues.json");
     store::contained(dir, &legacy_path)?;
-    let legacy: serde_json::Value =
-        serde_json::from_slice(&fs::read(legacy_path).map_err(|e| e.to_string())?)
-            .map_err(|_| "issues.json inválido; no se reinicializó.")?;
+    let legacy: serde_json::Value = serde_json::from_slice(
+        &fs::read(legacy_path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?,
+    )
+    .map_err(|_| "issues.json inválido; no se reinicializó.")?;
     if legacy["version"] != 1 || !legacy["issues"].is_array() {
         return Err("Incidencias legacy incompatibles.".into());
     }
@@ -282,7 +289,8 @@ pub fn save(dir: &Path, s: &auth::Session, id: &str, input: Input) -> Result<Ove
     };
     event.signature = auth::sign_role(
         "issue-event-v1",
-        &serde_json::to_string(&event).map_err(|e| e.to_string())?,
+        &serde_json::to_string(&event)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         "sealed",
         &key,
     );
@@ -295,11 +303,12 @@ pub fn save(dir: &Path, s: &auth::Session, id: &str, input: Input) -> Result<Ove
         .collect();
     let folder = dir.join("issue_events").join(user_key);
     store::contained(dir, &folder)?;
-    fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let path = folder.join(format!("{}.json", event.id));
     store::publish(
         &path,
-        &serde_json::to_vec_pretty(&event).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&event)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         None,
         || {
             plant::context(dir, s, id)?;

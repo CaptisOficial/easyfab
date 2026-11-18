@@ -3,8 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CommitmentEditor, commitmentError, emptyCommitment } from "./CommitmentEditor";
+import { I18nProvider } from "../../lib/i18n";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem("easyfab.lang");
+});
 
 describe("CommitmentEditor", () => {
   it("muestra el campo consolidado de resultado esperado y alcance", () => {
@@ -136,5 +140,32 @@ describe("CommitmentEditor", () => {
     expect(startInput.value).toBe("2026-11-03");
     fireEvent.change(startInput, { target: { value: "2026-11-05" } });
     expect(onStartChange).toHaveBeenCalledWith("d1", "2026-11-05");
+  });
+
+  it("traduce etiquetas e interfaz en inglés y conserva texto bilingüe crudo en inputs/textarea", () => {
+    window.localStorage.setItem("easyfab.lang", "en");
+    const commitment = emptyCommitment();
+    commitment.final_outcome = "Línea lista | Line ready";
+    commitment.scope = "Línea lista | Line ready";
+    commitment.deliverables = [
+      {
+        id: "d1",
+        title: "Dispositivo | Fixture",
+        due_date: "2026-11-15",
+        criteria: [{ id: "c1", description: "Ciclo <45s | Cycle <45s", evidence_required: true }],
+      },
+    ];
+
+    render(
+      <I18nProvider>
+        <CommitmentEditor value={commitment} onChange={() => {}} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("Deliverables & acceptance criteria (1)")).toBeTruthy();
+    expect((screen.getByLabelText("Expected outcome and scope") as HTMLTextAreaElement).value).toBe("Línea lista | Line ready");
+    expect((screen.getByLabelText("Deliverable 1 name") as HTMLInputElement).value).toBe("Dispositivo | Fixture");
+    expect((screen.getByLabelText("Criterion 1.1") as HTMLTextAreaElement).value).toBe("Ciclo <45s | Cycle <45s");
+    expect(commitmentError(emptyCommitment(), "en")).toBe("Define the expected outcome and project scope.");
   });
 });

@@ -4,9 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import userEvent from "@testing-library/user-event";
 import { ResultsWork } from "./ResultsWork";
 import * as api from "../../lib/results-api";
+import { I18nProvider } from "../../lib/i18n";
 
 vi.mock("../../lib/results-api", () => ({ resultsDetail: vi.fn(), saveResultsCommitment: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn(), openResultsEvidence: vi.fn() }));
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem("easyfab.lang");
+});
 const rev = (letter: string) => letter.repeat(64);
 function fixture(role: "engineer" | "supervisor" | "admin" = "engineer"): api.ResultsDetail {
   const commitment: api.ResultsCommitment = { revision: rev("a"), final_outcome: "Estación lista para producción", scope: "Instalar y validar", start_date: "2026-10-29", target_date: "2026-11-30", engineer_ids: ["eng", "eng2"], deliverables: [{ id: "delivery_1", title: "Estación validada", due_date: "2026-11-30", criteria: [{ id: "capacity", description: "Capacidad verificada", evidence_required: true }] }] };
@@ -514,4 +518,43 @@ it("abre documentos adjuntos usando el comando nativo sin depender de descargas 
   await userEvent.click(screen.getByRole("button", { name: /prueba\.pdf/i }));
 
   await waitFor(() => expect(api.openResultsEvidence).toHaveBeenCalledWith("project_1", rev("c")));
+});
+
+it("en inglés renderiza lecturas con pick() (proyecto, área, entregables, actividades, criterios) y conserva texto completo en edición", async () => {
+  window.localStorage.setItem("easyfab.lang", "en");
+  const detail = fixture("supervisor");
+  detail.project.name = "Proyecto sintético | Synthetic project";
+  detail.project.process_area = "Soldadura | Welding";
+  detail.commitment!.final_outcome = "Estación lista | Station ready";
+  detail.commitment!.scope = "Estación lista | Station ready";
+  detail.commitment!.deliverables[0].title = "Estación validada | Validated station";
+  detail.commitment!.deliverables[0].criteria[0].description = "Capacidad verificada | Capacity verified";
+  detail.activities[0].activity.title = "Instalar estación | Install station";
+  detail.activities[0].activity.note = "Base lista | Base ready";
+  vi.mocked(api.resultsDetail).mockResolvedValue(detail);
+
+  render(
+    <I18nProvider>
+      <ResultsWork projectId="project_1" onBack={vi.fn()} />
+    </I18nProvider>,
+  );
+
+  await screen.findByRole("heading", { name: "Synthetic project" });
+  expect(screen.getByText(/FAB-1 · Welding/)).toBeTruthy();
+  expect(screen.getByText("Station ready")).toBeTruthy();
+  const table = screen.getByRole("table", { name: "Project activities" });
+  expect(within(table).getByText("Validated station")).toBeTruthy();
+  expect(within(table).getByText("Install station")).toBeTruthy();
+  expect(within(table).getByText('"Base ready"')).toBeTruthy();
+
+  await userEvent.click(screen.getByRole("button", { name: "Close project" }));
+  const closeDialog = screen.getByRole("dialog", { name: "Close project" });
+  expect(within(closeDialog).getByText(/Capacity verified/)).toBeTruthy();
+  await userEvent.click(within(closeDialog).getByRole("button", { name: "Close close project" }));
+
+  await userEvent.click(screen.getByRole("button", { name: "Edit commitment & DoD" }));
+  const editDialog = screen.getByRole("dialog", { name: "Define project closure" });
+  expect((within(editDialog).getByLabelText("Expected outcome and scope") as HTMLTextAreaElement).value).toBe("Estación lista | Station ready");
+  expect((within(editDialog).getByLabelText("Deliverable 1 name") as HTMLInputElement).value).toBe("Estación validada | Validated station");
+  expect((within(editDialog).getByLabelText("Criterion 1.1") as HTMLTextAreaElement).value).toBe("Capacidad verificada | Capacity verified");
 });

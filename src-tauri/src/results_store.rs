@@ -285,12 +285,12 @@ fn payload_stream(payload: &Payload) -> Result<String, String> {
 fn unsigned(event: &Event) -> Result<String, String> {
     let mut copy = event.clone();
     copy.signature.clear();
-    serde_json::to_string(&copy).map_err(|e| e.to_string())
+    serde_json::to_string(&copy).map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))
 }
 fn decision_unsigned(decision: &domain::Decision) -> Result<String, String> {
     let mut copy = decision.clone();
     copy.signature.clear();
-    serde_json::to_string(&copy).map_err(|e| e.to_string())
+    serde_json::to_string(&copy).map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))
 }
 fn verify_event(event: &Event, project_id: &str, key: &[u8]) -> Result<(), String> {
     if event.version != 1
@@ -384,14 +384,18 @@ fn read_graph_at(dir: &Path, root: &Path, project_id: &str) -> Result<Graph, Str
     }
     let key = auth::read_key()?;
     let mut graph = Graph::default();
-    for item in fs::read_dir(&folder).map_err(|e| e.to_string())? {
-        let path = item.map_err(|e| e.to_string())?.path();
+    for item in fs::read_dir(&folder).map_err(|e| format!("No se pudo leer la carpeta: {e}"))? {
+        let path = item
+            .map_err(|e| format!("No se pudo leer la carpeta: {e}"))?
+            .path();
         store::contained(dir, &path)?;
         if path.extension().and_then(|s| s.to_str()) != Some("json") {
             continue;
         }
-        let event: Event = serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
-            .map_err(|_| "Revisión JSON inválida; no se reinicializó.")?;
+        let event: Event = serde_json::from_slice(
+            &fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?,
+        )
+        .map_err(|_| "Revisión JSON inválida; no se reinicializó.")?;
         verify_event(&event, project_id, &key)?;
         if path.file_stem().and_then(|s| s.to_str()) != Some(&event.id)
             || graph.events.contains_key(&event.id)
@@ -750,11 +754,12 @@ fn publish_at(
 ) -> Result<(), String> {
     let folder = root.join("events");
     store::contained(dir, &folder)?;
-    fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let path = folder.join(format!("{}.json", event.id));
     store::publish(
         &path,
-        &serde_json::to_vec_pretty(event).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(event)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         None,
         || {
             store::contained(dir, &path)?;
@@ -859,7 +864,7 @@ fn summary(event: &Event) -> String {
                         .join("; ")
                 ))
                 .collect::<Vec<_>>()
-                .join(" | ")
+                .join(" || ")
         ),
         Payload::Activity(a) => format!(
             "{} · {} % · {} → {} · Responsable: {} · Nota: {} · Evidencias: {}",
@@ -968,7 +973,7 @@ fn archived_entries(
     if !path.exists() {
         return Ok(None);
     }
-    let bytes = fs::read(path).map_err(|e| e.to_string())?;
+    let bytes = fs::read(path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
     serde_json::from_slice(&bytes)
         .map(Some)
         .map_err(|_| "Archivo histórico inválido.".into())
@@ -1350,14 +1355,17 @@ fn initialize(
     }
     let parent = target.parent().ok_or("Ruta inválida.")?;
     store::contained(dir, parent)?;
-    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let staging = parent.join(format!(".activation-{}", auth::revision()));
     store::contained(dir, &staging)?;
-    fs::create_dir(&staging).map_err(|e| e.to_string())?;
+    fs::create_dir(&staging).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let result = (|| {
-        fs::create_dir(staging.join("events")).map_err(|e| e.to_string())?;
-        fs::create_dir(staging.join("evidence")).map_err(|e| e.to_string())?;
-        let legacy_bytes = serde_json::to_vec_pretty(&legacy).map_err(|e| e.to_string())?;
+        fs::create_dir(staging.join("events"))
+            .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
+        fs::create_dir(staging.join("evidence"))
+            .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
+        let legacy_bytes = serde_json::to_vec_pretty(&legacy)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
         store::publish(&staging.join("legacy.json"), &legacy_bytes, None, || {
             store::contained(dir, &staging)
         })?;
@@ -1375,7 +1383,8 @@ fn initialize(
         );
         store::publish(
             &staging.join("storage.json"),
-            &serde_json::to_vec(&manifest).map_err(|e| e.to_string())?,
+            &serde_json::to_vec(&manifest)
+                .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
             None,
             || store::contained(dir, &staging),
         )?;
@@ -1426,7 +1435,9 @@ fn initialize(
                 }
                 let path = safe_evidence_path(dir, &staging, e)?;
                 if path.exists() {
-                    if fs::read(&path).map_err(|e| e.to_string())? != bytes {
+                    if fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?
+                        != bytes
+                    {
                         return Err("Evidencia histórica duplicada con contenido diferente.".into());
                     }
                 } else {

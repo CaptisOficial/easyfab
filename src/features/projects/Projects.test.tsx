@@ -5,9 +5,13 @@ import userEvent from "@testing-library/user-event";
 import { Projects } from "./Projects";
 import * as api from "../../lib/api";
 import * as resultsApi from "../../lib/results-api";
+import { I18nProvider } from "../../lib/i18n";
 vi.mock("../../lib/results-api", () => ({ saveResultsCommitment: vi.fn(), resultsDetail: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
 vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn(), projectDetail: vi.fn(), plantCatalogs: vi.fn(), reorderProjects: vi.fn() }));
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem("easyfab.lang");
+});
 const overview: api.ProjectsOverview = { projects: [], leads: [{ id: "eng", name: "Engineer Test" }], can_create: true, write_message: "Registro disponible" };
 const project: api.Project = { id: "PRJ-test", wbs: "FAB-1", name: "Fixture project", process_area: "FAB", engineer_ids: ["eng"], start_date: "2026-10-28", target_date: "2026-11-30", status: "Not Started" };
 beforeEach(() => {
@@ -192,9 +196,9 @@ it("simplifica el registro unificando objetivo global y subactividades con entre
   render(<Projects />);
   await userEvent.click(await screen.findByRole("button", { name: "Nuevo proyecto" }));
 
-  // Verificamos que existen exactamente 2 secciones de planeación ágil
-  expect(screen.getByText("Datos generales y objetivo del proyecto")).toBeTruthy();
-  expect(screen.getByText("Subactividades y entregables de cierre (Sprints / Historias)")).toBeTruthy();
+  // Verificamos la estructura unificada de planeación ágil con entregables embebidos
+  expect(screen.getByText("Subactividad / Entregable (Sprint o Historia)")).toBeTruthy();
+  expect(screen.getByText("Condición de cierre / Criterio")).toBeTruthy();
   expect(screen.queryByText("Definición de cierre · DoD (Definition of Done)")).toBeNull();
 
   // El objetivo engloba los alcances
@@ -346,4 +350,30 @@ it("respeta el responsable elegido por fila cuando se asignan varios ingenieros 
       activity: expect.objectContaining({ responsible_id: "eng2" }),
     }),
   );
+});
+
+it("en inglés muestra etiquetas de líneas con pick() pero guarda el valor bilingüe completo", async () => {
+  window.localStorage.setItem("easyfab.lang", "en");
+  vi.mocked(api.plantCatalogs).mockResolvedValue({
+    config: {
+      version: 1,
+      lines: [{ id: "line-w", name: "Soldadura | Welding", active: true }],
+      machines: [],
+      failure_types: [],
+    },
+    revision: "rev-1",
+    can_edit: false,
+  });
+
+  render(
+    <I18nProvider>
+      <Projects />
+    </I18nProvider>,
+  );
+  await userEvent.click(await screen.findByRole("button", { name: "New project" }));
+  const option = screen.getByRole("option", { name: "Welding" }) as HTMLOptionElement;
+  expect(option.value).toBe("Soldadura | Welding");
+  const titleInput = screen.getByLabelText("Project title") as HTMLInputElement;
+  fireEvent.change(titleInput, { target: { value: "Celda | Cell" } });
+  expect(titleInput.value).toBe("Celda | Cell");
 });

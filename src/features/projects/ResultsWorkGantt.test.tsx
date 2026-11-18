@@ -5,8 +5,12 @@ import { ResultsGantt } from "./ResultsWorkGantt";
 import { ProjectTimeline } from "./ProjectTimeline";
 import type { OperationsActivityEntry, ResultsDeliverable } from "../../lib/results-api";
 import type { ProjectsOverview } from "../../lib/api";
+import { I18nProvider } from "../../lib/i18n";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem("easyfab.lang");
+});
 
 const deliverable: ResultsDeliverable = {
   id: "deliv_1",
@@ -132,5 +136,67 @@ describe("ProjectTimeline compacto y tooltip", () => {
     expect(within(tooltip).getByText("2026-11-01")).toBeTruthy();
     expect(within(tooltip).getByText("2026-11-20")).toBeTruthy();
     expect(within(tooltip).getByText("20 días")).toBeTruthy();
+  });
+
+  it("en inglés aplica pick() en Gantt y Timeline para entregables, actividades, proyectos y áreas", () => {
+    window.localStorage.setItem("easyfab.lang", "en");
+    const biDeliv: ResultsDeliverable = {
+      ...deliverable,
+      title: "Estación validada | Validated station",
+    };
+    const biEntry: OperationsActivityEntry = {
+      ...activityEntry,
+      activity: {
+        ...activityEntry.activity,
+        title: "Instalar prensa | Install press",
+      },
+    };
+    const biOverview: ProjectsOverview = {
+      can_create: false,
+      write_message: "Solo lectura",
+      leads: [{ id: "eng1", name: "Juan Pérez" }],
+      projects: [
+        {
+          id: "PRJ-1",
+          wbs: "FAB-10",
+          name: "Línea Soldadura | Welding Line",
+          process_area: "Soldadura de Cuadros | Frame Welding",
+          engineer_ids: ["eng1"],
+          start_date: "2026-11-01",
+          target_date: "2026-11-20",
+          status: "In Progress",
+        },
+      ],
+    };
+
+    render(
+      <I18nProvider>
+        <ResultsGantt
+          entries={[biEntry]}
+          deliverables={[biDeliv]}
+          projectStart="2026-11-01"
+          projectTarget="2026-11-30"
+          canPlan
+          onUpdateActivity={vi.fn()}
+        />
+        <ProjectTimeline data={biOverview} onOpen={vi.fn()} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("region", { name: "Activity Gantt" })).toBeTruthy();
+    expect(screen.getByText("Validated station")).toBeTruthy();
+    expect(screen.getByText("Install press")).toBeTruthy();
+    const actBar = screen.getByRole("button", {
+      name: /Install press, from 2026-11-02 to 2026-11-12, progress 50%, at risk/,
+    });
+    fireEvent.mouseEnter(actBar);
+    const ganttTip = screen.getByRole("tooltip");
+    expect(within(ganttTip).getByText("11 days")).toBeTruthy();
+    expect(within(ganttTip).getByText("At risk")).toBeTruthy();
+    fireEvent.mouseLeave(actBar);
+
+    fireEvent.change(screen.getByLabelText("Reference date"), { target: { value: "2026-11-05" } });
+    expect(screen.getByRole("button", { name: "FAB-10 · Welding Line" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Frame Welding" })).toBeTruthy();
   });
 });

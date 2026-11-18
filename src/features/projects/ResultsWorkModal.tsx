@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "../../lib/i18n";
 
 export function ResultsModal({ title, busy, onClose, children, wide = false, closeLabel, hideHeader = false }: { title: string; busy: boolean; onClose: () => void; children: ReactNode; wide?: boolean; closeLabel?: string; hideHeader?: boolean }) {
+  const { t } = useI18n();
   const titleId = useId();
   const dialog = useRef<HTMLDivElement>(null);
   const busyRef = useRef(busy); busyRef.current = busy;
@@ -28,7 +30,7 @@ export function ResultsModal({ title, busy, onClose, children, wide = false, clo
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     }}>
-      {!hideHeader && <header className="results-modal-header"><h4 id={titleId}>{title}</h4><button type="button" className="action" aria-label={closeLabel ?? `Cerrar ${title.toLowerCase()}`} disabled={busy} onClick={onClose}>✕</button></header>}
+      {!hideHeader && <header className="results-modal-header"><h4 id={titleId}>{title}</h4><button type="button" className="action" aria-label={closeLabel ?? t("modal.closeWithTitle", { title: title.toLowerCase() })} disabled={busy} onClick={onClose}>✕</button></header>}
       <div className="results-modal-body">{children}</div>
     </div>
   </div>, document.body);

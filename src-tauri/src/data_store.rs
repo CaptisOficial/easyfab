@@ -5,7 +5,9 @@ pub fn hash(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 pub fn contained(base: &Path, path: &Path) -> Result<(), String> {
-    let base = base.canonicalize().map_err(|e| e.to_string())?;
+    let base = base
+        .canonicalize()
+        .map_err(|e| format!("No se puede acceder a la carpeta: {e}"))?;
     let mut current = path;
     loop {
         if let Ok(metadata) = fs::symlink_metadata(current) {
@@ -23,7 +25,7 @@ pub fn contained(base: &Path, path: &Path) -> Result<(), String> {
         if current.exists()
             && !current
                 .canonicalize()
-                .map_err(|e| e.to_string())?
+                .map_err(|e| format!("No se pudo completar la operación: {e}"))?
                 .starts_with(&base)
         {
             return Err("Ruta fuera del directorio autorizado.".into());
@@ -49,10 +51,10 @@ pub fn publish(
             .write(true)
             .create_new(true)
             .open(&tmp)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("No se pudo crear el archivo: {e}"))?;
         file.write_all(bytes)
             .and_then(|_| file.sync_all())
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("No se pudo escribir el archivo: {e}"))?;
         drop(file);
         check()?;
         match (previous, fs::read(path)) {

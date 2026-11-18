@@ -4,6 +4,7 @@ import type {
   OperationsReviewEntry,
   ResultsDeliverable,
 } from "../../lib/results-api";
+import { translateMessage, useI18n, type Lang } from "../../lib/i18n";
 
 export const reviewLabel: Record<string, string> = {
   preparing: "En preparación",
@@ -18,6 +19,26 @@ export const activityStatusLabel: Record<string, string> = {
   in_progress: "En curso",
   done: "Cumplida",
 };
+
+export function getReviewLabel(status: string, lang: Lang = "es"): string {
+  const keys: Record<string, "results.review.preparing" | "results.review.submitted" | "results.review.returned" | "results.review.accepted" | "results.review.withdrawn"> = {
+    preparing: "results.review.preparing",
+    submitted: "results.review.submitted",
+    returned: "results.review.returned",
+    accepted: "results.review.accepted",
+    withdrawn: "results.review.withdrawn",
+  };
+  return keys[status] ? translateMessage(keys[status], lang) : (reviewLabel[status] ?? status);
+}
+
+export function getActivityStatusLabel(status: string, lang: Lang = "es"): string {
+  const keys: Record<string, "common.status.notStarted" | "common.status.inProgress" | "common.status.done"> = {
+    not_started: "common.status.notStarted",
+    in_progress: "common.status.inProgress",
+    done: "common.status.done",
+  };
+  return keys[status] ? translateMessage(keys[status], lang) : (activityStatusLabel[status] ?? status);
+}
 
 export interface DeliverableGroup {
   deliverable: ResultsDeliverable;
@@ -109,7 +130,9 @@ export function DeliverableActions({
   disabled = false,
   onAddActivity,
 }: DeliverableActionsProps) {
+  const { t, pick } = useI18n();
   const showAdd = canPlan && Boolean(onAddActivity);
+  const displayTitle = pick(deliverable.title);
 
   if (!showAdd) {
     return null;
@@ -122,8 +145,8 @@ export function DeliverableActions({
           type="button"
           className="action results-icon-btn"
           disabled={disabled}
-          aria-label={`Agregar actividad en ${deliverable.title}`}
-          title={`Agregar actividad en ${deliverable.title}`}
+          aria-label={t("results.addActivityInDeliverable", { title: displayTitle })}
+          title={t("results.addActivityInDeliverable", { title: displayTitle })}
           onClick={() => onAddActivity?.(deliverable)}
         >
           <Plus size={14} aria-hidden="true" />

@@ -145,10 +145,14 @@ pub fn save(dir: &Path, s: &auth::Session, id: &str, input: Input) -> Result<Vie
     preferences.language = input.language;
     validate(&preferences, id, &s.user.id)?;
     let target = path(&local, id, &s.user.id)?;
-    fs::create_dir_all(target.parent().ok_or("Ruta inválida.")?).map_err(|e| e.to_string())?;
+    fs::create_dir_all(target.parent().ok_or("Ruta inválida.")?)
+        .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     store::contained(&local, &target)?;
     let previous = if current.revision.is_some() {
-        Some(fs::read(&target).map_err(|e| e.to_string())?)
+        Some(
+            fs::read(&target)
+                .map_err(|e| format!("No se pudo leer el archivo: {e}"))?,
+        )
     } else {
         None
     };
@@ -157,7 +161,8 @@ pub fn save(dir: &Path, s: &auth::Session, id: &str, input: Input) -> Result<Vie
     }
     store::publish(
         &target,
-        &serde_json::to_vec_pretty(&preferences).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&preferences)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         previous.as_deref(),
         || {
             plant::context(dir, s, id)?;

@@ -218,17 +218,20 @@ fn decisions(dir: &Path) -> Result<Vec<Decision>, String> {
     }
     let key = auth::read_key()?;
     let mut result = vec![];
-    for item in fs::read_dir(path).map_err(|e| e.to_string())? {
-        let path = item.map_err(|e| e.to_string())?.path();
+    for item in fs::read_dir(path).map_err(|e| format!("No se pudo leer la carpeta: {e}"))? {
+        let path = item.map_err(|e| format!("No se pudo leer la carpeta: {e}"))?.path();
         if path.extension().and_then(|v| v.to_str()) != Some("json") {
             continue;
         }
         store::contained(dir, &path)?;
-        let mut d: Decision = serde_json::from_slice(&fs::read(path).map_err(|e| e.to_string())?)
-            .map_err(|_| "Revisión inválida.")?;
+        let mut d: Decision = serde_json::from_slice(
+            &fs::read(path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?,
+        )
+        .map_err(|_| "Revisión inválida.")?;
         let signature = d.signature.clone();
         d.signature.clear();
-        let payload = serde_json::to_string(&d).map_err(|e| e.to_string())?;
+        let payload = serde_json::to_string(&d)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
         if !auth::verify_role("review-v1", &payload, "sealed", &signature, &key) {
             return Err("Revisión alterada.".into());
         }
@@ -416,7 +419,8 @@ pub fn set_progress(
     value["last_synced"] = json!(chrono::Utc::now().to_rfc3339());
     store::publish(
         &path,
-        &serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&value)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         Some(&previous),
         || {
             authorized_project(dir, session, workspace_id, &input.project_id)?;
@@ -440,11 +444,13 @@ fn save_profile(
         && (has_started(dir, &project)? || activities.iter().any(|a| a.project_id == project_id && (a.milestone_gate > 0 || a.hours_spent.is_some_and(|h| h > 0.0)))) {
         mark_started(&mut value, project_id)?;
     }
-    value["subactivities"] = serde_json::to_value(activities).map_err(|e| e.to_string())?;
+    value["subactivities"] = serde_json::to_value(activities)
+        .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
     value["last_synced"] = json!(chrono::Utc::now().to_rfc3339());
     store::publish(
         path,
-        &serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&value)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         Some(previous),
         || {
             authorized_project(dir, session, workspace_id, project_id)?;
@@ -595,7 +601,8 @@ pub fn attach(
     let relative_path = format!("evidence/{id}.{ext}");
     let target = parent.join(&relative_path);
     store::contained(parent, &target)?;
-    fs::create_dir_all(parent.join("evidence")).map_err(|e| e.to_string())?;
+    fs::create_dir_all(parent.join("evidence"))
+        .map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     store::publish(&target, &input.bytes, None, || {
         normal(dir, session, workspace_id)?;
         store::contained(parent, &target)
@@ -670,7 +677,7 @@ pub fn evidence_asset(
     if metadata.len() > 20 * 1024 * 1024 {
         return Err("Evidencia supera el límite.".into());
     }
-    let bytes = fs::read(target).map_err(|e| e.to_string())?;
+    let bytes = fs::read(target).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
     if store::hash(&bytes) != evidence.sha256 || bytes.len() != evidence.size {
         return Err("Evidencia incompleta o alterada.".into());
     }
@@ -748,17 +755,19 @@ pub fn review(
     let key = auth::read_key()?;
     decision.signature = auth::sign_role(
         "review-v1",
-        &serde_json::to_string(&decision).map_err(|e| e.to_string())?,
+        &serde_json::to_string(&decision)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         "sealed",
         &key,
     );
     let folder = dir.join("reviews");
     store::contained(dir, &folder)?;
-    fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
     let path = folder.join(format!("{}.json", decision.id));
     store::publish(
         &path,
-        &serde_json::to_vec_pretty(&decision).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&decision)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
         None,
         || {
             let current = detail(dir, session, workspace_id, &input.project_id)?;

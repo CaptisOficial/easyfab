@@ -28,11 +28,11 @@ pub fn effective(dir: &Path, m: &Member, key: &[u8]) -> Result<(String, bool, St
     let path = own_path(dir, m)?;
     if path.exists() {
         let value: serde_json::Value =
-            serde_json::from_slice(&fs::read(path).map_err(|_| "No se pudo leer perfil.")?)
-                .map_err(|_| "Perfil invalido.")?;
+            serde_json::from_slice(&fs::read(path).map_err(|_| "No se pudo leer el perfil.")?)
+                .map_err(|_| "Perfil inválido.")?;
         if let Some(value) = value.get("credential") {
             let c: Credential =
-                serde_json::from_value(value.clone()).map_err(|_| "Credencial invalida.")?;
+                serde_json::from_value(value.clone()).map_err(|_| "Credencial inválida.")?;
             if c.revision == m.credential_revision {
                 if !valid_seal(&credential_payload(&m.id, &c), &c.signature, key) {
                     return Err("Credencial alterada.".into());
@@ -42,7 +42,7 @@ pub fn effective(dir: &Path, m: &Member, key: &[u8]) -> Result<(String, bool, St
         }
     }
     let expires = chrono::DateTime::parse_from_rfc3339(&m.temporary_expires_at)
-        .map_err(|_| "Temporal invalida.")?;
+        .map_err(|_| "Temporal inválida.")?;
     if expires <= chrono::Utc::now() {
         return Err("Contraseña temporal vencida. Solicita otra al administrador.".into());
     }
@@ -81,13 +81,13 @@ pub fn revalidate(dir: &Path, session: &Session) -> Result<(), String> {
         .members
         .iter()
         .find(|m| m.id == session.user.id)
-        .ok_or("Sesion revocada.")?;
+        .ok_or("Sesión revocada.")?;
     let (_, restricted, fingerprint) = effective(dir, m, &key)?;
     if fingerprint != session.fingerprint
         || restricted != session.user.must_change_password
         || m.role != session.user.role
     {
-        return Err("Sesion revocada. Ingresa otra vez.".into());
+        return Err("Sesión revocada. Ingresa otra vez.".into());
     }
     Ok(())
 }
@@ -99,7 +99,7 @@ pub fn change_password(dir: &Path, session: &Session, new_pin: &str) -> Result<(
         .members
         .iter()
         .find(|m| m.id == session.user.id)
-        .ok_or("Sesion revocada.")?;
+        .ok_or("Sesión revocada.")?;
     let (old, _, _) = effective(dir, m, &key)?;
     if verify_password(new_pin, &old) {
         return Err("Elige una contraseña diferente a la anterior.".into());
@@ -112,15 +112,18 @@ pub fn change_password(dir: &Path, session: &Session, new_pin: &str) -> Result<(
     c.signature = seal(&credential_payload(&m.id, &c), &key);
     let path = own_path(dir, m)?;
     let mut value: serde_json::Value = if path.exists() {
-        serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())?
+        serde_json::from_slice(
+            &fs::read(&path).map_err(|e| format!("No se pudo leer el perfil: {e}"))?,
+        )
+        .map_err(|e| format!("Error de formato JSON: {e}"))?
     } else {
         serde_json::json!({"engineer_id":m.id,"last_synced":chrono::Utc::now().to_rfc3339(),"subactivities":[]})
     };
     if value.get("engineer_id").and_then(|v| v.as_str()) != Some(m.id.as_str()) {
         return Err("Perfil no corresponde al usuario.".into());
     }
-    value["credential"] = serde_json::to_value(c).map_err(|e| e.to_string())?;
+    value["credential"] = serde_json::to_value(c)
+        .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?;
     value["last_synced"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
     revalidate(dir, session)?;
     crate::workspace::prepare_profile_directory(dir, &m.id)?;
@@ -129,7 +132,7 @@ pub fn change_password(dir: &Path, session: &Session, new_pin: &str) -> Result<(
 pub fn reset_password(dir: &Path, session: &Session, target: &str) -> Result<String, String> {
     revalidate(dir, session)?;
     if session.user.must_change_password || session.user.role != "admin" {
-        return Err("Se requiere sesion normal de administrador.".into());
+        return Err("Se requiere sesión normal de administrador.".into());
     }
     let mut team = team(dir)?;
     let key = read_key()?;
@@ -146,7 +149,8 @@ pub fn reset_password(dir: &Path, session: &Session, target: &str) -> Result<Str
     revalidate(dir, session)?;
     atomic_json(
         &dir.join("team.json"),
-        &serde_json::to_value(team).map_err(|e| e.to_string())?,
+        &serde_json::to_value(team)
+            .map_err(|e| format!("No se pudo procesar el archivo JSON: {e}"))?,
     )?;
     Ok(temporary)
 }

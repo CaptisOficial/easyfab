@@ -23,7 +23,8 @@ pub(crate) fn workspace_status(
     }
     let status = workspace::probe(
         &local_dir()?,
-        &std::env::current_exe().map_err(|e| e.to_string())?,
+        &std::env::current_exe()
+            .map_err(|e| format!("No se pudo completar la operación: {e}"))?,
         crate::onedrive::detect().engineering_root,
     );
     if let Some(info) = status.workspace.as_ref() {

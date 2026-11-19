@@ -45,7 +45,7 @@ export function UserDirectory() {
   const errorText = error !== null && error !== "" ? tError(error) : "";
   const noticeText = notice ? t(notice.key, { name: notice.name }) : "";
 
-  return <section className="space-y-4 border-t pt-4" aria-labelledby="directory-title">
+  return <section className="space-y-4" aria-labelledby="directory-title">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="directory-title" className="font-bold">{t("auth.directory.title")}</h2>
       <div className="ml-auto"><NewUserForm onCreated={refresh} /></div>
     </div>

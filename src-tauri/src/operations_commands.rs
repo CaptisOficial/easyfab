@@ -6,9 +6,10 @@ pub(crate) fn weekly_snapshot(
     reporting_date: String,
 ) -> Result<crate::reporting::Snapshot, String> {
     let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    let session = guard.as_ref().ok_or("Ingresa primero.")?;
     crate::reporting::snapshot(
         &data_path(&state)?,
-        guard.as_ref().ok_or("Ingresa primero.")?,
+        session,
         &workspace_id(&state)?,
         &reporting_date,
     )
@@ -138,4 +139,24 @@ pub(crate) fn save_incident(
         &workspace_id(&state)?,
         input,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use tauri::test::{get_ipc_response, mock_builder, mock_context, noop_assets};
+
+    #[test]
+    fn reporting_commands_require_session_before_filesystem_or_excel() {
+        let app = crate::app_builder(mock_builder()).build(mock_context(noop_assets())).unwrap();
+        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default()).build().unwrap();
+        for command in ["weekly_snapshot", "export_weekly"] {
+            let response = get_ipc_response(&window, tauri::webview::InvokeRequest {
+                cmd: command.into(), callback: tauri::ipc::CallbackFn(0), error: tauri::ipc::CallbackFn(1),
+                url: "http://tauri.localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(serde_json::json!({"reportingDate":"2026-11-19"})),
+                headers: Default::default(), invoke_key: tauri::test::INVOKE_KEY.into(),
+            });
+            assert_eq!(response.err().unwrap(), serde_json::json!("Ingresa primero."));
+        }
+    }
 }

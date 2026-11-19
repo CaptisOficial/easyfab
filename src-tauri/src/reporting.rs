@@ -245,6 +245,49 @@ mod tests {
     use std::process::Command;
 
     #[test]
+    fn publish_precedes_open_and_open_failure_preserves_saved_result() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("target/test-data")
+            .join(format!("report-open-{}", auth::revision()));
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("synthetic.xlsx");
+        for fail_open in [false, true] {
+            let result = publish_and_open(&target, b"synthetic", |path, bytes| {
+                fs::write(path, bytes).map_err(|e| e.to_string())
+            }, |path| {
+                assert_eq!(fs::read(path).unwrap(), b"synthetic");
+                if fail_open { Err("No association".into()) } else { Ok(()) }
+            }).unwrap();
+            assert_eq!(result.path, target.to_string_lossy());
+            assert_eq!(result.sha256, store::hash(b"synthetic"));
+            assert_eq!(result.open_error.is_some(), fail_open);
+        }
+        let result = publish_and_open(&target, b"synthetic", |_, _| Err("denied".into()),
+            |_| panic!("Must never open an unpublished report"));
+        assert_eq!(result.err().unwrap(), "denied");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn excel_supervisor_handles_success_failure_and_timeout() {
+        use std::time::{Duration, Instant};
+        fn command(script: &str) -> Command {
+            let mut command = Command::new("powershell.exe");
+            command.args(["-NoProfile", "-NonInteractive", "-Command", script]);
+            command.stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+            command
+        }
+        assert!(run_excel(&mut command("exit 0"), Duration::from_secs(10)).is_ok());
+        assert!(run_excel(&mut command("exit 1"), Duration::from_secs(10)).unwrap_err().contains("Excel no completó"));
+        let started = Instant::now();
+        assert!(run_excel(&mut command("Start-Sleep -Seconds 30"), Duration::from_millis(200))
+            .unwrap_err().contains("tiempo de espera"));
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert!(run_excel(&mut Command::new("easyfab-nonexistent-synthetic-command"), Duration::from_secs(1))
+            .unwrap_err().contains("No se pudo iniciar"));
+    }
+
+    #[test]
     fn pick_bilingual_matches_frontend_contract() {
         assert_eq!(pick_bilingual("Soldadura | Welding", "es"), "Soldadura");
         assert_eq!(pick_bilingual("Soldadura | Welding", "en"), "Welding");

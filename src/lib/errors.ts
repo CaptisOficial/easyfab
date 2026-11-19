@@ -422,6 +422,9 @@ export const BACKEND_ERRORS: Record<string, string> = {
 
   // Weekly reporting & Ok(...) user-facing payload messages
   "El reporte del área corresponde a Supervisor o Admin.": "Area reporting is restricted to Supervisor or Admin.",
+  "Excel excedió el tiempo de espera para generar el reporte. Revisa Excel y vuelve a intentarlo.": "Excel timed out while generating the report. Check Excel and try again.",
+  "La sesión cambió durante la exportación. Vuelve a generar el reporte.": "The session changed during export. Generate the report again.",
+  "El reporte se guardó, pero no se pudo abrir automáticamente. Ábrelo desde la ruta indicada.": "The report was saved, but could not be opened automatically. Open it from the displayed path.",
   "El reporte requiere convertir explícitamente las incidencias anteriores a eventos antes de consolidar.":
     "The report requires explicitly converting legacy incidents into events before consolidating.",
   "Integra las versiones concurrentes de incidencias antes de exportar.":

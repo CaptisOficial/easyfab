@@ -56,7 +56,7 @@ El [contrato IPC](../../contracts/v1/project_registration.schema.json) define la
 | ID / ubicación | Responsabilidad | Condición para implementar |
 |---|---|---|
 | CAR-01 · Proyectos → Carga del equipo | Comparar esfuerzo asignado con capacidad disponible y consultar calendario/Gantt. Supervisor/Admin. | F09/F12; D05: calendario, jornadas, esfuerzo y capacidad neta. No inferir carga del número de proyectos. |
-| REP-01 · Inicio → Resumen y exportación KMX-FW | Seleccionar periodo, consultar consolidado y exportar formato oficial. Supervisor/Admin; detalle desde cada proyecto. | F13/F14; plantilla oficial D06 y snapshot consistente. No habilitar exportación sin esas bases. |
+| REP-01 · Inicio → Resumen y exportación KMX-FW | Seleccionar periodo, consultar consolidado y exportar formato oficial. Al guardarse, abrir el reporte automáticamente; si falla la apertura, conservar ruta y aviso. Supervisor/Admin; detalle desde cada proyecto. | F13/F14; plantilla oficial D06 y snapshot consistente. No habilitar exportación sin esas bases. [Flujo y respuesta](../../contracts/v1/reporting.md). |
 
 
 ## Planeación por entregables y cierre verificable

@@ -475,292 +475,289 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
         <>
 
           {/* 3. DESGLOSE OPERATIVO: PLANEACIÓN Y PREVISIÓN POR ENTREGABLES */}
-          <div className="block">
-            {/* COLUMNA IZQUIERDA: ACTIVIDADES POR CUMPLIR */}
-            <section className="results-panel space-y-3" aria-label={t("results.planningAria")}>
-              <div className="results-section-heading">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h4>{t("results.planningHeading")}</h4>
-                  {!isEngineerView && (
-                    <div className="results-plan-view-controls" role="group" aria-label={t("results.planViewModeAria")}>
-                      <button
-                        type="button"
-                        className={`results-plan-view-btn ${planViewMode === "both" ? "is-active" : ""}`}
-                        onClick={() => setPlanViewMode("both")}
-                        title={t("results.viewMode.bothTitle")}
-                      >
-                        <LayoutGrid size={13} aria-hidden="true" />
-                        <span>{t("results.viewMode.both")}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`results-plan-view-btn ${planViewMode === "gantt" ? "is-active" : ""}`}
-                        onClick={() => setPlanViewMode("gantt")}
-                        title={t("results.viewMode.ganttTitle")}
-                      >
-                        <BarChart3 size={13} aria-hidden="true" />
-                        <span>{t("results.viewMode.gantt")}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`results-plan-view-btn ${planViewMode === "table" ? "is-active" : ""}`}
-                        onClick={() => setPlanViewMode("table")}
-                        title={t("results.viewMode.tableTitle")}
-                      >
-                        <Table2 size={13} aria-hidden="true" />
-                        <span>{t("results.viewMode.table")}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {canPlan && !isEngineerView && (
-                  <button
-                    type="button"
-                    className="btn-primary results-icon-btn"
-                    aria-label={t("results.newActivity")}
-                    title={t("results.newActivity")}
-                    disabled={busy}
-                    onClick={() => openActivity(null)}
-                  >
-                    <Plus size={15} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-
-              {!data.activities.length && !isEngineerView && <p>{t("results.emptyActivities")}</p>}
-
-              <div className="results-planning">
-                {/* Visualización Gantt de entregables y previsión */}
-                <div className={!isEngineerView && planViewMode === "table" ? "hidden" : "block w-full"}>
-                  <ResultsGantt
-                    entries={data.activities}
-                    deliverables={data.commitment?.deliverables}
-                    reviews={data.reviews}
-                    projectStart={data.project.start_date}
-                    projectTarget={data.project.target_date}
-                    canPlan={canPlan}
-                    onUpdateActivity={openActivity}
-                    onRegisterDeliverableProgress={openDeliverableProgress}
-                  />
-                </div>
-
-                {/* Tabla de actividades agrupadas por entregable */}
+          <section className="space-y-3" aria-label={t("results.planningAria")}>
+            <div className="results-section-heading">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h4>{t("results.planningHeading")}</h4>
                 {!isEngineerView && (
-                  <div className={planViewMode === "gantt" ? "hidden" : "block w-full"}>
-                    <div className="results-table-scroll">
-                      <table className="results-table" aria-label={t("results.activitiesTableAria")}>
-                        <colgroup>
-                          <col className="results-col-activity" />
-                          <col className="results-col-responsible" />
-                          <col className="results-col-forecast" />
-                          <col className="results-col-progress" />
-                          <col className="results-col-actions" />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th>{t("gantt.activityKind")}</th>
-                            <th>{t("common.responsible")}</th>
-                            <th>{t("results.col.forecast")}</th>
-                            <th>{t("results.col.progress")}</th>
-                            <th>{t("common.actions")}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tableDeliverableGroups.length > 0 ? (
-                            <>
-                              {tableDeliverableGroups.map(group => {
-                                const deliv = group.deliverable;
-                                const delivActivities = group.activities;
-
-                                return (
-                                  <Fragment key={deliv.id}>
-                                    <tr className="results-table-deliverable-header">
-                                      <td colSpan={5}>
-                                        <div className="results-table-deliverable-bar">
-                                          <span className="font-bold text-kmx-carbon inline-flex items-center gap-1.5 min-w-0">
-                                            <Target size={14} className="text-kmx-lime shrink-0" aria-hidden="true" />
-                                            <span className="truncate">{pick(deliv.title)}</span>
-                                          </span>
-                                          <div className="flex items-center gap-3 flex-wrap">
-                                            <span className="text-xs text-kmx-gray-500 font-normal tabular-nums">
-                                              {t("results.deliverableMeta", { date: deliv.due_date, done: group.doneCount, total: group.totalCount })}
-                                            </span>
-                                            <DeliverableActions
-                                              deliverable={deliv}
-                                              canPlan={!closed && canPlan}
-                                              disabled={busy}
-                                              onAddActivity={openDeliverableProgress}
-                                            />
-                                          </div>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                    {delivActivities.map(entry => {
-                                      const a = entry.activity;
-                                      const aTitle = pick(a.title);
-                                      const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
-                                      return (
-                                        <tr key={a.id}>
-                                          <td>
-                                            <span className="results-task-title">{aTitle}</span>
-                                            {a.note && <small className="italic text-kmx-gray-500">"{pick(a.note)}"</small>}
-                                            {a.dependency_ids.length > 0 && (
-                                              <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
-                                            )}
-                                          </td>
-                                          <td className="results-cell-responsible">
-                                            <strong>{a.responsible_id || t("common.unassigned")}</strong>
-                                            <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
-                                          </td>
-                                          <td className="results-forecast tabular-nums">
-                                            {a.forecast_start}<br />{a.forecast_due}
-                                            {a.forecast_due > (deliv.due_date || data.project.target_date) && (
-                                              <small>{t("results.forecastAfterCommitment")}</small>
-                                            )}
-                                          </td>
-                                          <td>
-                                            <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
-                                              {getActivityStatusLabel(a.status, lang)}
-                                            </span>
-                                            {a.at_risk && <small className="text-kmx-red font-semibold">{t("common.atRisk")}</small>}
-                                            {blockers.length > 0 && <small className="text-kmx-red font-semibold">{t("results.blockersShort", { count: blockers.length })}</small>}
-                                          </td>
-                                          <td>
-                                            <div className="results-actions">
-                                              {canPlan && (
-                                                <>
-                                                  <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
-                                                  <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
-                                                </>
-                                              )}
-                                              {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
-                                                <button type="button" className="action" aria-label={t("results.requestRevisionAria", { title: aTitle })} disabled={busy} onClick={() => openActivityRevision(entry)}>{t("results.requestRevisionBtn")}</button>
-                                              )}
-                                            </div>
-                                            {entry.evidence.map(file => (
-                                              <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
-                                            ))}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </Fragment>
-                                );
-                              })}
-
-                              {data.activities.filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id)).length > 0 && (
-                                <>
-                                  <tr className="results-table-deliverable-header">
-                                    <td colSpan={5} className="font-bold text-kmx-gray-600">
-                                      {t("results.otherUnassignedActivities")}
-                                    </td>
-                                  </tr>
-                                  {data.activities
-                                    .filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id))
-                                    .map(entry => {
-                                      const a = entry.activity;
-                                      const aTitle = pick(a.title);
-                                      const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
-                                      return (
-                                        <tr key={a.id}>
-                                          <td>
-                                            <span className="results-task-title">{aTitle}</span>
-                                            <small>{t("results.noAssignedDeliverable")}</small>
-                                            {a.note && <small className="italic text-kmx-gray-500">"{pick(a.note)}"</small>}
-                                            {a.dependency_ids.length > 0 && (
-                                              <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
-                                            )}
-                                          </td>
-                                          <td>
-                                            {a.responsible_id}
-                                            <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
-                                          </td>
-                                          <td className="results-forecast">
-                                            {a.forecast_start}<br />{a.forecast_due}
-                                          </td>
-                                          <td>
-                                            <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
-                                              {getActivityStatusLabel(a.status, lang)}
-                                            </span>
-                                            {a.at_risk && <small className="text-kmx-red font-semibold">{t("common.atRisk")}</small>}
-                                            {blockers.length > 0 && <small className="text-kmx-red font-semibold">{t("results.blockersShort", { count: blockers.length })}</small>}
-                                          </td>
-                                          <td>
-                                            <div className="results-actions">
-                                              {canPlan && (
-                                                <>
-                                                  <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
-                                                  <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
-                                                </>
-                                              )}
-                                              {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
-                                                <button type="button" className="action" aria-label={t("results.requestRevisionAria", { title: aTitle })} disabled={busy} onClick={() => openActivityRevision(entry)}>{t("results.requestRevisionBtn")}</button>
-                                              )}
-                                            </div>
-                                            {entry.evidence.map(file => (
-                                              <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
-                                            ))}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                </>
-                              )}
-                            </>
-                          ) : (
-                            data.activities.map(entry => {
-                              const a = entry.activity;
-                              const aTitle = pick(a.title);
-                              const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
-                              return (
-                                <tr key={a.id}>
-                                  <td>
-                                    <span className="results-task-title">{aTitle}</span>
-                                    <small>{t("results.noDefinedDeliverables")}</small>
-                                    {a.note && <small className="italic text-kmx-gray-500">"{pick(a.note)}"</small>}
-                                    {a.dependency_ids.length > 0 && (
-                                      <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {a.responsible_id}
-                                    <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
-                                  </td>
-                                  <td className="results-forecast">
-                                    {a.forecast_start}<br />{a.forecast_due}
-                                  </td>
-                                  <td>
-                                    <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
-                                      {getActivityStatusLabel(a.status, lang)}
-                                    </span>
-                                    {a.at_risk && <small className="text-kmx-red font-semibold">{t("common.atRisk")}</small>}
-                                    {blockers.length > 0 && <small className="text-kmx-red font-semibold">{t("results.blockersShort", { count: blockers.length })}</small>}
-                                  </td>
-                                  <td>
-                                    <div className="results-actions">
-                                      {canPlan && (
-                                        <>
-                                          <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
-                                          <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
-                                        </>
-                                      )}
-                                    </div>
-                                    {entry.evidence.map(file => (
-                                      <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
-                                    ))}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="results-plan-view-controls" role="group" aria-label={t("results.planViewModeAria")}>
+                    <button
+                      type="button"
+                      className={`results-plan-view-btn ${planViewMode === "both" ? "is-active" : ""}`}
+                      onClick={() => setPlanViewMode("both")}
+                      title={t("results.viewMode.bothTitle")}
+                    >
+                      <LayoutGrid size={13} aria-hidden="true" />
+                      <span>{t("results.viewMode.both")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`results-plan-view-btn ${planViewMode === "gantt" ? "is-active" : ""}`}
+                      onClick={() => setPlanViewMode("gantt")}
+                      title={t("results.viewMode.ganttTitle")}
+                    >
+                      <BarChart3 size={13} aria-hidden="true" />
+                      <span>{t("results.viewMode.gantt")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`results-plan-view-btn ${planViewMode === "table" ? "is-active" : ""}`}
+                      onClick={() => setPlanViewMode("table")}
+                      title={t("results.viewMode.tableTitle")}
+                    >
+                      <Table2 size={13} aria-hidden="true" />
+                      <span>{t("results.viewMode.table")}</span>
+                    </button>
                   </div>
                 )}
               </div>
-            </section>
-          </div>
+              {canPlan && !isEngineerView && (
+                <button
+                  type="button"
+                  className="btn-primary results-icon-btn"
+                  aria-label={t("results.newActivity")}
+                  title={t("results.newActivity")}
+                  disabled={busy}
+                  onClick={() => openActivity(null)}
+                >
+                  <Plus size={15} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            {!data.activities.length && !isEngineerView && <p>{t("results.emptyActivities")}</p>}
+
+            <div className="results-planning">
+              {/* Visualización Gantt de entregables y previsión */}
+              <div className={!isEngineerView && planViewMode === "table" ? "hidden" : "block w-full"}>
+                <ResultsGantt
+                  entries={data.activities}
+                  deliverables={data.commitment?.deliverables}
+                  reviews={data.reviews}
+                  projectStart={data.project.start_date}
+                  projectTarget={data.project.target_date}
+                  canPlan={canPlan}
+                  onUpdateActivity={openActivity}
+                  onRegisterDeliverableProgress={openDeliverableProgress}
+                />
+              </div>
+
+              {/* Tabla de actividades agrupadas por entregable */}
+              {!isEngineerView && (
+                <div className={planViewMode === "gantt" ? "hidden" : "block w-full"}>
+                  <div className="results-table-scroll">
+                    <table className="results-table" aria-label={t("results.activitiesTableAria")}>
+                      <colgroup>
+                        <col className="results-col-activity" />
+                        <col className="results-col-responsible" />
+                        <col className="results-col-forecast" />
+                        <col className="results-col-progress" />
+                        <col className="results-col-actions" />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th>{t("gantt.activityKind")}</th>
+                          <th>{t("common.responsible")}</th>
+                          <th>{t("results.col.forecast")}</th>
+                          <th>{t("results.col.progress")}</th>
+                          <th>{t("common.actions")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tableDeliverableGroups.length > 0 ? (
+                          <>
+                            {tableDeliverableGroups.map(group => {
+                              const deliv = group.deliverable;
+                              const delivActivities = group.activities;
+
+                              return (
+                                <Fragment key={deliv.id}>
+                                  <tr className="results-table-deliverable-header">
+                                    <td colSpan={5}>
+                                      <div className="results-table-deliverable-bar">
+                                        <span className="font-bold text-kmx-carbon inline-flex items-center gap-1.5 min-w-0">
+                                          <Target size={14} className="text-kmx-lime shrink-0" aria-hidden="true" />
+                                          <span className="truncate">{pick(deliv.title)}</span>
+                                        </span>
+                                        <div className="flex items-center gap-3 flex-wrap">
+                                          <span className="text-xs text-kmx-gray-500 font-normal tabular-nums">
+                                            {t("results.deliverableMeta", { date: deliv.due_date, done: group.doneCount, total: group.totalCount })}
+                                          </span>
+                                          <DeliverableActions
+                                            deliverable={deliv}
+                                            canPlan={!closed && canPlan}
+                                            disabled={busy}
+                                            onAddActivity={openDeliverableProgress}
+                                          />
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {delivActivities.map(entry => {
+                                    const a = entry.activity;
+                                    const aTitle = pick(a.title);
+                                    const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                                    return (
+                                      <tr key={a.id}>
+                                        <td>
+                                          <span className="results-task-title">{aTitle}</span>
+                                          {a.note && <small className="italic text-kmx-gray-500">"{pick(a.note)}"</small>}
+                                          {a.dependency_ids.length > 0 && (
+                                            <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
+                                          )}
+                                        </td>
+                                        <td className="results-cell-responsible">
+                                          <strong>{a.responsible_id || t("common.unassigned")}</strong>
+                                          <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
+                                        </td>
+                                        <td className="results-forecast tabular-nums">
+                                          {a.forecast_start}<br />{a.forecast_due}
+                                          {a.forecast_due > (deliv.due_date || data.project.target_date) && (
+                                            <small>{t("results.forecastAfterCommitment")}</small>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
+                                            {getActivityStatusLabel(a.status, lang)}
+                                          </span>
+                                          {a.at_risk && <small className="text-kmx-red font-semibold">{t("common.atRisk")}</small>}
+                                          {blockers.length > 0 && <small className="text-kmx-red font-semibold">{t("results.blockersShort", { count: blockers.length })}</small>}
+                                        </td>
+                                        <td>
+                                          <div className="results-actions">
+                                            {canPlan && (
+                                              <>
+                                                <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
+                                                <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
+                                              </>
+                                            )}
+                                            {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
+                                              <button type="button" className="action" aria-label={t("results.requestRevisionAria", { title: aTitle })} disabled={busy} onClick={() => openActivityRevision(entry)}>{t("results.requestRevisionBtn")}</button>
+                                            )}
+                                          </div>
+                                          {entry.evidence.map(file => (
+                                            <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
+                                          ))}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </Fragment>
+                              );
+                            })}
+
+                            {data.activities.filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id)).length > 0 && (
+                              <>
+                                <tr className="results-table-deliverable-header">
+                                  <td colSpan={5} className="font-bold text-kmx-gray-600">
+                                    {t("results.otherUnassignedActivities")}
+                                  </td>
+                                </tr>
+                                {data.activities
+                                  .filter(e => !data.commitment?.deliverables.some(d => d.id === e.activity.deliverable_id))
+                                  .map(entry => {
+                                    const a = entry.activity;
+                                    const aTitle = pick(a.title);
+                                    const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                                    return (
+                                      <tr key={a.id}>
+                                        <td>
+                                          <span className="results-task-title">{aTitle}</span>
+                                          <small>{t("results.noAssignedDeliverable")}</small>
+                                          {a.note && <small className="italic text-kmx-gray-500">"{pick(a.note)}"</small>}
+                                          {a.dependency_ids.length > 0 && (
+                                            <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
+                                          )}
+                                        </td>
+                                        <td>
+                                          {a.responsible_id}
+                                          <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
+                                        </td>
+                                        <td className="results-forecast">
+                                          {a.forecast_start}<br />{a.forecast_due}
+                                        </td>
+                                        <td>
+                                          <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
+                                            {getActivityStatusLabel(a.status, lang)}
+                                          </span>
+                                          {a.at_risk && <small className="text-kmx-red font-semibold">{t("common.atRisk")}</small>}
+                                          {blockers.length > 0 && <small className="text-kmx-red font-semibold">{t("results.blockersShort", { count: blockers.length })}</small>}
+                                        </td>
+                                        <td>
+                                          <div className="results-actions">
+                                            {canPlan && (
+                                              <>
+                                                <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
+                                                <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
+                                              </>
+                                            )}
+                                            {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
+                                              <button type="button" className="action" aria-label={t("results.requestRevisionAria", { title: aTitle })} disabled={busy} onClick={() => openActivityRevision(entry)}>{t("results.requestRevisionBtn")}</button>
+                                            )}
+                                          </div>
+                                          {entry.evidence.map(file => (
+                                            <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
+                                          ))}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          data.activities.map(entry => {
+                            const a = entry.activity;
+                            const aTitle = pick(a.title);
+                            const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                            return (
+                              <tr key={a.id}>
+                                <td>
+                                  <span className="results-task-title">{aTitle}</span>
+                                  <small>{t("results.noDefinedDeliverables")}</small>
+                                  {a.note && <small className="italic text-kmx-gray-500">"{pick(a.note)}"</small>}
+                                  {a.dependency_ids.length > 0 && (
+                                    <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
+                                  )}
+                                </td>
+                                <td>
+                                  {a.responsible_id}
+                                  <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
+                                </td>
+                                <td className="results-forecast">
+                                  {a.forecast_start}<br />{a.forecast_due}
+                                </td>
+                                <td>
+                                  <span className={`results-state ${a.status === "done" ? "bg-kmx-lime/20 font-bold" : a.status === "in_progress" ? "bg-blue-50 font-semibold text-blue-900" : ""}`}>
+                                    {getActivityStatusLabel(a.status, lang)}
+                                  </span>
+                                  {a.at_risk && <small className="text-kmx-red font-semibold">{t("common.atRisk")}</small>}
+                                  {blockers.length > 0 && <small className="text-kmx-red font-semibold">{t("results.blockersShort", { count: blockers.length })}</small>}
+                                </td>
+                                <td>
+                                  <div className="results-actions">
+                                    {canPlan && (
+                                      <>
+                                        <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
+                                        <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
+                                      </>
+                                    )}
+                                  </div>
+                                  {entry.evidence.map(file => (
+                                    <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
+                                  ))}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Bloqueos y seguimiento completo (solo si hay bloqueos) */}
           {!isEngineerView && data.blockers.length > 0 && (
@@ -1045,23 +1042,21 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                   </label>
 
                   {/* Destino simple al cierre del entregable */}
-                  <div className="p-2.5 rounded bg-kmx-gray-50 border border-kmx-gray-300">
-                    <label className="results-check cursor-pointer font-bold text-xs text-kmx-carbon">
-                      <input
-                        type="checkbox"
-                        checked={isDone}
-                        onChange={e => {
-                          const done = e.target.checked;
-                          setActivity({
-                            ...activity,
-                            status: done ? "done" : "in_progress",
-                            progress: done ? 100 : 50,
-                          });
-                        }}
-                      />
-                      <span>{t("results.meetsClosureCondition")}</span>
-                    </label>
-                  </div>
+                  <label className="results-check cursor-pointer font-bold text-xs text-kmx-carbon pt-1">
+                    <input
+                      type="checkbox"
+                      checked={isDone}
+                      onChange={e => {
+                        const done = e.target.checked;
+                        setActivity({
+                          ...activity,
+                          status: done ? "done" : "in_progress",
+                          progress: done ? 100 : 50,
+                        });
+                      }}
+                    />
+                    <span>{t("results.meetsClosureCondition")}</span>
+                  </label>
 
                   {/* Evidencia de respaldo */}
                   <label className="field">{t("results.evidenceOptional")}
@@ -1086,7 +1081,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                   </label>
 
                   {/* 4. Riesgo / problema con la fecha objetivo */}
-                  <div className="border border-kmx-gray-300 rounded p-2.5 bg-kmx-gray-50/70 space-y-2">
+                  <div className="pt-2 border-t border-kmx-gray-200 space-y-2">
                     <label className="results-check cursor-pointer font-semibold text-xs">
                       <input
                         type="checkbox"
@@ -1102,7 +1097,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                       </span>
                     </label>
                     {hasTargetDateIssue && (
-                      <div className="space-y-2 pt-1 border-t border-kmx-gray-200">
+                      <div className="space-y-2 pt-1">
                         <label className="field text-xs">{t("results.blockerIssueLabel")}
                           <input
                             type="text"

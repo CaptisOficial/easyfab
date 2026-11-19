@@ -72,3 +72,16 @@ acciones del agente no mide el tiempo de captura de los participantes.
 Durante el recorrido aparecieron cambios ajenos en Login, Projects, sus pruebas
 y estilos. Se conservaron sin editarlos. El resultado del piloto se refiere al
 binario abierto, no acredita modificaciones posteriores del árbol de trabajo.
+
+## Corrección del resumen
+
+El encabezado ahora informa el número de entregables en el compromiso y, por
+separado, las actividades terminadas sobre el total. Se retiraron la clasificación
+de entregables como cumplidos basada en actividades y el porcentaje de avance
+general calculado por conteo. Los textos se actualizaron en español e inglés.
+No se alteran criterios, evidencia, decisiones ni datos guardados.
+
+La regresión DOM usa una actividad terminada al 100 %, sin adjuntos y con un
+criterio que exige evidencia: el encabezado conserva proyecto En curso, muestra
+el conteo de actividades y no declara cumplimiento ni avance general. Esta
+comprobación usa IPC simulado; la ventana abierta mantiene su binario anterior.

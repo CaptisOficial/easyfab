@@ -160,7 +160,7 @@ export function PlantCatalog() {
     : "";
 
   return (
-    <section aria-label={t("catalogs.title")} className="space-y-4 border-t pt-4">
+    <section aria-label={t("catalogs.title")} className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-bold">{t("catalogs.title")}</h3>
@@ -352,7 +352,7 @@ export function PlantCatalog() {
                 )}
 
                 {/* Tabla de registros estilo ActivityGrid */}
-                <div className="border border-kmx-gray-200 rounded overflow-x-auto shadow-sm">
+                <div className="results-table-scroll">
                   <table className="results-table w-full">
                     <thead>
                       <tr className="bg-kmx-gray-50 text-left text-xs font-semibold text-kmx-gray-600 border-b">

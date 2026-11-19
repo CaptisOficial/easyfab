@@ -131,7 +131,7 @@ export function CommitmentEditor({ value, onChange, disabled = false, defaultDue
           </button>
         </div>
 
-        <div className="border border-kmx-gray-200 rounded overflow-x-auto shadow-sm">
+        <div className="results-table-scroll">
           <table className="results-table w-full">
             <thead>
               <tr className="bg-kmx-gray-50 text-left text-xs font-semibold text-kmx-gray-600 border-b">

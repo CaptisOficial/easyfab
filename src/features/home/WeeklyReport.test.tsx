@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { WeeklyReport } from "./WeeklyReport";
 import { exportWeekly, weeklySnapshot, type WeeklySnapshot } from "../../lib/api";
 import { I18nProvider, useI18n } from "../../lib/i18n";
@@ -28,6 +28,36 @@ it("no convierte una actividad terminada en solicitud de aceptación del entrega
 });
 
 describe("WeeklyReport bilingual & i18n", () => {
+  it("identifies export without a prior query, blocks duplicate requests and recovers after timeout", async () => {
+    let reject!: (error: string) => void;
+    vi.mocked(exportWeekly).mockReturnValue(new Promise((_, fail) => { reject = fail; }));
+    renderWithI18n();
+    const button = screen.getByRole("button", { name: "Exportar Excel semanal" });
+    fireEvent.click(button);
+    expect(screen.getByRole("status").textContent).toBe("Generando reporte…");
+    fireEvent.click(button);
+    expect(exportWeekly).toHaveBeenCalledTimes(1);
+    await act(async () => { reject("Excel excedió el tiempo de espera para generar el reporte. Revisa Excel y vuelve a intentarlo."); });
+    expect(screen.getByRole("alert").textContent).toContain("tiempo de espera");
+    expect(screen.queryByText("Reporte Excel guardado.")).toBeNull();
+    vi.mocked(exportWeekly).mockResolvedValue({ path: "C:\\synthetic.xlsx", sha256: "abc", open_error: null });
+    fireEvent.click(button);
+    expect(await screen.findByText("Reporte Excel guardado.")).toBeTruthy();
+    expect(exportWeekly).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the saved path when automatic opening fails", async () => {
+    vi.mocked(exportWeekly).mockResolvedValue({ path: "C:\\synthetic.xlsx", sha256: "abc",
+      open_error: "El reporte se guardó, pero no se pudo abrir automáticamente. Ábrelo desde la ruta indicada." });
+    renderWithI18n();
+    fireEvent.click(screen.getByRole("button", { name: "Exportar Excel semanal" }));
+    expect(await screen.findByText("Reporte Excel guardado.")).toBeTruthy();
+    expect(screen.getByText("C:\\synthetic.xlsx")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("no se pudo abrir");
+    fireEvent.click(screen.getByRole("button", { name: "toggle-lang" }));
+    expect(screen.getByRole("alert").textContent).toContain("could not be opened automatically");
+  });
+
   beforeEach(() => {
     window.localStorage.clear();
     vi.mocked(weeklySnapshot).mockReset();

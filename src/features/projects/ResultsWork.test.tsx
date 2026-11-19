@@ -39,6 +39,23 @@ function accepted(value = submitted()): api.ResultsDetail {
   return value;
 }
 
+it("no presenta una actividad terminada sin evidencia como entregable cumplido ni avance general", async () => {
+  const detail = fixture();
+  detail.activities[0].activity.status = "done";
+  detail.activities[0].activity.progress = 100;
+  detail.activities[0].evidence = [];
+  await mount(detail);
+
+  const header = screen.getByRole("banner", { name: "Compromiso y condiciones de cierre" });
+  expect(within(header).getByText("1 en el compromiso")).toBeTruthy();
+  expect(within(header).getByText("1 de 1 terminadas")).toBeTruthy();
+  expect(within(header).getByText("En curso")).toBeTruthy();
+  expect(within(header).queryByText(/cumplidos|Avance general|100%/)).toBeNull();
+  expect(within(header).queryByRole("progressbar")).toBeNull();
+  expect(api.reviewResultsDeliverable).not.toHaveBeenCalled();
+  expect(api.setResultsClosure).not.toHaveBeenCalled();
+});
+
 it("simplifica la vista de Engineer al estado actual, entregables y Gantt sin tabla ni acciones redundantes", async () => {
   await mount();
   const gantt = screen.getByRole("region", { name: "Gantt de actividades" });
@@ -310,7 +327,7 @@ it("activa trabajo anterior solo después de seleccionar explícitamente su entr
 });
 
 
-it("consolida estatus y KPIs estratégicos arriba y planeación por entregables con historial para Supervisor", async () => {
+it("consolida estatus y conteos arriba y planeación por entregables con historial para Supervisor", async () => {
   const detail = fixture("supervisor");
   detail.activities[0].activity.note = "Instalación completada y verificada";
   await mount(detail);
@@ -318,8 +335,8 @@ it("consolida estatus y KPIs estratégicos arriba y planeación por entregables 
   // Estatus superior consolidado embebido en el encabezado (sin botón redundante "Volver a proyectos" ni tarjetas KPI)
   const header = screen.getByRole("banner", { name: "Compromiso y condiciones de cierre" });
   expect(within(header).getByRole("heading", { name: "Proyecto sintético" })).toBeTruthy();
-  expect(within(header).getByRole("progressbar", { name: "Avance general del proyecto" })).toBeTruthy();
-  expect(within(header).getByText("Avance general del proyecto")).toBeTruthy();
+  expect(within(header).queryByRole("progressbar")).toBeNull();
+  expect(within(header).getByText("0 de 1 terminadas")).toBeTruthy();
   expect(within(header).getByText("Compromiso")).toBeTruthy();
   expect(within(header).getByText("Entregables")).toBeTruthy();
   expect(within(header).getByRole("button", { name: "Actualizar proyecto" })).toBeTruthy();

@@ -158,7 +158,7 @@ export function Projects() {
       {error && <p role="alert" className="results-error">{error}</p>}
       {createdProject && <p className="results-warning">{t("projects.createdPendingClosure")}</p>}
       <form onSubmit={submit} className="space-y-6">
-        <section className="results-panel space-y-3" aria-labelledby="section-project-title">
+        <div className="space-y-4">
           <p className="results-help">{t("projects.bilingualHint")}</p>
           <fieldset disabled={saving || !!createdProject} className="project-create-grid">
             {field("name", t("projects.field.title"), "text", true)}
@@ -227,7 +227,7 @@ export function Projects() {
             defaultStartDate={input.start_date}
             defaultDueDate={input.target_date}
           />
-        </section>
+        </div>
 
         <div className="results-modal-sticky-actions">
           <button disabled={saving || !data.leads.length} className="btn-primary">{saving ? t("common.saving") : createdProject ? t("projects.retryClosure") : t("projects.save")}</button>

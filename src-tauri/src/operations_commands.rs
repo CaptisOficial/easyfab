@@ -21,12 +21,38 @@ pub(crate) async fn export_weekly<R: tauri::Runtime>(
     tauri::async_runtime::spawn_blocking(move || {
         use tauri::Manager;
         let state = app.state::<AppState>();
-        let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+        use std::sync::atomic::Ordering;
+        let (session, dir, id, epoch) = {
+            let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+            (
+                guard.as_ref().ok_or("Ingresa primero.")?.clone(),
+                data_path(&state)?,
+                workspace_id(&state)?,
+                state.session_epoch.load(Ordering::SeqCst),
+            )
+        };
         crate::reporting::export(
-            &data_path(&state)?,
-            guard.as_ref().ok_or("Ingresa primero.")?,
-            &workspace_id(&state)?,
+            &dir,
+            &session,
+            &id,
             &reporting_date,
+            |target, bytes| {
+                // Excel never holds the global session lock. Publication does.
+                let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+                let current = guard.as_ref().ok_or("Ingresa primero.")?;
+                if state.session_epoch.load(Ordering::SeqCst) != epoch
+                    || current.user.id != session.user.id
+                    || current.fingerprint != session.fingerprint
+                    || workspace_id(&state)? != id
+                    || data_path(&state)? != dir
+                {
+                    return Err("La sesión cambió durante la exportación. Vuelve a generar el reporte.".into());
+                }
+                crate::data_store::publish(target, bytes, None, || {
+                    plant::context(&dir, current, &id)?;
+                    crate::data_store::contained(dir.parent().ok_or("Espacio inválido.")?, target)
+                })
+            },
         )
     })
     .await

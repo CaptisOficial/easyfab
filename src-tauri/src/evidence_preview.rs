@@ -72,7 +72,7 @@ pub(crate) fn write_temp_preview(
     Ok(target)
 }
 
-fn open_with_os(path: &Path) -> Result<(), String> {
+pub(crate) fn open_with_os(path: &Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let status = Command::new("explorer.exe").arg(path).spawn();
 

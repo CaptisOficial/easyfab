@@ -51,7 +51,7 @@
 
 /* Estilos para el Gantt por entregables de cierre, tooltip de fechas y vista responsiva */
 .results-planning{display:flex;flex-direction:column;gap:1.25rem}
-.results-gantt-wrapper{background:var(--kmx-white);border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:.375rem;padding:.75rem}
+.results-gantt-wrapper{background:var(--kmx-white)}
 .results-gantt-toolbar{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;padding-bottom:.5rem;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent)}
 .results-gantt-scroll{overflow-x:auto;overflow-y:visible;padding-bottom:.35rem}
 .results-gantt{display:flex;flex-direction:column;min-width:100%}

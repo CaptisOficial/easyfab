@@ -126,6 +126,8 @@ it("muestra los proyectos sin textos redundantes de acceso en el área de trabaj
   await waitFor(() => expect(screen.queryByRole("button", { name: "Ingresar" })).toBeNull());
   rerender(<Login headerInTopNav destination="projects" />);
   expect(await screen.findByRole("heading", { name: "Proyectos FAB" })).toBeTruthy();
+  const area = screen.getByRole("region", { name: "Área de trabajo" });
+  expect(area.className).not.toContain("border-kmx-gray-300");
   expect(screen.queryByRole("heading", { name: "Área de trabajo" })).toBeNull();
   expect(screen.queryByText("Acceso confirmado con tu contraseña personal.")).toBeNull();
   expect(screen.queryByText("Registra los proyectos del equipo.")).toBeNull();

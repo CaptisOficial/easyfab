@@ -196,7 +196,9 @@ it("simplifica el registro unificando objetivo global y subactividades con entre
   render(<Projects />);
   await userEvent.click(await screen.findByRole("button", { name: "Nuevo proyecto" }));
 
-  // Verificamos la estructura unificada de planeación ágil con entregables embebidos
+  // Verificamos la estructura unificada de planeación ágil con entregables embebidos y sin tarjeta .results-panel redundante en el modal
+  const dialog = screen.getByRole("dialog", { name: "Registrar proyecto" });
+  expect(dialog.querySelector(".results-panel")).toBeNull();
   expect(screen.getByText("Subactividad / Entregable (Sprint o Historia)")).toBeTruthy();
   expect(screen.getByText("Condición de cierre / Criterio")).toBeTruthy();
   expect(screen.queryByText("Definición de cierre · DoD (Definition of Done)")).toBeNull();

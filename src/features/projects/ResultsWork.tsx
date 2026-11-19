@@ -323,9 +323,6 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
 
   const totalActivities = data?.activities.length ?? 0;
   const doneActivities = data?.activities.filter(entry => entry.activity.status === "done" || entry.activity.progress === 100).length ?? 0;
-  const overallProgress = totalActivities > 0
-    ? Math.round((doneActivities / totalActivities) * 100)
-    : 0;
   const openBlockersList = data?.blockers.filter(entry => !entry.blocker.resolved_at) ?? [];
 
   const modalTitle = modal?.kind === "activity" ? activityRevision ? t("results.modal.updateActivity") : t("results.modal.registerProgress") : modal?.kind === "commitment" ? t("results.modal.defineClosure") : modal?.kind === "blocker" ? modal.action === "report" ? t("results.modal.reportBlocker") : modal.action === "attend" ? t("results.modal.attendBlocker") : t("results.modal.resolveBlocker") : modal?.kind === "activity_revision" ? t("results.modal.reviewActivity") : modal?.kind === "closure" ? modal.closed ? t("results.modal.closeProject") : t("results.modal.reopenProject") : t("results.modal.resolveConflict");
@@ -345,9 +342,6 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
       0,
     )
     : [];
-  const completedDeliverableGroups = tableDeliverableGroups.filter(
-    g => g.totalCount > 0 && g.doneCount === g.totalCount,
-  ).length;
 
   return <section className="results-work" aria-label={t("results.sectionAria")}>
     <header className="results-work-header" aria-label={t("results.headerAria")}>
@@ -410,14 +404,11 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
           </div>
           <div className="results-header-inline-item">
             <span className="results-header-inline-label">{t("results.deliverablesLabel")}</span>
-            <strong className="tabular-nums">{t("results.deliverablesCompletedRatio", { completed: completedDeliverableGroups, total: data.commitment?.deliverables.length ?? 0 })}</strong>
+            <strong className="tabular-nums">{t("results.deliverablesDefinedCount", { total: data.commitment?.deliverables.length ?? 0 })}</strong>
           </div>
-          <div className="results-header-progress">
-            <span className="results-header-inline-label">{t("results.overallProgress")}</span>
-            <div className="results-progress-bar-container" role="progressbar" aria-valuenow={overallProgress} aria-valuemin={0} aria-valuemax={100} aria-label={t("results.overallProgress")}>
-              <div className="results-progress-bar-fill" style={{ width: `${overallProgress}%` }} />
-            </div>
-            <strong className="text-xs font-bold tabular-nums">{t("results.activitiesProgressSummary", { done: doneActivities, total: totalActivities, percent: overallProgress })}</strong>
+          <div className="results-header-inline-item">
+            <span className="results-header-inline-label">{t("results.activitiesLabel")}</span>
+            <strong className="tabular-nums">{t("results.activitiesCompletedRatio", { done: doneActivities, total: totalActivities })}</strong>
           </div>
           {openBlockersList.length > 0 && (
             <span className="results-state text-kmx-red font-bold">

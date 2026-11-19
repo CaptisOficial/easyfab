@@ -121,4 +121,4 @@ export const saveUserPreferences = (input: { theme: UserPreferences["theme"]; ui
 export const resetUserPreferences = () => invoke<PreferencesView>("reset_user_preferences");
 export interface WeeklySnapshot { generated_at: string; reporting_date: string; prepared_by: string; projects: ProjectDetail[]; result_projects: OperationsDetail[]; incidents: IncidentsOverview }
 export const weeklySnapshot = (reportingDate: string) => invoke<WeeklySnapshot>("weekly_snapshot", { reportingDate });
-export const exportWeekly = (reportingDate: string) => invoke<{ path: string; sha256: string }>("export_weekly", { reportingDate });
+export const exportWeekly = (reportingDate: string) => invoke<{ path: string; sha256: string; open_error?: string | null }>("export_weekly", { reportingDate });

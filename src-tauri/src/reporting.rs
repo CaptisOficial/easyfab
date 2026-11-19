@@ -34,6 +34,7 @@ pub struct Snapshot {
 pub struct Export {
     pub path: String,
     pub sha256: String,
+    pub open_error: Option<String>,
 }
 fn fingerprint(dir: &Path) -> Result<String, String> {
     fn walk(base: &Path, dir: &Path, parts: &mut Vec<(String, String)>) -> Result<(), String> {
@@ -122,7 +123,33 @@ pub fn snapshot(dir: &Path, s: &auth::Session, id: &str, date: &str) -> Result<S
         incidents,
     })
 }
-pub fn export(dir: &Path, s: &auth::Session, id: &str, date: &str) -> Result<Export, String> {
+// File-backed stderr avoids pipe deadlocks; only this request's child is terminated.
+fn run_excel(command: &mut std::process::Command, timeout: std::time::Duration) -> Result<(), String> {
+    let mut child = command.spawn()
+        .map_err(|e| format!("No se pudo iniciar la exportación Excel: {e}"))?;
+    let started = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return if status.success() { Ok(()) } else {
+                Err("Excel no completó el reporte. Revisa que Microsoft Excel esté instalado y disponible.".into())
+            },
+            Ok(None) if started.elapsed() < timeout => std::thread::sleep(std::time::Duration::from_millis(50)),
+            result => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(match result {
+                    Err(e) => format!("No se pudo supervisar la exportación Excel: {e}"),
+                    _ => "Excel excedió el tiempo de espera para generar el reporte. Revisa Excel y vuelve a intentarlo.".into(),
+                });
+            }
+        }
+    }
+}
+
+pub fn export(
+    dir: &Path, s: &auth::Session, id: &str, date: &str,
+    publish: impl FnOnce(&Path, &[u8]) -> Result<(), String>,
+) -> Result<Export, String> {
     let snapshot = snapshot(dir, s, id, date)?;
     let folder = dir.parent().ok_or("Espacio inválido.")?.join("exports");
     let base = dir.parent().unwrap();
@@ -173,31 +200,43 @@ pub fn export(dir: &Path, s: &auth::Session, id: &str, date: &str) -> Result<Exp
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x08000000);
         }
-        let status = command
-            .output()
-            .map_err(|e| format!("No se pudo iniciar la exportación Excel: {e}"))?;
-        if !status.status.success() {
-            return Err(format!("Excel no completó el reporte. Revisa que Microsoft Excel esté instalado y disponible. {}",String::from_utf8_lossy(&status.stderr)));
+        let stderr_path = staging.join("excel-error.txt");
+        command.stdout(std::process::Stdio::null()).stderr(
+            fs::File::create(&stderr_path).map_err(|e| format!("No se pudo escribir el archivo: {e}"))?
+        );
+        if let Err(error) = run_excel(&mut command, std::time::Duration::from_secs(120)) {
+            let detail = fs::read_to_string(&stderr_path).unwrap_or_default();
+            return Err(if detail.trim().is_empty() { error } else { format!("{error} {}", detail.trim()) });
         }
         plant::context(dir, s, id)?;
         store::contained(base, &output)?;
         let bytes =
             fs::read(&output).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
         let target = folder.join(format!("KMX-FW-{date}-{}.xlsx", &request[..12]));
-        store::publish(&target, &bytes, None, || {
-            plant::context(dir, s, id)?;
-            store::contained(base, &target)
-        })?;
-        Ok(Export {
-            path: target.to_string_lossy().into_owned(),
-            sha256: store::hash(&bytes),
-        })
+        publish_and_open(&target, &bytes, publish, crate::evidence_preview::open_with_os)
     })();
     // The resolved staging directory is always an immediate child of exports.
     if staging.parent() == Some(folder.as_path()) && store::contained(base, &staging).is_ok() {
         let _ = fs::remove_dir_all(&staging);
     }
     result
+}
+
+fn publish_and_open(
+    target: &Path,
+    bytes: &[u8],
+    publish: impl FnOnce(&Path, &[u8]) -> Result<(), String>,
+    open: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<Export, String> {
+    publish(target, bytes)?;
+    let open_error = open(target).err().map(|_| {
+        "El reporte se guardó, pero no se pudo abrir automáticamente. Ábrelo desde la ruta indicada.".into()
+    });
+    Ok(Export {
+        path: target.to_string_lossy().into_owned(),
+        sha256: store::hash(bytes),
+        open_error,
+    })
 }
 
 #[cfg(test)]

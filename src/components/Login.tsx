@@ -66,7 +66,9 @@ export function Login({ onSessionChange, onBusyChange, headerInTopNav = false, r
 
   const errorText = error !== null && error !== "" ? tError(error) : "";
 
-  return <section hidden={!user && destination !== undefined && destination !== "home"} className={`rounded-sm border border-kmx-gray-300 bg-surface p-5 ${!user ? "mx-auto w-full max-w-md" : ""}`} aria-labelledby={user && headerInTopNav ? undefined : "login-title"} aria-label={user && headerInTopNav ? t("login.workspaceArea") : undefined}>
+  const useCardWrapper = !user || user.must_change_password || !headerInTopNav;
+
+  return <section hidden={!user && destination !== undefined && destination !== "home"} className={useCardWrapper ? `rounded-sm border border-kmx-gray-300 bg-surface p-5 ${!user ? "mx-auto w-full max-w-md" : ""}` : "w-full"} aria-labelledby={user && headerInTopNav ? undefined : "login-title"} aria-label={user && headerInTopNav ? t("login.workspaceArea") : undefined}>
     {!(user && headerInTopNav) && (
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 id="login-title" className="font-bold">{t("login.title")}</h2>

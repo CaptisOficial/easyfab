@@ -121,3 +121,32 @@ Comparar semanas completas y mantener cambios de alcance/dependencias externos
 visibles. No presentar una puntuación individual ni atribuir causalidad a esos datos.
 
 Instrucciones reproducibles del arnés: [pruebas](../../architecture/testing.md#piloto-nativo-aislado-por-resultados).
+
+## Comprobación del 2026-11-19
+
+`npm.cmd test` terminó con código 0: 206 casos de contratos (53 preferencias,
+55 dominio y 98 operaciones/almacenamiento), 179 pruebas frontend en 23 archivos
+y 60 Rust. Son verificaciones automáticas con datos aislados.
+`pwsh -NoProfile -File scripts/verify_contracts.ps1` también terminó con código 0:
+contratos, TypeScript, cargo check, suites y cambio/rollback de layout aprobados.
+Enlaces locales de los documentos modificados y `git diff --check` aprobados.
+
+Alan informó que completó la compilación. Se verificó el ejecutable local
+`src-tauri/target/release/easyfab.exe`: 4 512 256 bytes, SHA-256
+`36C558FC75A1BF75904324EE0AE8724B313AC33BC27D060A6CB797B09320A916`.
+La ventana abierta corresponde a esa ruta. No se verificó el hash del segundo
+equipo ni se publicó este ejecutable desde esta revisión.
+
+La referencia local de AppData del usuario apunta a la raíz habitual
+`ENGINEERING FILES - 10.FAB`; el manifiesto coincide con el ID guardado,
+layout 2, resultados 1 y mantenimiento desactivado. El AppData del proceso
+Codex está redirigido por el sandbox y no es la instalación del usuario.
+Se observó en WebView el cronograma con sesión Supervisor y 19 proyectos activos
+en la vista anual. No se guardaron datos de prueba ni se modificaron proyectos
+existentes. La interacción intentada con Nuevo proyecto no abrió el modal;
+no se atribuye a la aplicación sin distinguir un posible desplazamiento del
+controlador. No acredita alta, foco, miniaturas ni el recorrido completo.
+
+Se preparó el [protocolo de ejecución y registro](results-pilot-runbook.md).
+La disponibilidad de participantes y autorización de la carpeta no equivalen
+a observaciones de comprensión, tiempos ni sincronización real entre equipos.

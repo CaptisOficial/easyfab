@@ -100,6 +100,13 @@ export type OperationsActivityInput = {
   activity: Domain.ResultsActivity;
 };
 
+export type OperationsActivityRevisionInput = {
+  project_id: Domain.ResultsId;
+  activity_id: Domain.ResultsId;
+  expected_revision: Domain.ResultsRevision;
+  comment: string;
+};
+
 export type OperationsBlockerInput = {
   project_id: Domain.ResultsId;
   blocker_id: Domain.ResultsId | null;
@@ -142,11 +149,4 @@ export type OperationsAttachmentInput = {
   expected_revision: Domain.ResultsRevision;
   name: Domain.ResultsText;
   bytes: Array<number>;
-};
-
-export type OperationsActivityRevisionInput = {
-  project_id: Domain.ResultsId;
-  activity_id: Domain.ResultsId;
-  expected_revision: Domain.ResultsRevision;
-  comment: string;
 };

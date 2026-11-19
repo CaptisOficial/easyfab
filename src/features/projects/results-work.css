@@ -163,3 +163,7 @@
 }
 
 
+
+.results-evidence-attachment { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; max-width: 180px; margin: 4px; vertical-align: top; }
+.results-evidence-attachment img { width: 144px; height: 96px; object-fit: contain; border-radius: 4px; background: #f3f4f6; }
+.results-evidence-attachment span { overflow-wrap: anywhere; }

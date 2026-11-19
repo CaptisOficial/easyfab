@@ -190,3 +190,5 @@ estado desde el trabajo registrado sin escribir `projects.json`. En el formato a
 los registros permanecen en perfiles personales; en proyectos activados por resultados,
 el inicio se conserva desde sus revisiones históricas de trabajo positivo. La activación
 y la fuente de cierre se definen en el contrato del dominio.
+
+Las fotos PNG/JPG adjuntas en el detalle e histórico muestran una miniatura junto al nombre. Seleccionarla abre el original; PDF y fotos cuya vista previa no esté disponible conservan la apertura por nombre.

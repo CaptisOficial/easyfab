@@ -1,5 +1,6 @@
+import { EvidenceAttachment } from "./EvidenceAttachment";
 import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
-import { AlertTriangle, BarChart3, LayoutGrid, Paperclip, Plus, RefreshCw, Table2, Target } from "lucide-react";
+import { AlertTriangle, BarChart3, LayoutGrid, Plus, RefreshCw, Table2, Target } from "lucide-react";
 import { CommitmentEditor, emptyCommitment, commitmentError } from "./CommitmentEditor";
 import { ResultsModal } from "./ResultsWorkModal";
 import { ResultsGantt } from "./ResultsWorkGantt";
@@ -646,7 +647,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                                               )}
                                             </div>
                                             {entry.evidence.map(file => (
-                                              <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
+                                              <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
                                             ))}
                                           </td>
                                         </tr>
@@ -706,7 +707,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                                               )}
                                             </div>
                                             {entry.evidence.map(file => (
-                                              <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
+                                              <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
                                             ))}
                                           </td>
                                         </tr>
@@ -754,7 +755,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                                       )}
                                     </div>
                                     {entry.evidence.map(file => (
-                                      <button key={file.id} className="action" disabled={busy} onClick={() => void download(file.id, file.name)}>{file.name}</button>
+                                      <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
                                     ))}
                                   </td>
                                 </tr>
@@ -991,10 +992,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                       <span className="text-xs font-semibold text-kmx-gray-600 block">{t("results.previousEvidence")}</span>
                       <div className="flex flex-wrap gap-1">
                         {previousEntry.evidence.map(f => (
-                          <button key={f.id} type="button" className="action text-xs inline-flex items-center gap-1" onClick={() => void download(f.id, f.name)}>
-                            <Paperclip size={12} aria-hidden="true" />
-                            <span>{f.name}</span>
-                          </button>
+                          <EvidenceAttachment key={f.id} projectId={projectId} file={f} disabled={busy} onOpen={() => void download(f.id, f.name)} />
                         ))}
                       </div>
                     </div>
@@ -1189,9 +1187,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
               {modal.entry.evidence.length > 0 ? (
                 <div className="results-actions">
                   {modal.entry.evidence.map(file => (
-                    <button type="button" key={file.id} className="action" onClick={() => void download(file.id, file.name)}>
-                      {file.name}
-                    </button>
+                    <EvidenceAttachment key={file.id} projectId={projectId} file={file} onOpen={() => void download(file.id, file.name)} />
                   ))}
                 </div>
               ) : (
@@ -1238,9 +1234,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                         {delivEvidence.length > 0 ? (
                           <div className="results-actions">
                             {delivEvidence.map(file => (
-                              <button type="button" key={file.id} className="action" onClick={() => void download(file.id, file.name)}>
-                                {file.name}
-                              </button>
+                              <EvidenceAttachment key={file.id} projectId={projectId} file={file} disabled={busy} onOpen={() => void download(file.id, file.name)} />
                             ))}
                           </div>
                         ) : (

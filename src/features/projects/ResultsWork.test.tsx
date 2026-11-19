@@ -49,7 +49,7 @@ it("no presenta una actividad terminada sin evidencia como entregable cumplido n
   const header = screen.getByRole("banner", { name: "Compromiso y condiciones de cierre" });
   expect(within(header).getByText("1 en el compromiso")).toBeTruthy();
   expect(within(header).getByText("1 de 1 terminadas")).toBeTruthy();
-  expect(within(header).getByText("En curso")).toBeTruthy();
+  expect(within(header).getByRole("img", { name: "En curso" })).toBeTruthy();
   expect(within(header).queryByText(/cumplidos|Avance general|100%/)).toBeNull();
   expect(within(header).queryByRole("progressbar")).toBeNull();
   expect(api.reviewResultsDeliverable).not.toHaveBeenCalled();
@@ -87,6 +87,7 @@ it("omite las secciones redundantes de métricas operativas y reportes de activi
 it("Admin consulta sin controles de edición ni aceptación", async () => {
   await mount(fixture("admin"));
   expect(screen.queryByRole("button", { name: "Nueva actividad" })).toBeNull();
+  await userEvent.click(screen.getByRole("tab", { name: "Tabla" }));
   expect(screen.queryByRole("button", { name: /Actualizar Instalar|Bloqueo en|Solicitar aceptación|Editar compromiso|Cerrar proyecto/ })).toBeNull();
   expect(screen.getByRole("table", { name: "Actividades del proyecto" })).toBeTruthy();
 });
@@ -178,6 +179,7 @@ it("Supervisor registra atención y resolución como acciones diferentes con mot
   const attended = structuredClone(initial); attended.blockers[0].blocker.first_attention_at = "2026-10-30T13:00:00Z"; attended.blockers[0].revision = rev("d");
   vi.mocked(api.saveResultsBlocker).mockResolvedValueOnce(attended).mockResolvedValueOnce(fixture("supervisor"));
   await mount(initial);
+  await userEvent.click(screen.getByRole("tab", { name: /Bloqueos/ }));
   await userEvent.click(screen.getByRole("button", { name: "Registrar atención a Sin acceso" }));
   let dialog = screen.getByRole("dialog", { name: "Atender bloqueo" });
   fireEvent.change(within(dialog).getByLabelText("Atención realizada"), { target: { value: "Solicité autorización" } });
@@ -210,6 +212,7 @@ it("Supervisor puede revisar documentos de una actividad finalizada y solicitar 
   afterRevision.activities[0].activity.note = "[Revisión solicitada]: Falta firma en el reporte";
   vi.mocked(api.requestActivityRevision).mockResolvedValue(afterRevision);
   await mount(initial);
+  await userEvent.click(screen.getByRole("tab", { name: "Tabla" }));
   await userEvent.click(screen.getByRole("button", { name: "Solicitar revisión de Instalar estación" }));
   const dialog = screen.getByRole("dialog", { name: "Revisar actividad finalizada" });
   expect(within(dialog).getByRole("button", { name: "prueba.pdf" })).toBeTruthy();
@@ -242,7 +245,7 @@ it("el cierre evalúa entregables en conjunto y exige comprobación explícita d
   fireEvent.submit(form(dialog));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.setResultsClosure).toHaveBeenCalledWith({ project_id: "project_1", expected_revision: null, closed: true, confirm_final_outcome: true, comment: "Estado final comprobado" });
-  expect(screen.getByText("Proyecto cerrado")).toBeTruthy();
+  expect(screen.getByRole("img", { name: "Proyecto cerrado" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Reabrir proyecto" })).toBeTruthy();
 });
 
@@ -375,9 +378,9 @@ it("registra avance por entregable agrupando fecha de registro, nueva condición
   await userEvent.click(screen.getAllByRole("button", { name: "Agregar actividad en Estación validada" })[0]);
   const dialog = screen.getByRole("dialog", { name: "Registrar avance" });
 
-  // No debe existir campo redundante de título de actividad
+  // No debe existir campo redundante de título de actividad ni columna vacía de condición anterior en el primer registro
   expect(within(dialog).queryByLabelText(/Nombre de la actividad/i)).toBeNull();
-  expect(within(dialog).getByText("Condición anterior")).toBeTruthy();
+  expect(within(dialog).queryByText("Condición anterior")).toBeNull();
   expect(within(dialog).getByText("Nueva condición (Avance)")).toBeTruthy();
 
   // 1. Fecha de registro
@@ -531,6 +534,7 @@ it("en el Gantt muestra el avance y nota de la actividad cuando su título coinc
 it("abre documentos adjuntos usando el comando nativo sin depender de descargas blob", async () => {
   vi.mocked(api.openResultsEvidence).mockResolvedValue(undefined);
   await mount(fixture("supervisor"));
+  await userEvent.click(screen.getByRole("tab", { name: "Tabla" }));
 
   await userEvent.click(screen.getByRole("button", { name: /prueba\.pdf/i }));
 
@@ -559,6 +563,7 @@ it("en inglés renderiza lecturas con pick() (proyecto, área, entregables, acti
   await screen.findByRole("heading", { name: "Synthetic project" });
   expect(screen.getByText(/FAB-1 · Welding/)).toBeTruthy();
   expect(screen.getByText("Station ready")).toBeTruthy();
+  await userEvent.click(screen.getByRole("tab", { name: "Table" }));
   const table = screen.getByRole("table", { name: "Project activities" });
   expect(within(table).getByText("Validated station")).toBeTruthy();
   expect(within(table).getByText("Install station")).toBeTruthy();
@@ -574,4 +579,19 @@ it("en inglés renderiza lecturas con pick() (proyecto, área, entregables, acti
   expect((within(editDialog).getByLabelText("Expected outcome and scope") as HTMLTextAreaElement).value).toBe("Estación lista | Station ready");
   expect((within(editDialog).getByLabelText("Deliverable 1 name") as HTMLInputElement).value).toBe("Estación validada | Validated station");
   expect((within(editDialog).getByLabelText("Criterion 1.1") as HTMLTextAreaElement).value).toBe("Capacidad verificada | Capacity verified");
+});
+
+it("concentra edición en el encabezado y conserva una sola alta contextual al cambiar de vista", async () => {
+  await mount(fixture("supervisor"));
+  const header = screen.getByRole("banner", { name: "Compromiso y condiciones de cierre" });
+  expect(within(header).getByRole("button", { name: "Editar compromiso y DoD" })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Planeación y previsión por entregables" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Nueva actividad" })).toBeNull();
+  expect(screen.getAllByRole("button", { name: "Agregar actividad en Estación validada" })).toHaveLength(1);
+
+  const controls = screen.getByRole("tablist", { name: "Modo de visualización del plan" });
+  await userEvent.click(within(controls).getByRole("tab", { name: "Tabla" }));
+  expect(screen.getAllByRole("button", { name: "Agregar actividad en Estación validada" })).toHaveLength(1);
+  await userEvent.click(screen.getByRole("button", { name: "Agregar actividad en Estación validada" }));
+  expect(screen.getByRole("dialog", { name: "Actualizar actividad" })).toBeTruthy();
 });

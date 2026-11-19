@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { ChevronDown, ChevronRight, ClipboardList, Target } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardList, HelpCircle, Target } from "lucide-react";
 import type { OperationsActivityEntry, ResultsDeliverable, OperationsReviewEntry } from "../../lib/results-api";
 import { toInitials } from "./compactLabels";
 import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
@@ -44,6 +44,9 @@ export interface ResultsGanttProps {
   projectStart?: string;
   projectTarget?: string;
   canPlan?: boolean;
+  viewScope?: "all" | "deliverables_only";
+  onViewScopeChange?: (scope: "all" | "deliverables_only") => void;
+  hideToolbar?: boolean;
   onUpdateActivity?: (entry: OperationsActivityEntry) => void;
   onRegisterDeliverableProgress?: (deliverable: ResultsDeliverable) => void;
 }
@@ -55,14 +58,20 @@ export function ResultsGantt({
   projectStart = "",
   projectTarget = "",
   canPlan = false,
+  viewScope: controlledScope,
+  onViewScopeChange,
+  hideToolbar = false,
   onUpdateActivity,
   onRegisterDeliverableProgress,
 }: ResultsGanttProps) {
   const { lang, t, pick } = useI18n();
   const locale = localeForLang(lang);
-  const [viewScope, setViewScope] = useState<"all" | "deliverables_only">("all");
+  const [internalScope, setInternalScope] = useState<"all" | "deliverables_only">("all");
+  const viewScope = controlledScope ?? internalScope;
+  const setViewScope = onViewScopeChange ?? setInternalScope;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [tooltip, setTooltip] = useState<ActiveTooltip | null>(null);
+  const [showLegend, setShowLegend] = useState(false);
 
   if (!entries.length && !deliverables.length) {
     return <p className="results-help">{t("gantt.empty")}</p>;
@@ -213,33 +222,65 @@ export function ResultsGantt({
 
   return (
     <div className="results-gantt-wrapper space-y-2">
-      {/* Barra de control del Gantt */}
-      <div className="results-gantt-toolbar">
-        {deliverables.length > 0 && (
-          <div className="inline-flex rounded-md shadow-sm border border-kmx-gray-300 overflow-hidden text-xs">
+      {/* Barra de control del Gantt (oculta cuando el padre unifica controles) */}
+      {!hideToolbar && (
+        <div className="results-gantt-toolbar">
+          {deliverables.length > 0 && (
+            <div className="inline-flex rounded-md shadow-sm border border-kmx-gray-300 overflow-hidden text-xs">
+              <button
+                type="button"
+                className={`px-2.5 py-1.5 font-medium transition-colors ${viewScope === "all" ? "bg-kmx-carbon text-white" : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
+                  }`}
+                onClick={() => setViewScope("all")}
+                title={t("gantt.scopeAllTitle")}
+              >
+                {t("gantt.scopeAll", { count: entries.length })}
+              </button>
+              <button
+                type="button"
+                className={`px-2.5 py-1.5 font-medium transition-colors border-l border-kmx-gray-300 ${viewScope === "deliverables_only"
+                  ? "bg-kmx-carbon text-white"
+                  : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
+                  }`}
+                onClick={() => setViewScope("deliverables_only")}
+                title={t("gantt.scopeDeliverablesTitle")}
+              >
+                {t("gantt.scopeDeliverables", { count: deliverables.length })}
+              </button>
+            </div>
+          )}
+          <div
+            className="relative ml-auto"
+            onMouseEnter={() => setShowLegend(true)}
+            onMouseLeave={() => setShowLegend(false)}
+          >
             <button
               type="button"
-              className={`px-2.5 py-1.5 font-medium transition-colors ${viewScope === "all" ? "bg-kmx-carbon text-white" : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
-                }`}
-              onClick={() => setViewScope("all")}
-              title={t("gantt.scopeAllTitle")}
+              className="action results-icon-btn"
+              aria-label={t("gantt.regionLabel")}
+              onFocus={() => setShowLegend(true)}
+              onBlur={() => setShowLegend(false)}
+              onClick={() => setShowLegend(open => !open)}
             >
-              {t("gantt.scopeAll", { count: entries.length })}
+              <HelpCircle size={14} aria-hidden="true" />
             </button>
-            <button
-              type="button"
-              className={`px-2.5 py-1.5 font-medium transition-colors border-l border-kmx-gray-300 ${viewScope === "deliverables_only"
-                ? "bg-kmx-carbon text-white"
-                : "bg-white text-kmx-carbon hover:bg-kmx-gray-100"
-                }`}
-              onClick={() => setViewScope("deliverables_only")}
-              title={t("gantt.scopeDeliverablesTitle")}
-            >
-              {t("gantt.scopeDeliverables", { count: deliverables.length })}
-            </button>
+            {showLegend && (
+              <div className="schedule-status-tooltip is-right" role="tooltip">
+                <ul className="schedule-status-tooltip-list">
+                  <li><i className="results-legend-swatch is-deliverable" aria-hidden="true" /><span>{t("gantt.legendDeliverable")}</span></li>
+                  <li><i className="results-legend-swatch is-activity" aria-hidden="true" /><span>{t(canPlan ? "gantt.legendActivityInteractive" : "gantt.legendActivity")}</span></li>
+                  <li><i className="results-legend-swatch is-done" aria-hidden="true" /><span>{t("gantt.legendDone")}</span></li>
+                  <li><i className="results-legend-swatch is-risk" aria-hidden="true" /><span>{t("gantt.legendRisk")}</span></li>
+                  <li><strong className="results-gantt-due-flag" aria-hidden="true">◆</strong><span>{t("gantt.legendDod")}</span></li>
+                  {todayLeftPct !== null && (
+                    <li><i className="results-legend-swatch is-today" aria-hidden="true" /><span>{t("timeline.today")}</span></li>
+                  )}
+                </ul>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Región accesible del Gantt */}
       <div className="results-gantt-scroll" role="region" aria-label={t("gantt.regionLabel")} tabIndex={0}>
@@ -420,30 +461,6 @@ export function ResultsGantt({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Leyenda operativa */}
-      <div className="results-gantt-legend">
-        <span>
-          <i className="results-legend-swatch is-deliverable" aria-hidden="true" /> {t("gantt.legendDeliverable")}
-        </span>
-        <span>
-          <i className="results-legend-swatch is-activity" aria-hidden="true" /> {t(canPlan ? "gantt.legendActivityInteractive" : "gantt.legendActivity")}
-        </span>
-        <span>
-          <i className="results-legend-swatch is-done" aria-hidden="true" /> {t("gantt.legendDone")}
-        </span>
-        <span>
-          <i className="results-legend-swatch is-risk" aria-hidden="true" /> {t("gantt.legendRisk")}
-        </span>
-        <span>
-          <strong className="results-gantt-due-flag" aria-hidden="true">◆</strong> {t("gantt.legendDod")}
-        </span>
-        {todayLeftPct !== null && (
-          <span>
-            <i className="results-legend-swatch is-today" aria-hidden="true" /> {t("timeline.today")}
-          </span>
-        )}
       </div>
     </div>
   );

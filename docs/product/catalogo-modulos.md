@@ -77,13 +77,18 @@ de esta capacidad y su piloto se registran en el [plan](plan-maestro.md).
 - Los ingenieros asignados organizan y registran las actividades para alcanzar
   esos resultados. Cada actividad se vincula con el entregable al que contribuye;
   una actividad intermedia terminada no acredita por sí sola el cierre del proyecto.
-- **Planeación y previsión por entregables** es la fuente única de trabajo dentro
+- El **trabajo por entregables** es la fuente única de trabajo dentro
   de `PRO-02`: el cronograma Gantt agrupado por entregables de cierre concentra el
   avance y las acciones principales (`Registrar avance`, y para Supervisor en
   actividades finalizadas `Solicitar revisión`, además de `Cerrar proyecto`). Para el
   perfil Ingeniero se omiten la tabla dual, el alta suelta de actividades y las
   bitácoras redundantes; la trazabilidad completa permanece en el **Historial del
   proyecto**. Cambiar la previsión nunca modifica la fecha compromiso.
+  El detalle prioriza nombre y estado, actividades terminadas y bloqueos; las fechas
+  y el objetivo quedan como contexto. La edición del compromiso se abre con un
+  lápiz en el encabezado, según permisos. Se omite el título redundante de planeación
+  y el alta general: cada entregable ofrece un único “+” contextual visible en el
+  Gantt o, al consultar solo la tabla, en ella.
 - **Registrar avance / Actualizar actividad** abre un modal contextual que contrasta
   **Condición anterior** (último reporte, evidencias e historial) contra **Nueva
   condición (Avance)** en cuatro grupos: fecha de registro (mapeada a `forecast_start`

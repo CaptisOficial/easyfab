@@ -85,6 +85,7 @@ export const projectsOverview = () => invoke<ProjectsOverview>("projects_overvie
 export const projectResultsCapabilities = (projectId: string) => invoke<ResultsCapabilities>("project_results_capabilities", { projectId });
 export const createProject = (input: NewProject) => invoke<Project>("create_project", { input });
 export const reorderProjects = (projectIds: string[]) => invoke<ProjectsOverview>("reorder_projects", { projectIds });
+export const deleteProject = (projectId: string) => invoke<ProjectsOverview>("delete_project", { projectId });
 
 export interface Evidence { id: string; name: string; relative_path: string; sha256: string; size: number }
 export interface Activity { id: string; project_id: string; wbs: string; task_title: string; start_date: string; due_date: string; milestone_gate: number; status: string; supervisor_approved: boolean; evidence: Evidence[]; hours_spent: number | null }

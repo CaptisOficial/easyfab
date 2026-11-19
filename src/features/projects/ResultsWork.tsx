@@ -1,11 +1,12 @@
 import { EvidenceAttachment } from "./EvidenceAttachment";
 import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
-import { AlertTriangle, BarChart3, LayoutGrid, Plus, RefreshCw, Table2, Target } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, Clock, Hammer, HelpCircle, History, Pause, Pencil, RefreshCw, RotateCcw, Table2, Target, Trash2 } from "lucide-react";
 import { CommitmentEditor, emptyCommitment, commitmentError } from "./CommitmentEditor";
 import { ResultsModal } from "./ResultsWorkModal";
 import { ResultsGantt } from "./ResultsWorkGantt";
+import { toInitials } from "./compactLabels";
 import { DeliverableActions, getActivityStatusLabel, groupDeliverables } from "./deliverableView";
-import { useI18n, type MessageKey } from "../../lib/i18n";
+import { localeForLang, useI18n, type MessageKey } from "../../lib/i18n";
 import { summarizeResults } from "../../lib/results-metrics";
 import {
   resultsDetail, saveResultsCommitment, saveResultsActivity, saveResultsBlocker,
@@ -24,7 +25,16 @@ const historyActionKey: Record<string, MessageKey> = {
 };
 type Modal = { kind: "activity" } | { kind: "commitment" } | { kind: "activity_revision"; entry: OperationsActivityEntry }
   | { kind: "blocker"; activityId: string; entry: OperationsBlockerEntry | null; action: "report" | "attend" | "resolve" }
-  | { kind: "closure"; closed: boolean } | { kind: "conflict"; conflict: OperationsConflict };
+  | { kind: "closure"; closed: boolean } | { kind: "conflict"; conflict: OperationsConflict } | { kind: "delete_project" };
+
+function shortDate(iso: string, locale: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", timeZone: "UTC" })
+    .format(date)
+    .replace(/\./g, "");
+}
 
 function latestCompleteSunday() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -38,7 +48,7 @@ function blankActivity(detail: ResultsDetail): ResultsActivity {
   return { id: `activity_${crypto.randomUUID().replaceAll("-", "")}`, deliverable_id: detail.commitment?.deliverables[0]?.id ?? "", title: "", responsible_id: detail.project.engineer_ids[0] ?? "", forecast_start: detail.project.start_date, forecast_due: detail.project.target_date, dependency_ids: [], status: "not_started", progress: 0, at_risk: false, hours_spent: null, note: null };
 }
 
-export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: string; onBack: () => void; onBusyChange?: (busy: boolean) => void }) {
+export function ResultsWork({ projectId, onBack, onBusyChange, onDelete }: { projectId: string; onBack: () => void; onBusyChange?: (busy: boolean) => void; onDelete?: () => Promise<void> }) {
   const { lang, t, pick, tError } = useI18n();
   const [data, setData] = useState<ResultsDetail | null>(null);
   const [error, setError] = useState(""); const [notice, setNotice] = useState("");
@@ -62,7 +72,10 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
   const [customForecastStart, setCustomForecastStart] = useState(false);
   const [activityBlockerReason, setActivityBlockerReason] = useState("");
   const [activityBlockerHelp, setActivityBlockerHelp] = useState("");
-  const [planViewMode, setPlanViewMode] = useState<"both" | "gantt" | "table">("both");
+  const [activeTab, setActiveTab] = useState<"gantt" | "table" | "blockers" | "history">("gantt");
+  const [ganttScope, setGanttScope] = useState<"all" | "deliverables_only">("all");
+  const [showGanttLegend, setShowGanttLegend] = useState(false);
+  const locale = localeForLang(lang);
 
   useEffect(() => {
     let active = true;
@@ -300,6 +313,19 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
     if (next) setModal(null);
   }
 
+  async function confirmDeleteProject(event: FormEvent) {
+    event.preventDefault();
+    if (!onDelete || sending.current) return;
+    sending.current = true; setBusy(true); setError("");
+    try {
+      await onDelete();
+    } catch (e) {
+      setError(tError(e));
+    } finally {
+      sending.current = false; setBusy(false);
+    }
+  }
+
   async function download(id: string, _name: string) {
     if (sending.current) return; sending.current = true; setBusy(true); setError("");
     try { await openResultsEvidence(projectId, id); }
@@ -325,7 +351,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
   const doneActivities = data?.activities.filter(entry => entry.activity.status === "done" || entry.activity.progress === 100).length ?? 0;
   const openBlockersList = data?.blockers.filter(entry => !entry.blocker.resolved_at) ?? [];
 
-  const modalTitle = modal?.kind === "activity" ? activityRevision ? t("results.modal.updateActivity") : t("results.modal.registerProgress") : modal?.kind === "commitment" ? t("results.modal.defineClosure") : modal?.kind === "blocker" ? modal.action === "report" ? t("results.modal.reportBlocker") : modal.action === "attend" ? t("results.modal.attendBlocker") : t("results.modal.resolveBlocker") : modal?.kind === "activity_revision" ? t("results.modal.reviewActivity") : modal?.kind === "closure" ? modal.closed ? t("results.modal.closeProject") : t("results.modal.reopenProject") : t("results.modal.resolveConflict");
+  const modalTitle = modal?.kind === "activity" ? activityRevision ? t("results.modal.updateActivity") : t("results.modal.registerProgress") : modal?.kind === "commitment" ? t("results.modal.defineClosure") : modal?.kind === "blocker" ? modal.action === "report" ? t("results.modal.reportBlocker") : modal.action === "attend" ? t("results.modal.attendBlocker") : t("results.modal.resolveBlocker") : modal?.kind === "activity_revision" ? t("results.modal.reviewActivity") : modal?.kind === "closure" ? modal.closed ? t("results.modal.closeProject") : t("results.modal.reopenProject") : modal?.kind === "delete_project" ? t("projects.deleteConfirmTitle") : t("results.modal.resolveConflict");
 
   const canCloseProject = Boolean(
     data?.commitment &&
@@ -343,6 +369,14 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
     )
     : [];
 
+  const statusIconMeta = closed
+    ? { Icon: Check, className: "is-completed", label: t("results.historyAction.close") }
+    : data?.project.status === "Not Started"
+      ? { Icon: Clock, className: "is-not-started", label: t("common.status.notStarted") }
+      : data?.project.status === "On Hold"
+        ? { Icon: Pause, className: "is-on-hold", label: t("common.status.onHold") }
+        : { Icon: Hammer, className: "is-in-progress", label: t("common.status.inProgress") };
+
   return <section className="results-work" aria-label={t("results.sectionAria")}>
     <header className="results-work-header" aria-label={t("results.headerAria")}>
       <div className="results-work-header-top">
@@ -350,18 +384,31 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
           {data ? (
             <>
               <p className="results-eyebrow">{data.project.wbs} · {pick(data.project.process_area)}</p>
-              <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-lg font-bold text-kmx-carbon">{pick(data.project.name)}</h3>
-                <span className="results-state">
-                  {closed ? t("results.historyAction.close") : data.project.status === "Not Started" ? t("common.status.notStarted") : data.project.status === "On Hold" ? t("common.status.onHold") : t("common.status.inProgress")}
+                <span
+                  className={`schedule-status-badge ${statusIconMeta.className}`}
+                  role="img"
+                  aria-label={statusIconMeta.label}
+                  title={statusIconMeta.label}
+                >
+                  <statusIconMeta.Icon size={13} strokeWidth={2.25} aria-hidden="true" />
                 </span>
               </div>
+              {data.commitment && (
+                <p className="text-xs text-kmx-gray-600 mt-0.5">{pick(data.commitment.final_outcome)}</p>
+              )}
             </>
           ) : (
             <h3 className="text-lg font-bold text-kmx-carbon">{t("projects.detail")}</h3>
           )}
         </div>
         <div className="results-work-header-actions">
+          {data?.commitment && data.capabilities.can_change_commitment && !closed && (
+            <button type="button" className="action results-icon-btn" aria-label={t("results.editCommitment")} title={t("results.editCommitment")} disabled={busy} onClick={openCommitment}>
+              <Pencil size={15} aria-hidden="true" />
+            </button>
+          )}
           {data?.commitment && data.capabilities.can_review_deliverables && (
             <button
               type="button"
@@ -371,6 +418,18 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
               onClick={() => { setComment(""); setConfirmOutcome(false); setClosureDeliverableChecks({}); setError(""); setModal({ kind: "closure", closed: !closed }); }}
             >
               {closed ? t("results.modal.reopenProject") : t("results.modal.closeProject")}
+            </button>
+          )}
+          {onDelete && data && (
+            <button
+              type="button"
+              className="action results-icon-btn text-kmx-red"
+              aria-label={t("projects.deleteBtn")}
+              title={t("projects.deleteBtn")}
+              disabled={busy}
+              onClick={() => { setError(""); setModal({ kind: "delete_project" }); }}
+            >
+              <Trash2 size={15} aria-hidden="true" />
             </button>
           )}
           <button
@@ -399,10 +458,6 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
       {data && (
         <div className="results-work-header-meta">
           <div className="results-header-inline-item">
-            <span className="results-header-inline-label">{t("results.commitmentLabel")}</span>
-            <strong className="tabular-nums">{data.project.start_date} → {data.project.target_date}</strong>
-          </div>
-          <div className="results-header-inline-item">
             <span className="results-header-inline-label">{t("results.deliverablesLabel")}</span>
             <strong className="tabular-nums">{t("results.deliverablesDefinedCount", { total: data.commitment?.deliverables.length ?? 0 })}</strong>
           </div>
@@ -411,19 +466,18 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
             <strong className="tabular-nums">{t("results.activitiesCompletedRatio", { done: doneActivities, total: totalActivities })}</strong>
           </div>
           {openBlockersList.length > 0 && (
-            <span className="results-state text-kmx-red font-bold">
+            <button
+              type="button"
+              className="results-state is-risk font-bold"
+              onClick={() => { if (!isEngineerView) setActiveTab("blockers"); }}
+            >
               {t(openBlockersList.length === 1 ? "results.blockerCountSingle" : "results.blockerCountPlural", { count: openBlockersList.length })}
-            </span>
+            </button>
           )}
-        </div>
-      )}
-
-      {data?.commitment && (
-        <div className="results-work-header-outcome">
-          <p className="text-sm font-medium text-kmx-carbon">{pick(data.commitment.final_outcome)}</p>
-          {data.capabilities.can_change_commitment && !closed && (
-            <button type="button" className="action text-xs py-1 px-2.5" aria-label={t("results.editCommitment")} disabled={busy} onClick={openCommitment}>{t("common.edit")}</button>
-          )}
+          <div className="results-header-inline-item" title={`${data.project.start_date} → ${data.project.target_date}`}>
+            <span className="results-header-inline-label">{t("results.commitmentLabel")}</span>
+            <strong className="tabular-nums">{shortDate(data.project.start_date, locale)} → {shortDate(data.project.target_date, locale)}</strong>
+          </div>
         </div>
       )}
     </header>
@@ -477,23 +531,15 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
           {/* 3. DESGLOSE OPERATIVO: PLANEACIÓN Y PREVISIÓN POR ENTREGABLES */}
           <section className="space-y-3" aria-label={t("results.planningAria")}>
             <div className="results-section-heading">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h4>{t("results.planningHeading")}</h4>
+              <div className="flex items-center gap-2 flex-wrap">
                 {!isEngineerView && (
-                  <div className="results-plan-view-controls" role="group" aria-label={t("results.planViewModeAria")}>
+                  <div className="results-plan-view-controls" role="tablist" aria-label={t("results.planViewModeAria")}>
                     <button
                       type="button"
-                      className={`results-plan-view-btn ${planViewMode === "both" ? "is-active" : ""}`}
-                      onClick={() => setPlanViewMode("both")}
-                      title={t("results.viewMode.bothTitle")}
-                    >
-                      <LayoutGrid size={13} aria-hidden="true" />
-                      <span>{t("results.viewMode.both")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`results-plan-view-btn ${planViewMode === "gantt" ? "is-active" : ""}`}
-                      onClick={() => setPlanViewMode("gantt")}
+                      role="tab"
+                      aria-selected={activeTab === "gantt"}
+                      className={`results-plan-view-btn ${activeTab === "gantt" ? "is-active" : ""}`}
+                      onClick={() => setActiveTab("gantt")}
                       title={t("results.viewMode.ganttTitle")}
                     >
                       <BarChart3 size={13} aria-hidden="true" />
@@ -501,50 +547,121 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                     </button>
                     <button
                       type="button"
-                      className={`results-plan-view-btn ${planViewMode === "table" ? "is-active" : ""}`}
-                      onClick={() => setPlanViewMode("table")}
+                      role="tab"
+                      aria-selected={activeTab === "table"}
+                      className={`results-plan-view-btn ${activeTab === "table" ? "is-active" : ""}`}
+                      onClick={() => setActiveTab("table")}
                       title={t("results.viewMode.tableTitle")}
                     >
                       <Table2 size={13} aria-hidden="true" />
                       <span>{t("results.viewMode.table")}</span>
                     </button>
+                    {data.blockers.length > 0 && (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === "blockers"}
+                        className={`results-plan-view-btn ${activeTab === "blockers" ? "is-active" : ""}`}
+                        onClick={() => setActiveTab("blockers")}
+                      >
+                        <AlertTriangle size={13} aria-hidden="true" />
+                        <span>{t("results.blockersHeading")} ({data.blockers.length})</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === "history"}
+                      className={`results-plan-view-btn ${activeTab === "history" ? "is-active" : ""}`}
+                      onClick={() => setActiveTab("history")}
+                    >
+                      <History size={13} aria-hidden="true" />
+                      <span>{t("results.historySummary", { count: data.history.length })}</span>
+                    </button>
+                  </div>
+                )}
+
+                {(isEngineerView || activeTab === "gantt") && (data.commitment?.deliverables.length ?? 0) > 0 && (
+                  <div className="results-plan-view-controls" role="group" aria-label={t("gantt.regionLabel")}>
+                    <button
+                      type="button"
+                      className={`results-plan-view-btn ${ganttScope === "all" ? "is-active" : ""}`}
+                      onClick={() => setGanttScope("all")}
+                      title={t("gantt.scopeAllTitle")}
+                    >
+                      {t("gantt.scopeAll", { count: data.activities.length })}
+                    </button>
+                    <button
+                      type="button"
+                      className={`results-plan-view-btn ${ganttScope === "deliverables_only" ? "is-active" : ""}`}
+                      onClick={() => setGanttScope("deliverables_only")}
+                      title={t("gantt.scopeDeliverablesTitle")}
+                    >
+                      {t("gantt.scopeDeliverables", { count: data.commitment?.deliverables.length ?? 0 })}
+                    </button>
                   </div>
                 )}
               </div>
-              {canPlan && !isEngineerView && (
-                <button
-                  type="button"
-                  className="btn-primary results-icon-btn"
-                  aria-label={t("results.newActivity")}
-                  title={t("results.newActivity")}
-                  disabled={busy}
-                  onClick={() => openActivity(null)}
+
+              {(isEngineerView || activeTab === "gantt") && (
+                <div
+                  className="relative"
+                  onMouseEnter={() => setShowGanttLegend(true)}
+                  onMouseLeave={() => setShowGanttLegend(false)}
                 >
-                  <Plus size={15} aria-hidden="true" />
-                </button>
+                  <button
+                    type="button"
+                    className="action results-icon-btn"
+                    aria-label={t("gantt.regionLabel")}
+                    onFocus={() => setShowGanttLegend(true)}
+                    onBlur={() => setShowGanttLegend(false)}
+                    onClick={() => setShowGanttLegend(open => !open)}
+                  >
+                    <HelpCircle size={14} aria-hidden="true" />
+                  </button>
+                  {showGanttLegend && (
+                    <div className="schedule-status-tooltip is-right" role="tooltip">
+                      <ul className="schedule-status-tooltip-list">
+                        <li><i className="results-legend-swatch is-deliverable" aria-hidden="true" /><span>{t("gantt.legendDeliverable")}</span></li>
+                        <li><i className="results-legend-swatch is-activity" aria-hidden="true" /><span>{t(canPlan ? "gantt.legendActivityInteractive" : "gantt.legendActivity")}</span></li>
+                        <li><i className="results-legend-swatch is-done" aria-hidden="true" /><span>{t("gantt.legendDone")}</span></li>
+                        <li><i className="results-legend-swatch is-risk" aria-hidden="true" /><span>{t("gantt.legendRisk")}</span></li>
+                        <li><strong className="results-gantt-due-flag" aria-hidden="true">◆</strong><span>{t("gantt.legendDod")}</span></li>
+                        <li><i className="results-legend-swatch is-today" aria-hidden="true" /><span>{t("timeline.today")}</span></li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {!data.activities.length && !isEngineerView && <p>{t("results.emptyActivities")}</p>}
+            {!data.activities.length && !isEngineerView && activeTab !== "blockers" && activeTab !== "history" && (
+              <p>{t("results.emptyActivities")}</p>
+            )}
 
             <div className="results-planning">
               {/* Visualización Gantt de entregables y previsión */}
-              <div className={!isEngineerView && planViewMode === "table" ? "hidden" : "block w-full"}>
-                <ResultsGantt
-                  entries={data.activities}
-                  deliverables={data.commitment?.deliverables}
-                  reviews={data.reviews}
-                  projectStart={data.project.start_date}
-                  projectTarget={data.project.target_date}
-                  canPlan={canPlan}
-                  onUpdateActivity={openActivity}
-                  onRegisterDeliverableProgress={openDeliverableProgress}
-                />
-              </div>
+              {(isEngineerView || activeTab === "gantt") && (
+                <div className="block w-full">
+                  <ResultsGantt
+                    entries={data.activities}
+                    deliverables={data.commitment?.deliverables}
+                    reviews={data.reviews}
+                    projectStart={data.project.start_date}
+                    projectTarget={data.project.target_date}
+                    canPlan={canPlan}
+                    viewScope={ganttScope}
+                    onViewScopeChange={setGanttScope}
+                    hideToolbar
+                    onUpdateActivity={openActivity}
+                    onRegisterDeliverableProgress={openDeliverableProgress}
+                  />
+                </div>
+              )}
 
               {/* Tabla de actividades agrupadas por entregable */}
-              {!isEngineerView && (
-                <div className={planViewMode === "gantt" ? "hidden" : "block w-full"}>
+              {!isEngineerView && activeTab === "table" && (
+                <div className="block w-full">
                   <div className="results-table-scroll">
                     <table className="results-table" aria-label={t("results.activitiesTableAria")}>
                       <colgroup>
@@ -597,6 +714,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                                     const a = entry.activity;
                                     const aTitle = pick(a.title);
                                     const blockers = data.blockers.filter(b => b.blocker.activity_id === a.id && !b.blocker.resolved_at);
+                                    const ownerLabel = a.responsible_id || t("common.unassigned");
                                     return (
                                       <tr key={a.id}>
                                         <td>
@@ -606,12 +724,14 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                                             <small>{t("results.dependsOn", { list: a.dependency_ids.map(id => { const dep = data.activities.find(e => e.activity.id === id)?.activity.title; return dep ? pick(dep) : t("results.pendingSyncActivity"); }).join(", ") })}</small>
                                           )}
                                         </td>
-                                        <td className="results-cell-responsible">
-                                          <strong>{a.responsible_id || t("common.unassigned")}</strong>
-                                          <small>{t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}</small>
+                                        <td
+                                          className="results-cell-responsible"
+                                          title={`${ownerLabel} · ${t("results.createdEditedBy", { createdBy: entry.created_by, editedBy: entry.edited_by })}`}
+                                        >
+                                          <span className="schedule-compact-pill is-person">{toInitials(ownerLabel)}</span>
                                         </td>
-                                        <td className="results-forecast tabular-nums">
-                                          {a.forecast_start}<br />{a.forecast_due}
+                                        <td className="results-forecast tabular-nums" title={`${a.forecast_start} → ${a.forecast_due}`}>
+                                          {shortDate(a.forecast_start, locale)} → {shortDate(a.forecast_due, locale)}
                                           {a.forecast_due > (deliv.due_date || data.project.target_date) && (
                                             <small>{t("results.forecastAfterCommitment")}</small>
                                           )}
@@ -627,12 +747,18 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                                           <div className="results-actions">
                                             {canPlan && (
                                               <>
-                                                <button className="action" aria-label={t("results.updateActivityAria", { title: aTitle })} disabled={busy} onClick={() => openActivity(entry)}>{t("results.updateBtn")}</button>
-                                                <button className="action" aria-label={t("results.blockerAria", { title: aTitle })} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>{t("results.blockerBtn")}</button>
+                                                <button className="action results-icon-btn" aria-label={t("results.updateActivityAria", { title: aTitle })} title={t("results.updateBtn")} disabled={busy} onClick={() => openActivity(entry)}>
+                                                  <Pencil size={13} aria-hidden="true" />
+                                                </button>
+                                                <button className="action results-icon-btn" aria-label={t("results.blockerAria", { title: aTitle })} title={t("results.blockerBtn")} disabled={busy} onClick={() => openBlocker(a.id, null, "report")}>
+                                                  <AlertTriangle size={13} aria-hidden="true" />
+                                                </button>
                                               </>
                                             )}
                                             {a.status === "done" && data.capabilities.can_review_deliverables && !closed && (
-                                              <button type="button" className="action" aria-label={t("results.requestRevisionAria", { title: aTitle })} disabled={busy} onClick={() => openActivityRevision(entry)}>{t("results.requestRevisionBtn")}</button>
+                                              <button type="button" className="action results-icon-btn" aria-label={t("results.requestRevisionAria", { title: aTitle })} title={t("results.requestRevisionBtn")} disabled={busy} onClick={() => openActivityRevision(entry)}>
+                                                <RotateCcw size={13} aria-hidden="true" />
+                                              </button>
                                             )}
                                           </div>
                                           {entry.evidence.map(file => (
@@ -756,45 +882,57 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                   </div>
                 </div>
               )}
+              {/* Bloqueos y seguimiento completo */}
+              {!isEngineerView && activeTab === "blockers" && data.blockers.length > 0 && (
+                <section className="space-y-2" aria-label={t("results.blockersAria")}>
+                  {data.blockers.map(entry => {
+                    const b = entry.blocker;
+                    const age = metrics?.openBlockers.find(item => item.id === b.id)?.ageDays;
+                    const actRaw = data.activities.find(e => e.activity.id === b.activity_id)?.activity.title;
+                    const reasonText = pick(b.reason);
+                    return (
+                      <article className="results-blocker" key={b.id}>
+                        <div className="results-section-heading">
+                          <h5>{actRaw ? pick(actRaw) : b.activity_id}</h5>
+                          <span className="results-state">{b.resolved_at ? t("results.blockerStatus.resolved") : b.first_attention_at ? t("results.blockerStatus.attended") : t("results.blockerStatus.pending")}</span>
+                        </div>
+                        <p>{reasonText}</p>
+                        <p className="results-help">{t("results.helpNeededLine", { help: pick(b.help_needed) })}</p>
+                        <p className="results-help">{t("results.blockerReportedBy", { name: entry.reported_by, date: b.reported_at })}{age != null ? ` · ${t("results.blockerAgeAtCutoff", { days: age })}` : ""}</p>
+                        {b.resolution_note && <p className="results-help">{t("results.blockerResolutionLine", { note: pick(b.resolution_note) })}</p>}
+                        {data.capabilities.can_resolve_blockers && !b.resolved_at && !closed && (
+                          <div className="results-actions">
+                            {!b.first_attention_at && (
+                              <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "attend")}>
+                                {t("results.attendBlockerBtn", { reason: reasonText })}
+                              </button>
+                            )}
+                            <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "resolve")}>
+                              {t("results.resolveBlockerBtn", { reason: reasonText })}
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
+
+              {/* Historial del proyecto */}
+              {!isEngineerView && activeTab === "history" && (
+                <div className="results-table-scroll">
+                  <table className="results-table" aria-label={t("results.historyAria")}>
+                    <thead>
+                      <tr><th>{t("results.historyCol.date")}</th><th>{t("results.historyCol.person")}</th><th>{t("common.action")}</th><th>{t("results.historyCol.detail")}</th></tr>
+                    </thead>
+                    <tbody>
+                      {data.history.map(item => <tr key={item.revision}><td>{item.recorded_at}</td><td>{item.author_id}</td><td>{t(historyActionKey[item.action] ?? "results.historyAction.default")}</td><td>{pick(item.summary)}</td></tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </section>
-
-          {/* Bloqueos y seguimiento completo (solo si hay bloqueos) */}
-          {!isEngineerView && data.blockers.length > 0 && (
-            <section className="results-panel" aria-label={t("results.blockersAria")}>
-              <h4>{t("results.blockersHeading")}</h4>
-              {data.blockers.map(entry => {
-                const b = entry.blocker;
-                const age = metrics?.openBlockers.find(item => item.id === b.id)?.ageDays;
-                const actRaw = data.activities.find(e => e.activity.id === b.activity_id)?.activity.title;
-                const reasonText = pick(b.reason);
-                return (
-                  <article className="results-blocker" key={b.id}>
-                    <div className="results-section-heading">
-                      <h5>{actRaw ? pick(actRaw) : b.activity_id}</h5>
-                      <span className="results-state">{b.resolved_at ? t("results.blockerStatus.resolved") : b.first_attention_at ? t("results.blockerStatus.attended") : t("results.blockerStatus.pending")}</span>
-                    </div>
-                    <p>{reasonText}</p>
-                    <p className="results-help">{t("results.helpNeededLine", { help: pick(b.help_needed) })}</p>
-                    <p className="results-help">{t("results.blockerReportedBy", { name: entry.reported_by, date: b.reported_at })}{age != null ? ` · ${t("results.blockerAgeAtCutoff", { days: age })}` : ""}</p>
-                    {b.resolution_note && <p className="results-help">{t("results.blockerResolutionLine", { note: pick(b.resolution_note) })}</p>}
-                    {data.capabilities.can_resolve_blockers && !b.resolved_at && !closed && (
-                      <div className="results-actions">
-                        {!b.first_attention_at && (
-                          <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "attend")}>
-                            {t("results.attendBlockerBtn", { reason: reasonText })}
-                          </button>
-                        )}
-                        <button className="action" disabled={busy} onClick={() => openBlocker(b.activity_id, entry, "resolve")}>
-                          {t("results.resolveBlockerBtn", { reason: reasonText })}
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </section>
-          )}
 
         </>
       )}
@@ -804,22 +942,6 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
           <summary>{t("results.legacySummary", { count: data.legacy_entries.length })}</summary>
           <p className="results-help">{t("results.legacyHelp")}</p>
           <ul>{data.legacy_entries.map(entry => <li key={`${entry.owner_id}/${entry.activity.id}`}>{pick(entry.activity.task_title)} · {entry.owner_name} · {entry.activity.milestone_gate}%</li>)}</ul>
-        </details>
-      )}
-
-      {!isEngineerView && (
-        <details className="results-panel">
-          <summary>{t("results.historySummary", { count: data.history.length })}</summary>
-          <div className="results-table-scroll">
-            <table className="results-table" aria-label={t("results.historyAria")}>
-              <thead>
-                <tr><th>{t("results.historyCol.date")}</th><th>{t("results.historyCol.person")}</th><th>{t("common.action")}</th><th>{t("results.historyCol.detail")}</th></tr>
-              </thead>
-              <tbody>
-                {data.history.map(item => <tr key={item.revision}><td>{item.recorded_at}</td><td>{item.author_id}</td><td>{t(historyActionKey[item.action] ?? "results.historyAction.default")}</td><td>{pick(item.summary)}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
         </details>
       )}
     </>}
@@ -949,9 +1071,10 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                 )}
               </div>
 
-              {/* Contraste: Condición Anterior vs. Nueva Condición (Avance) */}
-              <div className="results-condition-contrast-grid">
+              {/* Contraste: Condición Anterior (solo si existe contexto previo) vs. Nueva Condición */}
+              <div className={previousEntry?.activity.note || (previousEntry?.evidence.length ?? 0) > 0 || previousBlocker || activityHistory.length > 0 ? "results-condition-contrast-grid" : "space-y-3"}>
                 {/* Columna Izquierda: Condición anterior e histórico */}
+                {(previousEntry?.activity.note || (previousEntry?.evidence.length ?? 0) > 0 || previousBlocker || activityHistory.length > 0) && (
                 <section className="results-condition-card is-previous space-y-2.5" aria-label={t("results.previousConditionAria")}>
                   <div className="flex items-center justify-between border-b border-kmx-gray-200 pb-1.5">
                     <span className="text-xs font-bold uppercase tracking-wider text-kmx-gray-600">{t("results.previousCondition")}</span>
@@ -1006,6 +1129,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
                     </details>
                   )}
                 </section>
+                )}
 
                 {/* Columna Derecha: Nueva condición (Registro de avance hacia cierre) */}
                 <section className="results-condition-card is-new space-y-3" aria-label={t("results.newConditionAria")}>
@@ -1256,6 +1380,19 @@ export function ResultsWork({ projectId, onBack, onBusyChange }: { projectId: st
             <label className="field">{t("results.conflictReasonLabel")}<textarea required value={comment} onChange={e => setComment(e.target.value)} /></label>
             <button className="btn-primary">{busy ? t("common.saving") : t("results.integrateVersions")}</button>
           </fieldset>
+        </form>
+      )}
+      {modal.kind === "delete_project" && (
+        <form onSubmit={confirmDeleteProject} className="space-y-4">
+          <p className="text-sm">{t("projects.deleteConfirmBody", { wbs: data.project.wbs, name: pick(data.project.name) })}</p>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="action" disabled={busy} onClick={closeModal}>
+              {t("common.cancel")}
+            </button>
+            <button type="submit" className="bg-kmx-red px-4 py-2 text-sm font-bold text-white rounded-sm disabled:opacity-50" disabled={busy}>
+              {busy ? t("projects.deleting") : t("projects.deleteConfirmBtn")}
+            </button>
+          </div>
         </form>
       )}
     </ResultsModal>}

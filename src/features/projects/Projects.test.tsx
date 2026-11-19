@@ -7,7 +7,7 @@ import * as api from "../../lib/api";
 import * as resultsApi from "../../lib/results-api";
 import { I18nProvider } from "../../lib/i18n";
 vi.mock("../../lib/results-api", () => ({ saveResultsCommitment: vi.fn(), resultsDetail: vi.fn(), saveResultsActivity: vi.fn(), saveResultsBlocker: vi.fn(), requestActivityRevision: vi.fn(), reviewResultsDeliverable: vi.fn(), setResultsClosure: vi.fn(), resolveResultsConflict: vi.fn(), attachResultsEvidence: vi.fn(), readResultsEvidence: vi.fn() }));
-vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn(), projectDetail: vi.fn(), plantCatalogs: vi.fn(), reorderProjects: vi.fn() }));
+vi.mock("../../lib/api", () => ({ projectsOverview: vi.fn(), createProject: vi.fn(), projectDetail: vi.fn(), plantCatalogs: vi.fn(), reorderProjects: vi.fn(), deleteProject: vi.fn() }));
 afterEach(() => {
   cleanup();
   window.localStorage.removeItem("easyfab.lang");
@@ -283,6 +283,32 @@ it("muestra la prioridad activa y permite al supervisor reordenar proyectos con 
   await screen.findByText("Prioridad de proyectos actualizada.");
 });
 
+it("ofrece acciones rápidas de prioridad (primera, subir uno, abajo y al final) en el modal", async () => {
+  const user = userEvent.setup();
+  const p1: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Uno", priority: 1 };
+  const p2: api.Project = { ...project, id: "PRJ-2", wbs: "FAB-02", name: "Dos", priority: 2 };
+  const p3: api.Project = { ...project, id: "PRJ-3", wbs: "FAB-03", name: "Tres", priority: 3 };
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [p1, p2, p3], can_create: true });
+  vi.mocked(api.reorderProjects).mockResolvedValue({
+    ...overview,
+    projects: [{ ...p1, priority: 1 }, { ...p3, priority: 2 }, { ...p2, priority: 3 }],
+    can_create: true,
+  });
+
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+
+  fireEvent.contextMenu(screen.getByText("#2"));
+  expect(screen.getByRole("button", { name: /Enviar primera \(#1\)/ })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Subir uno/ })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Enviar abajo/ })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: /Enviar al final \(#3\)/ }));
+
+  expect(api.reorderProjects).toHaveBeenCalledWith(["PRJ-1", "PRJ-3", "PRJ-2"]);
+  await screen.findByText("Prioridad de proyectos actualizada.");
+});
+
 it("no abre el modal de prioridad con clic derecho para no supervisores", async () => {
   const p1: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Proyecto Uno", priority: 1 };
   const p2: api.Project = { ...project, id: "PRJ-2", wbs: "FAB-02", name: "Proyecto Dos", priority: 2 };
@@ -405,4 +431,48 @@ it("integra Actualizar y Nuevo proyecto en la misma barra del cronograma y omite
   expect(toolbar).toBeTruthy();
   expect(toolbar?.contains(screen.getByRole("button", { name: "Actualizar proyectos" }))).toBe(true);
   expect(toolbar?.contains(screen.getByRole("button", { name: "Nuevo proyecto" }))).toBe(true);
+});
+
+it("permite al supervisor eliminar un proyecto con confirmación y lo oculta a no supervisores", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [project], can_create: true });
+  vi.mocked(api.deleteProject).mockResolvedValue({ ...overview, projects: [], can_create: true });
+  vi.mocked(resultsApi.resultsDetail).mockResolvedValue({
+    project,
+    commitment: null,
+    baseline: null,
+    activities: [],
+    blockers: [],
+    reviews: [],
+    closure: null,
+    capabilities: { can_plan_activities: true, can_change_commitment: true, can_review_deliverables: true, can_resolve_blockers: true },
+    history: [],
+    conflicts: [],
+    plan_issues: [],
+    legacy_entries: [],
+  });
+
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+  await user.click(screen.getByRole("button", { name: "FAB-1 · Fixture project" }));
+  await screen.findByText("Definir el resultado antes de planear");
+
+  await user.click(screen.getByRole("button", { name: "Eliminar proyecto" }));
+  expect(screen.getByRole("dialog", { name: "Eliminar proyecto" })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+  await waitFor(() => expect(api.deleteProject).toHaveBeenCalledWith(project.id));
+  await screen.findByText("Proyecto eliminado.");
+  expect(screen.queryByRole("button", { name: "FAB-1 · Fixture project" })).toBeNull();
+
+  // No supervisor no ve botón de eliminar
+  cleanup();
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [project], can_create: false });
+  render(<Projects />);
+  await screen.findByLabelText("Fecha de referencia");
+  fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
+  await user.click(screen.getByRole("button", { name: "FAB-1 · Fixture project" }));
+  await screen.findByText("Definir el resultado antes de planear");
+  expect(screen.queryByRole("button", { name: "Eliminar proyecto" })).toBeNull();
 });

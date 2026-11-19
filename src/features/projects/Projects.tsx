@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { createProject, plantCatalogs, projectsOverview, reorderProjects, type CatalogItem, type NewProject, type Project, type ProjectsOverview } from "../../lib/api";
+import { createProject, deleteProject, plantCatalogs, projectsOverview, reorderProjects, type CatalogItem, type NewProject, type Project, type ProjectsOverview } from "../../lib/api";
 import { useI18n } from "../../lib/i18n";
 import { saveResultsCommitment, saveResultsActivity, type ResultsDeliverable } from "../../lib/results-api";
 import { ProjectTimeline } from "./ProjectTimeline";
@@ -143,6 +143,13 @@ export function Projects() {
       setSaving(false);
     }
   }
+  async function handleDelete(projectId: string) {
+    if (!data?.can_create) return;
+    const updated = await deleteProject(projectId);
+    setData(updated);
+    setSelected(null);
+    setNotice(t("projects.deletedNotice"));
+  }
   const toolbarActions = (
     <>
       <button className="action" disabled={loading || saving} onClick={reload} aria-label={t("projects.refresh")} title={t("projects.refresh")}><span aria-hidden="true">⟳</span></button>
@@ -242,7 +249,13 @@ export function Projects() {
       </form>
     </ResultsModal>}
     {selected && <ResultsModal title={(() => { const found = data?.projects.find(p => p.id === selected); return found ? pick(found.name) : t("projects.detail"); })()} busy={detailBusy} onClose={closeDetail} wide hideHeader>
-      <ResultsWork key={selected} projectId={selected} onBack={closeDetail} onBusyChange={setDetailBusy} />
+      <ResultsWork
+        key={selected}
+        projectId={selected}
+        onBack={closeDetail}
+        onBusyChange={setDetailBusy}
+        onDelete={data?.can_create ? () => handleDelete(selected) : undefined}
+      />
     </ResultsModal>}
   </>;
 }

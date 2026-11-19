@@ -1,8 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Check, Clock, Hammer, Pause, type LucideIcon } from "lucide-react";
+import { Check, Clock, Hammer, HelpCircle, Pause, type LucideIcon } from "lucide-react";
 import type { Project, ProjectsOverview } from "../../lib/api";
 import { localeForLang, useI18n } from "../../lib/i18n";
-import { compactArea, formatStackedGroup } from "./compactLabels";
+import { compactArea, formatStackedGroup, toInitials } from "./compactLabels";
 import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
 import { ResultsModal } from "./ResultsWorkModal";
 import { movePeriod, overlaps, periodRange, todayKey, type Period } from "./timeline";
@@ -73,6 +73,9 @@ export function ProjectTimeline({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [anchor, setAnchor] = useState(todayKey);
   const [hoveredBar, setHoveredBar] = useState<HoveredProjectBar | null>(null);
+  const [showPriorityTooltip, setShowPriorityTooltip] = useState(false);
+  const [showStatusTooltip, setShowStatusTooltip] = useState(false);
+  const [showOwnersTooltip, setShowOwnersTooltip] = useState(false);
   const [priorityModal, setPriorityModal] = useState<PriorityTarget | null>(null);
   const [priorityValue, setPriorityValue] = useState("");
   const range = periodRange(anchor, period, locale);
@@ -85,6 +88,14 @@ export function ProjectTimeline({
     return p.status !== "Completed";
   });
   const projects = statusProjects.filter(p => overlaps(p.start_date, p.target_date, range.start, range.end));
+  const ownerReference = Array.from(
+    new Map(
+      [
+        ...data.leads.map(l => [l.id, l.name] as const),
+        ...data.projects.flatMap(p => p.engineer_ids.map(id => [id, data.leads.find(l => l.id === id)?.name ?? id] as const)),
+      ]
+    ).entries()
+  ).map(([id, name]) => ({ id, name, initials: toInitials(name) }));
 
   function openPriorityModal(target: PriorityTarget) {
     if (!canReorder) return;
@@ -92,24 +103,28 @@ export function ProjectTimeline({
     setPriorityValue(String(target.rank));
   }
 
-  function submitPriority(event: FormEvent) {
-    event.preventDefault();
+  function movePriorityTo(targetIndex: number) {
     if (!priorityModal || !onReorder) return;
     const currentIndex = data.projects.findIndex(p => p.id === priorityModal.id);
     if (currentIndex === -1) {
       setPriorityModal(null);
       return;
     }
-    const parsed = Number.parseInt(priorityValue, 10);
-    if (!Number.isFinite(parsed)) return;
-    const targetIndex = Math.max(0, Math.min(data.projects.length - 1, parsed - 1));
-    if (targetIndex !== currentIndex) {
+    const clamped = Math.max(0, Math.min(data.projects.length - 1, targetIndex));
+    if (clamped !== currentIndex) {
       const reordered = [...data.projects];
       const [removed] = reordered.splice(currentIndex, 1);
-      reordered.splice(targetIndex, 0, removed);
+      reordered.splice(clamped, 0, removed);
       onReorder(reordered.map(p => p.id));
     }
     setPriorityModal(null);
+  }
+
+  function submitPriority(event: FormEvent) {
+    event.preventDefault();
+    const parsed = Number.parseInt(priorityValue, 10);
+    if (!Number.isFinite(parsed)) return;
+    movePriorityTo(parsed - 1);
   }
 
   return (
@@ -179,8 +194,37 @@ export function ProjectTimeline({
             </caption>
             <thead>
               <tr>
-                <th scope="col" rowSpan={2} title={t("timeline.col.priorityTitle")}>
-                  {t("timeline.col.priority")}
+                <th
+                  scope="col"
+                  rowSpan={2}
+                  className="schedule-status-th"
+                  title={!canReorder ? t("timeline.col.priorityTitle") : undefined}
+                  onMouseEnter={canReorder ? () => setShowPriorityTooltip(true) : undefined}
+                  onMouseLeave={canReorder ? () => setShowPriorityTooltip(false) : undefined}
+                >
+                  {canReorder ? (
+                    <>
+                      <button
+                        type="button"
+                        className="schedule-status-help-trigger"
+                        aria-label={t("timeline.col.priorityTitle")}
+                        onFocus={() => setShowPriorityTooltip(true)}
+                        onBlur={() => setShowPriorityTooltip(false)}
+                        onClick={() => setShowPriorityTooltip(open => !open)}
+                      >
+                        <span>{t("timeline.col.priority")}</span>
+                        <HelpCircle size={12} aria-hidden="true" />
+                      </button>
+                      {showPriorityTooltip && (
+                        <div className="schedule-status-tooltip is-left" role="tooltip">
+                          <p className="schedule-status-tooltip-title">{t("timeline.col.priorityTitle")}</p>
+                          <p className="m-0">{t("timeline.legendReorder").replace(/^\s*·\s*/, "")}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    t("timeline.col.priority")
+                  )}
                 </th>
                 <th scope="col" rowSpan={2}>
                   {t("timeline.col.wbsProject")}
@@ -191,18 +235,89 @@ export function ProjectTimeline({
                 <th scope="col" rowSpan={2}>
                   {t("timeline.col.dates")}
                 </th>
-                <th scope="col" rowSpan={2} title={t("common.status")}>
-                  {t("timeline.col.statusShort")}
+                <th
+                  scope="col"
+                  rowSpan={2}
+                  className="schedule-status-th"
+                  onMouseEnter={() => setShowStatusTooltip(true)}
+                  onMouseLeave={() => setShowStatusTooltip(false)}
+                >
+                  <button
+                    type="button"
+                    className="schedule-status-help-trigger"
+                    aria-label={t("common.status")}
+                    onFocus={() => setShowStatusTooltip(true)}
+                    onBlur={() => setShowStatusTooltip(false)}
+                    onClick={() => setShowStatusTooltip(open => !open)}
+                  >
+                    <span>{t("timeline.col.statusShort")}</span>
+                    <HelpCircle size={12} aria-hidden="true" />
+                  </button>
+                  {showStatusTooltip && (
+                    <div className="schedule-status-tooltip" role="tooltip">
+                      <p className="schedule-status-tooltip-title">{t("common.status")}</p>
+                      <ul className="schedule-status-tooltip-list">
+                        {(["Not Started", "In Progress", "Completed", "On Hold"] as const).map(status => {
+                          const StatusIcon = STATUS_META[status].Icon;
+                          return (
+                            <li key={status}>
+                              <span className={`schedule-status-badge ${STATUS_META[status].className}`} aria-hidden="true">
+                                <StatusIcon size={12} strokeWidth={2.25} />
+                              </span>
+                              <span>{statuses[status]}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </th>
-                <th scope="col" rowSpan={2}>
-                  {t("timeline.col.ownerShort")}
+                <th
+                  scope="col"
+                  rowSpan={2}
+                  className="schedule-status-th"
+                  onMouseEnter={ownerReference.length ? () => setShowOwnersTooltip(true) : undefined}
+                  onMouseLeave={ownerReference.length ? () => setShowOwnersTooltip(false) : undefined}
+                >
+                  {ownerReference.length ? (
+                    <>
+                      <button
+                        type="button"
+                        className="schedule-status-help-trigger"
+                        aria-label={t("common.responsible")}
+                        onFocus={() => setShowOwnersTooltip(true)}
+                        onBlur={() => setShowOwnersTooltip(false)}
+                        onClick={() => setShowOwnersTooltip(open => !open)}
+                      >
+                        <span>{t("timeline.col.ownerShort")}</span>
+                        <HelpCircle size={12} aria-hidden="true" />
+                      </button>
+                      {showOwnersTooltip && (
+                        <div className="schedule-status-tooltip" role="tooltip">
+                          <p className="schedule-status-tooltip-title">{t("common.responsible")}</p>
+                          <ul className="schedule-status-tooltip-list">
+                            {ownerReference.map(owner => (
+                              <li key={owner.id}>
+                                <span className="schedule-compact-pill is-person" aria-hidden="true">
+                                  {owner.initials}
+                                </span>
+                                <span>{owner.name}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    t("timeline.col.ownerShort")
+                  )}
                 </th>
                 <th scope="colgroup" colSpan={range.columns.length} className="schedule-range">
                   {period === "year"
                     ? anchor.slice(0, 4)
                     : new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
-                        new Date(`${anchor}T00:00:00Z`)
-                      )}
+                      new Date(`${anchor}T00:00:00Z`)
+                    )}
                 </th>
               </tr>
               <tr>
@@ -342,9 +457,8 @@ export function ProjectTimeline({
                           {active && (
                             <span
                               tabIndex={0}
-                              className={`schedule-bar ${p.status === "Completed" ? "is-complete" : p.status === "On Hold" ? "is-paused" : ""} ${
-                                !prevActive ? "is-start" : ""
-                              } ${!nextActive ? "is-end" : ""}`}
+                              className={`schedule-bar ${p.status === "Completed" ? "is-complete" : p.status === "On Hold" ? "is-paused" : ""} ${!prevActive ? "is-start" : ""
+                                } ${!nextActive ? "is-end" : ""}`}
                               aria-label={t("timeline.barAriaLabel", { name: displayName, start: p.start_date, end: p.target_date })}
                               onMouseEnter={() =>
                                 setHoveredBar({ projectId: p.id, colIndex, rowIndex, data: tooltipData })
@@ -384,61 +498,83 @@ export function ProjectTimeline({
 
       <div className="schedule-legend">
         <span className="schedule-legend-bar" aria-hidden="true" />
-        <span>
-          {t("timeline.legendBase")}
-          {canReorder && t("timeline.legendReorder")}
-        </span>
-        <span className="schedule-legend-statuses" aria-label={t("common.status")}>
-          {(["Not Started", "In Progress", "Completed", "On Hold"] as const).map(status => {
-            const StatusIcon = STATUS_META[status].Icon;
-            return (
-              <span key={status} className="schedule-legend-status-item">
-                <span className={`schedule-status-badge ${STATUS_META[status].className}`} aria-hidden="true">
-                  <StatusIcon size={12} strokeWidth={2.25} />
-                </span>
-                {statuses[status]}
-              </span>
-            );
-          })}
-        </span>
+        <span>{t("timeline.legendBase")}</span>
       </div>
 
-      {priorityModal && (
-        <ResultsModal
-          title={t("timeline.priorityModalTitle")}
-          busy={false}
-          onClose={() => setPriorityModal(null)}
-        >
-          <form onSubmit={submitPriority} className="space-y-4">
-            <p className="text-sm text-kmx-gray-600">
-              {t("timeline.priorityModalCurrent", {
-                wbs: priorityModal.wbs,
-                name: priorityModal.name,
-                rank: priorityModal.rank,
-              })}
-            </p>
-            <label className="field">
-              {t("timeline.priorityModalLabel", { max: data.projects.length })}
-              <input
-                type="number"
-                min={1}
-                max={data.projects.length}
-                required
-                value={priorityValue}
-                onChange={e => setPriorityValue(e.target.value)}
-              />
-            </label>
-            <div className="flex justify-end gap-2">
-              <button type="button" className="action" onClick={() => setPriorityModal(null)}>
-                {t("common.cancel")}
-              </button>
-              <button type="submit" className="btn-primary">
-                {t("timeline.priorityModalSave")}
-              </button>
-            </div>
-          </form>
-        </ResultsModal>
-      )}
+      {priorityModal && (() => {
+        const currentIndex = data.projects.findIndex(p => p.id === priorityModal.id);
+        const lastIndex = data.projects.length - 1;
+        return (
+          <ResultsModal
+            title={t("timeline.priorityModalTitle")}
+            busy={false}
+            onClose={() => setPriorityModal(null)}
+          >
+            <form onSubmit={submitPriority} className="space-y-4">
+              <p className="text-sm text-kmx-gray-600">
+                {t("timeline.priorityModalCurrent", {
+                  wbs: priorityModal.wbs,
+                  name: priorityModal.name,
+                  rank: priorityModal.rank,
+                })}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="action text-xs"
+                  disabled={currentIndex <= 0}
+                  onClick={() => movePriorityTo(0)}
+                >
+                  ⤒ {t("timeline.priorityQuickFirst")}
+                </button>
+                <button
+                  type="button"
+                  className="action text-xs"
+                  disabled={currentIndex <= 0}
+                  onClick={() => movePriorityTo(currentIndex - 1)}
+                >
+                  ↑ {t("timeline.priorityQuickUp")}
+                </button>
+                <button
+                  type="button"
+                  className="action text-xs"
+                  disabled={currentIndex === -1 || currentIndex >= lastIndex}
+                  onClick={() => movePriorityTo(currentIndex + 1)}
+                >
+                  ↓ {t("timeline.priorityQuickDown")}
+                </button>
+                <button
+                  type="button"
+                  className="action text-xs"
+                  disabled={currentIndex === -1 || currentIndex >= lastIndex}
+                  onClick={() => movePriorityTo(lastIndex)}
+                >
+                  ⤓ {t("timeline.priorityQuickLast", { max: data.projects.length })}
+                </button>
+              </div>
+              <label className="field">
+                {t("timeline.priorityModalLabel", { max: data.projects.length })}
+                <input
+                  type="number"
+                  min={1}
+                  max={data.projects.length}
+                  required
+                  value={priorityValue}
+                  onChange={e => setPriorityValue(e.target.value)}
+                />
+              </label>
+              <div className="flex justify-end gap-2">
+                <button type="button" className="action" onClick={() => setPriorityModal(null)}>
+                  {t("common.cancel")}
+                </button>
+                <button type="submit" className="btn-primary">
+                  {t("timeline.priorityModalSave")}
+                </button>
+              </div>
+            </form>
+          </ResultsModal>
+        );
+      })()}
     </div>
   );
 }

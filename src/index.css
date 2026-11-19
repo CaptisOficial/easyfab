@@ -504,6 +504,81 @@ progress {
   border: 1px solid #fcd34d;
 }
 
+.schedule-status-th {
+  position: relative;
+}
+
+.schedule-status-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem;
+  color: inherit;
+  font-weight: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.schedule-status-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  min-width: 150px;
+  padding: .55rem .7rem;
+  border-radius: .375rem;
+  background: var(--kmx-carbon, #111);
+  color: var(--kmx-white, #fff);
+  border: 1px solid color-mix(in srgb, var(--kmx-lime, #69be28) 55%, transparent);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .28);
+  text-align: left;
+  font-size: .74rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.schedule-status-tooltip.is-left {
+  left: 4px;
+  transform: none;
+}
+
+.schedule-status-tooltip.is-right {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+:root[data-theme="dark"] .schedule-status-tooltip {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: var(--kmx-lime, #69be28);
+}
+
+.schedule-status-tooltip-title {
+  margin: 0 0 .35rem;
+  font-size: .64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--kmx-lime, #69be28);
+}
+
+.schedule-status-tooltip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .3rem;
+}
+
+.schedule-status-tooltip-list li {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
 .schedule-legend {
   display: flex;
   align-items: center;
@@ -520,20 +595,6 @@ progress {
   flex-shrink: 0;
   background: #15803d;
   border-radius: 2px;
-}
-
-.schedule-legend-statuses {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: .55rem;
-  margin-left: auto;
-}
-
-.schedule-legend-status-item {
-  display: inline-flex;
-  align-items: center;
-  gap: .25rem;
 }
 
 @media (max-width: 768px) {

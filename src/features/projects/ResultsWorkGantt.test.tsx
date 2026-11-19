@@ -199,4 +199,88 @@ describe("ProjectTimeline compacto y tooltip", () => {
     expect(screen.getByRole("button", { name: "FAB-10 · Welding Line" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "Frame Welding" })).toBeTruthy();
   });
+
+  it("muestra la referencia visual de símbolos de estado en un tooltip sobre el encabezado de estado", () => {
+    const data: ProjectsOverview = {
+      can_create: false,
+      write_message: "Solo lectura",
+      leads: [{ id: "eng1", name: "Juan Pérez" }],
+      projects: [
+        {
+          id: "PRJ-1",
+          wbs: "FAB-10",
+          name: "Línea Soldadura",
+          process_area: "Soldadura",
+          engineer_ids: ["eng1"],
+          start_date: "2026-11-01",
+          target_date: "2026-11-20",
+          status: "In Progress",
+        },
+      ],
+    };
+
+    render(<ProjectTimeline data={data} onOpen={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-11-05" } });
+
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    const statusTrigger = screen.getByRole("button", { name: "Estado" });
+    fireEvent.focus(statusTrigger);
+    const tip = screen.getByRole("tooltip");
+    expect(within(tip).getByText("Sin iniciar")).toBeTruthy();
+    expect(within(tip).getByText("En curso")).toBeTruthy();
+    expect(within(tip).getByText("Completado")).toBeTruthy();
+    expect(within(tip).getByText("En pausa")).toBeTruthy();
+
+    fireEvent.blur(statusTrigger);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("muestra el tooltip de ayuda para cambiar prioridad en el encabezado # cuando el usuario puede reordenar", () => {
+    const data: ProjectsOverview = {
+      can_create: true,
+      write_message: "",
+      leads: [{ id: "eng1", name: "Juan Pérez" }],
+      projects: [
+        {
+          id: "PRJ-1",
+          wbs: "FAB-10",
+          name: "Línea Soldadura",
+          process_area: "Soldadura",
+          engineer_ids: ["eng1"],
+          start_date: "2026-11-01",
+          target_date: "2026-11-20",
+          status: "In Progress",
+        },
+        {
+          id: "PRJ-2",
+          wbs: "FAB-11",
+          name: "Línea Pintura",
+          process_area: "Pintura",
+          engineer_ids: ["eng1"],
+          start_date: "2026-11-01",
+          target_date: "2026-11-20",
+          status: "Not Started",
+        },
+      ],
+    };
+
+    render(<ProjectTimeline data={data} onOpen={vi.fn()} onReorder={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-11-05" } });
+
+    const priorityTrigger = screen.getByRole("button", { name: "Prioridad" });
+    fireEvent.focus(priorityTrigger);
+    const tip = screen.getByRole("tooltip");
+    expect(within(tip).getByText("Clic derecho en # para cambiar la prioridad.")).toBeTruthy();
+
+    fireEvent.blur(priorityTrigger);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    const ownersTrigger = screen.getByRole("button", { name: "Responsable" });
+    fireEvent.focus(ownersTrigger);
+    const ownersTip = screen.getByRole("tooltip");
+    expect(within(ownersTip).getByText("JP")).toBeTruthy();
+    expect(within(ownersTip).getByText("Juan Pérez")).toBeTruthy();
+    fireEvent.blur(ownersTrigger);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
 });

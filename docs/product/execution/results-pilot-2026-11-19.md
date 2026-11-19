@@ -85,3 +85,15 @@ La regresión DOM usa una actividad terminada al 100 %, sin adjuntos y con un
 criterio que exige evidencia: el encabezado conserva proyecto En curso, muestra
 el conteo de actividades y no declara cumplimiento ni avance general. Esta
 comprobación usa IPC simulado; la ventana abierta mantiene su binario anterior.
+
+`npm.cmd test` terminó con código 0: 206 casos de contratos, 180 pruebas frontend
+y 62 Rust en ese corte. La primera ejecución de Gate 0 falló al arrancar workers
+Vitest por timeout (16 errores de inicio); no se consideró aprobada. La repetición
+usa `VITEST_MAX_WORKERS=2` solo en el proceso de comprobación, sin cambiar la
+configuración del repositorio. Contratos, TypeScript, cargo check y 182 pruebas
+frontend aprobaron en esa repetición; el aumento de casos corresponde a cambios
+concurrentes ajenos del árbol. La repetición de Gate 0 terminó con código 0:
+63 Rust y pruebas de cambio/rollback de layout aprobadas, además de las
+comprobaciones anteriores. `git diff --check` aprobado para el alcance.
+Revisión React del cambio: conteos derivados sin estado/efectos nuevos,
+textos accesibles en es/en y eliminación del porcentaje sin fórmula de producto.

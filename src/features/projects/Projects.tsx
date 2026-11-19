@@ -143,16 +143,23 @@ export function Projects() {
       setSaving(false);
     }
   }
+  const toolbarActions = (
+    <>
+      <button className="action" disabled={loading || saving} onClick={reload} aria-label={t("projects.refresh")} title={t("projects.refresh")}><span aria-hidden="true">⟳</span></button>
+      {data?.can_create && <button className="btn-primary" disabled={loading || saving} onClick={() => { setShowCreate(true); setError(""); }}><span aria-hidden="true">+ </span>{t("projects.new")}</button>}
+    </>
+  );
   return <>
-    <section className="min-w-0 w-full mx-auto space-y-4" aria-labelledby="projects-title">
-      <div className="flex items-center justify-between gap-3"><h3 id="projects-title" className="sr-only">{t("projects.title")}</h3>
-        <button className="border px-3 py-2" disabled={loading || saving} onClick={reload} aria-label={t("projects.refresh")}><span aria-hidden="true">⟳</span></button>
-        {data?.can_create && <button className="btn-primary" disabled={loading || saving} onClick={() => { setShowCreate(true); setError(""); }}><span aria-hidden="true">+ </span>{t("projects.new")}</button>}
-      </div>
+    <section className="min-w-0 w-full mx-auto space-y-3" aria-labelledby="projects-title">
+      <h3 id="projects-title" className="sr-only">{t("projects.title")}</h3>
+      {!data && <div className="flex items-center justify-end gap-2">{toolbarActions}</div>}
       {loading && <p role="status">{t("projects.loading")}</p>}
       {error && !showCreate && <p role="alert" className="text-kmx-red">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      {data && <><p className="text-sm">{tError(data.write_message)}</p><ProjectTimeline data={data} onOpen={setSelected} onReorder={data.can_create ? handleReorder : undefined} /></>}
+      {data && <>
+        {!data.can_create && data.write_message && <p className="text-sm text-kmx-gray-600">{tError(data.write_message)}</p>}
+        <ProjectTimeline data={data} onOpen={setSelected} onReorder={data.can_create ? handleReorder : undefined} actions={toolbarActions} />
+      </>}
     </section>
     {showCreate && data?.can_create && <ResultsModal title={t("projects.registerTitle")} closeLabel={t("projects.closeRegister")} busy={saving} onClose={() => setShowCreate(false)} wide>
       {error && <p role="alert" className="results-error">{error}</p>}

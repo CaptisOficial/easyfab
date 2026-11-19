@@ -285,6 +285,14 @@ fn isolated_project_journey() {
         assert_eq!(fs::read(&path).unwrap(), corrupt);
     }
     fs::write(&path, &saved).unwrap();
+    // Delete authorization and priority renumbering
+    assert!(delete(&dir, &sessions[0], &info.id, &first.id).is_err());
+    assert!(delete(&dir, &admin, &info.id, &first.id).is_err());
+    assert!(delete(&dir, &sessions[1], &info.id, "PRJ-missing").is_err());
+    let after_delete = delete(&dir, &sessions[1], &info.id, &first.id).unwrap();
+    assert_eq!(after_delete.projects.len(), 1);
+    assert_eq!(after_delete.projects[0].priority, Some(1));
+    fs::write(&path, &saved).unwrap();
     auth::set_user_active(&dir, &admin, "engineer", false).unwrap();
     assert!(policy(&dir, &sessions[0], &info.id, &first.id).is_err());
     assert!(overview(&dir, &sessions[0], &info.id).is_err());

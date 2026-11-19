@@ -66,6 +66,20 @@ pub(crate) fn reorder_projects(
         project_ids,
     )
 }
+#[tauri::command]
+pub(crate) fn delete_project(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<projects::Overview, String> {
+    let guard = state.session.lock().map_err(|_| "Estado no disponible.")?;
+    let session = guard.as_ref().ok_or("Ingresa primero.")?;
+    projects::delete(
+        &data_path(&state)?,
+        session,
+        &workspace_id(&state)?,
+        &project_id,
+    )
+}
 
 #[cfg(test)]
 mod tests {
@@ -119,6 +133,18 @@ mod tests {
             serde_json::json!("Ingresa primero.")
         );
         assert!(call("reorder_projects", serde_json::json!({}))
+            .err()
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("invalid args"));
+        assert_eq!(
+            call("delete_project", serde_json::json!({"projectId":"p1"}))
+                .err()
+                .unwrap(),
+            serde_json::json!("Ingresa primero.")
+        );
+        assert!(call("delete_project", serde_json::json!({}))
             .err()
             .unwrap()
             .as_str()

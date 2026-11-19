@@ -35,7 +35,7 @@ Cada fila es un alcance verificable. Los hitos agrupan historias, sin otro estad
 | 3 · Validar cierre | Supervisor acepta/devuelve entregables sobre solicitud explícita con evidencia; 100 de actividad no solicita ni concede aprobación en el flujo por resultados | en curso | R6 comprobada: decisiones firmadas, cierre del conjunto, reapertura y recuperación de revisiones antiguas. Pendiente aceptación nativa R7b | [Evidencia integrada](execution/results-flow-acceptance.md) |
 | 4 · Incidencias | Registrar paro/scrap sin pérdida ni duplicación; correcciones como eventos | en curso | Código usa issue_events y lectura legacy de issues.json; reconciliar contrato/layout y verificar protocolo D01 entre equipos; confirmar nombre FAB | — |
 | 4 · Panorama y capacidad | Totales y calendario coinciden con fixtures; datos faltantes explícitos | pendiente | Reglas FAB D05 | — |
-| 5 · Reporte semanal | Exportar periodo a Excel oficial preservando datos, fórmulas, tablas, estilos e impresión | en curso | Código de snapshot y exportación presente en reporting.rs; seleccionar/validar plantilla D06 y comprobar Excel oficial | — |
+| 5 · Reporte semanal | Exportar periodo a Excel oficial preservando datos, fórmulas, tablas, estilos e impresión | en curso | Exportación con espera de Excel limitada a 120 s, sesión liberada durante generación y revalidada antes de publicar; apertura automática del archivo guardado con aviso si falla. Corte 2026-11-19: 182 pruebas frontend y 63 Rust aprobadas, TypeScript y cargo check aprobados; detalles debajo. Pendientes D06, Excel oficial, timeout COM y apertura nativa | [Flujo y contrato](../../contracts/v1/reporting.md), `src-tauri/src/reporting.rs`, `src/features/home/WeeklyReport.test.tsx` |
 | 6 · Contrato de preferencias | Esquema local cerrado y defaults comprobados; sin persistencia ni UI | terminada | Consumidores en fila siguiente | [Contrato](execution/preferences-contract-acceptance.md) |
 | 6 · Preferencias persistentes | Aislar opciones por espacio/usuario, recuperar inválidas y restablecer sin tocar referencia, llave ni datos | en curso | Persistencia, IPC y controles presentes; completar comprobación del consumidor según política, aislamiento/reset y aceptación nativa | [Política](../architecture/preferencias.md) |
 | 6 · Internacionalización (i18n) Español / Inglés | Mover textos a catálogos centralizados (es/en), proveer selector de idioma accesible (pre-login, barra superior y preferencias), soportar datos de negocio bilingües `"Español \| Inglés"` sin nuevos campos (`pick()` en lectura con fallback a español y texto completo en edición), traducir errores del backend Rust y exportar el reporte semanal en un libro Excel de dos hojas (`Reporte Semanal (ES)` y `Weekly Report (EN)`) | en curso | `src/lib/i18n.tsx`, `src/lib/bilingual.ts` y `src/lib/errors.ts` integrados en todas las vistas; `typecheck`, `vite build`, 22 suites / 177 pruebas frontend (Vitest) y 60 pruebas Rust aprobados. `test:contracts` pendiente en este equipo por ausencia de `pwsh` (PowerShell 7); pendiente validación visual nativa en WebView y Excel de escritorio | `src/lib/i18n.tsx`, `src/lib/bilingual.ts`, `src/lib/errors.ts`, `src-tauri/resources/export_weekly.ps1`, [preferencias](../architecture/preferencias.md) |
@@ -44,7 +44,7 @@ Cada fila es un alcance verificable. Los hitos agrupan historias, sin otro estad
 
 **Prioridad seleccionada (2026-11-19):** R7b, aceptación nativa y piloto operativo: valida el recorrido integrado y consume las comprobaciones de captura, colaboración, evidencias y cierre. Se preparó el [recorrido y registro de observaciones](execution/results-pilot-runbook.md). Alan confirmó participantes y dos equipos disponibles, autorizó usar la carpeta habitual y completó la compilación. Raíz/manifiesto y hash local verificados; consulta inicial Supervisor observada en WebView. `npm.cmd test` aprobado: 206 casos de contratos, 179 frontend y 60 Rust. [Evidencia del corte](execution/results-flow-acceptance.md#comprobación-del-2026-11-19). Falta ejecutar el caso sintético completo, comprobar el binario y la sincronización del segundo equipo y medir captura/comprensión. Preparación y disponibilidad no acreditan el piloto. D01, D04, D05 y D06 bloquean únicamente sus consumidores.
 
-Continuación del piloto: respaldo local de 108 archivos verificado; alta del proyecto sintético WBS 21 y compromiso con dos entregables para Alexa/Brenda comprobados. Captura local con sesión Alexa al 100 % persistida, autoría conservada y proyecto En curso observados en WebView. El operador aclaró que usó el mismo equipo: sincronización aún sin comprobar. Hallazgo: encabezado presenta cumplimiento de entregables y avance general calculados por actividades terminadas, sin acreditar criterios/evidencias; resolver esta presentación conforme al catálogo. Faltan adjuntos, evaluación/cierre, segundo equipo, desconexión/conflictos y mediciones humanas. [Observaciones de la sesión](execution/results-pilot-2026-11-19.md).
+Continuación del piloto: respaldo local de 108 archivos verificado; alta del proyecto sintético WBS 21 y compromiso con dos entregables para Alexa/Brenda comprobados. Captura local con sesión Alexa al 100 % persistida, autoría conservada y proyecto En curso observados en WebView. El operador aclaró que usó el mismo equipo: sincronización aún sin comprobar. Se corrigió el encabezado: entregables definidos y actividades terminadas separados, sin atribuir cumplimiento ni porcentaje general al conteo de actividades; npm test aprobado; Gate 0 repetido con dos workers aprobado (206 contratos, 182 frontend y 63 Rust). Falta revisar la corrección en un nuevo binario y completar adjuntos, evaluación/cierre, segundo equipo, desconexión/conflictos y mediciones humanas. [Observaciones de la sesión](execution/results-pilot-2026-11-19.md).
 
 ## Evolución hacia planeación y cierre por resultados
 
@@ -248,6 +248,22 @@ Los siguientes criterios desarrollan las filas anteriores; no constituyen otra l
 
 - **Plantilla oficial Excel:** D06: Alan selecciona versión oficial; inspeccionar hojas, tablas, fórmulas, estilos e impresión y fijar fixture autorizado.
 - **Exportación KMX-FW:** Snapshot consistente, plantilla oficial preservada y comparación de valores, tablas, fórmulas e impresión; salida en exports del espacio activo.
+
+Comprobación del 2026-11-19: `npm.cmd test` falló inicialmente al iniciar workers
+de Vitest. `pwsh -NoProfile -File scripts/verify_contracts.ps1` aprobó contratos
+(206 casos), TypeScript, `cargo check` y frontend (182 pruebas); se detuvo al enlazar
+Rust por LNK1104: otro proceso retiene el ejecutable de pruebas. No se declara
+Gate 0 aprobado. Para verificar Rust sin interrumpir ese proceso se compiló un
+arnés con nombre independiente usando `cargo rustc --manifest-path
+src-tauri/Cargo.toml --lib --profile test -- -C extra-filename=-weekly-review` y se
+ejecutó `src-tauri/target/debug/deps/easyfab_lib-weekly-review.exe`: 63 pruebas
+aprobadas. Incluyen timeout/fallo/éxito del proceso, publicación antes de apertura,
+fallo de apertura sin pérdida de ruta y rechazo IPC sin sesión. La prueba aislada
+`scripts/upgrade_profile_layout.Tests.ps1` también aprobó. Se interrumpió el
+reintento serial de frontend tras aprobar la suite completa en Gate 0.
+Estas comprobaciones no acreditan generación ni apertura con Excel de escritorio;
+falta compilar y validar el recorrido nativo y la plantilla D06. El límite de
+120 s cubre el proceso de Excel, no las lecturas del espacio compartido.
 
 ### 6. Uso validado
 

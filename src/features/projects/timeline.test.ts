@@ -27,3 +27,13 @@ it("formatea etiquetas de columnas según el locale del idioma", () => {
   expect(esYear.columns[0].label.toLowerCase()).toContain("ene");
   expect(enYear.columns[0].label.toLowerCase()).toContain("jan");
 });
+it("en vista mensual muestra solo el número de día y marca sábados y domingos como fin de semana", () => {
+  const nov = periodRange("2026-11-15", "month", "es-MX");
+  // 2026-11-01 es domingo, 2026-11-02 es lunes, 2026-11-07 es sábado
+  expect(nov.columns[0].label).toBe("1");
+  expect(nov.columns[0].isWeekend).toBe(true);
+  expect(nov.columns[1].label).toBe("2");
+  expect(nov.columns[1].isWeekend).toBe(false);
+  expect(nov.columns[6].label).toBe("7");
+  expect(nov.columns[6].isWeekend).toBe(true);
+});

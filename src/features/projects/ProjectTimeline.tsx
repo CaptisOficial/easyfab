@@ -1,11 +1,42 @@
-import { useState } from "react";
-import type { ProjectsOverview } from "../../lib/api";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { Check, Clock, Hammer, Pause, type LucideIcon } from "lucide-react";
+import type { Project, ProjectsOverview } from "../../lib/api";
 import { localeForLang, useI18n } from "../../lib/i18n";
 import { compactArea, formatStackedGroup } from "./compactLabels";
 import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
+import { ResultsModal } from "./ResultsWorkModal";
 import { movePeriod, overlaps, periodRange, todayKey, type Period } from "./timeline";
 
 type StatusFilter = "active" | "in_progress" | "completed";
+
+const STATUS_META: Record<Project["status"], { Icon: LucideIcon; className: string }> = {
+  "Not Started": { Icon: Clock, className: "is-not-started" },
+  "In Progress": { Icon: Hammer, className: "is-in-progress" },
+  Completed: { Icon: Check, className: "is-completed" },
+  "On Hold": { Icon: Pause, className: "is-on-hold" },
+};
+
+function formatCompactDate(iso: string, locale: string, referenceYear: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return iso;
+  const formatted = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  })
+    .format(date)
+    .replace(/\./g, "");
+  const year = iso.slice(0, 4);
+  return year !== referenceYear ? `${formatted} '${year.slice(2)}` : formatted;
+}
+
+interface PriorityTarget {
+  id: string;
+  wbs: string;
+  name: string;
+  rank: number;
+}
 
 interface HoveredProjectBar {
   projectId: string;
@@ -18,10 +49,12 @@ export function ProjectTimeline({
   data,
   onOpen,
   onReorder,
+  actions,
 }: {
   data: ProjectsOverview;
   onOpen: (id: string) => void;
   onReorder?: (projectIds: string[]) => void;
+  actions?: ReactNode;
 }) {
   const { lang, t, pick } = useI18n();
   const locale = localeForLang(lang);
@@ -40,8 +73,12 @@ export function ProjectTimeline({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [anchor, setAnchor] = useState(todayKey);
   const [hoveredBar, setHoveredBar] = useState<HoveredProjectBar | null>(null);
+  const [priorityModal, setPriorityModal] = useState<PriorityTarget | null>(null);
+  const [priorityValue, setPriorityValue] = useState("");
   const range = periodRange(anchor, period, locale);
   const today = todayKey();
+  const anchorYear = anchor.slice(0, 4);
+  const canReorder = Boolean(onReorder && data.can_create && data.projects.length > 1);
   const statusProjects = data.projects.filter(p => {
     if (statusFilter === "in_progress") return p.status === "In Progress";
     if (statusFilter === "completed") return p.status === "Completed";
@@ -49,16 +86,30 @@ export function ProjectTimeline({
   });
   const projects = statusProjects.filter(p => overlaps(p.start_date, p.target_date, range.start, range.end));
 
-  function moveProject(id: string, delta: number) {
-    if (!onReorder) return;
-    const currentIndex = data.projects.findIndex(p => p.id === id);
-    if (currentIndex === -1) return;
-    const targetIndex = currentIndex + delta;
-    if (targetIndex < 0 || targetIndex >= data.projects.length) return;
-    const reordered = [...data.projects];
-    const [removed] = reordered.splice(currentIndex, 1);
-    reordered.splice(targetIndex, 0, removed);
-    onReorder(reordered.map(p => p.id));
+  function openPriorityModal(target: PriorityTarget) {
+    if (!canReorder) return;
+    setPriorityModal(target);
+    setPriorityValue(String(target.rank));
+  }
+
+  function submitPriority(event: FormEvent) {
+    event.preventDefault();
+    if (!priorityModal || !onReorder) return;
+    const currentIndex = data.projects.findIndex(p => p.id === priorityModal.id);
+    if (currentIndex === -1) {
+      setPriorityModal(null);
+      return;
+    }
+    const parsed = Number.parseInt(priorityValue, 10);
+    if (!Number.isFinite(parsed)) return;
+    const targetIndex = Math.max(0, Math.min(data.projects.length - 1, parsed - 1));
+    if (targetIndex !== currentIndex) {
+      const reordered = [...data.projects];
+      const [removed] = reordered.splice(currentIndex, 1);
+      reordered.splice(targetIndex, 0, removed);
+      onReorder(reordered.map(p => p.id));
+    }
+    setPriorityModal(null);
   }
 
   return (
@@ -111,11 +162,8 @@ export function ProjectTimeline({
             />
           </label>
         </div>
+        {actions && <div className="flex items-center gap-2 ml-auto">{actions}</div>}
       </div>
-
-      <p className="schedule-summary tabular-nums" role="status">
-        {t("timeline.summary", { start: range.start, end: range.end, shown: projects.length, total: statusProjects.length, status: statusFilterLabels[statusFilter] })}
-      </p>
 
       {data.projects.length === 0 ? (
         <p className="empty-state">{t("timeline.emptyAll")}</p>
@@ -125,13 +173,13 @@ export function ProjectTimeline({
         <p className="empty-state">{t("timeline.emptyPeriod")}</p>
       ) : (
         <div className="schedule-scroll" tabIndex={0} role="region" aria-label={t("timeline.regionLabel")}>
-          <table className="schedule-table">
+          <table className={`schedule-table ${period === "month" ? "is-month" : ""}`}>
             <caption className="sr-only">
               {t("timeline.caption", { start: range.start, end: range.end })}
             </caption>
             <thead>
               <tr>
-                <th scope="col" rowSpan={2}>
+                <th scope="col" rowSpan={2} title={t("timeline.col.priorityTitle")}>
                   {t("timeline.col.priority")}
                 </th>
                 <th scope="col" rowSpan={2}>
@@ -143,8 +191,8 @@ export function ProjectTimeline({
                 <th scope="col" rowSpan={2}>
                   {t("timeline.col.dates")}
                 </th>
-                <th scope="col" rowSpan={2}>
-                  {t("common.status")}
+                <th scope="col" rowSpan={2} title={t("common.status")}>
+                  {t("timeline.col.statusShort")}
                 </th>
                 <th scope="col" rowSpan={2}>
                   {t("timeline.col.ownerShort")}
@@ -158,11 +206,19 @@ export function ProjectTimeline({
                 </th>
               </tr>
               <tr>
-                {range.columns.map(c => (
-                  <th scope="col" key={c.start} className={overlaps(c.start, c.end, today, today) ? "schedule-today" : ""}>
-                    {c.label}
-                  </th>
-                ))}
+                {range.columns.map(c => {
+                  const isToday = overlaps(c.start, c.end, today, today);
+                  return (
+                    <th
+                      scope="col"
+                      key={c.start}
+                      title={period === "month" ? c.fullLabel : undefined}
+                      className={`${c.isWeekend ? "schedule-weekend" : ""} ${isToday ? "schedule-today" : ""}`.trim()}
+                    >
+                      {c.label}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -196,45 +252,21 @@ export function ProjectTimeline({
 
                 const activeFlags = range.columns.map(c => overlaps(p.start_date, p.target_date, c.start, c.end));
 
+                const statusMeta = STATUS_META[p.status];
+                const compactStart = formatCompactDate(p.start_date, locale, anchorYear);
+                const compactTarget = formatCompactDate(p.target_date, locale, anchorYear);
+
                 return (
                   <tr key={p.id}>
-                    <td className="schedule-priority whitespace-nowrap tabular-nums">
-                      <span
-                        className="font-semibold text-xs px-1.5 py-0.5 rounded bg-kmx-gray-100 text-kmx-carbon border border-kmx-gray-300"
-                        title={t("timeline.activePriorityTitle", { rank })}
-                      >
-                        #{rank}
-                      </span>
-                      {onReorder && data.can_create && (
-                        <span className="inline-flex items-center gap-0.5 ml-1.5">
-                          <button
-                            type="button"
-                            disabled={globalIndex === 0}
-                            onClick={e => {
-                              e.stopPropagation();
-                              moveProject(p.id, -1);
-                            }}
-                            aria-label={t("timeline.movePriorityUpAria", { wbs: p.wbs })}
-                            title={t("timeline.movePriorityUp")}
-                            className="px-1 py-0.5 text-xs border rounded hover:bg-kmx-gray-100 disabled:opacity-30 disabled:pointer-events-none"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            disabled={globalIndex === data.projects.length - 1}
-                            onClick={e => {
-                              e.stopPropagation();
-                              moveProject(p.id, 1);
-                            }}
-                            aria-label={t("timeline.movePriorityDownAria", { wbs: p.wbs })}
-                            title={t("timeline.movePriorityDown")}
-                            className="px-1 py-0.5 text-xs border rounded hover:bg-kmx-gray-100 disabled:opacity-30 disabled:pointer-events-none"
-                          >
-                            ▼
-                          </button>
-                        </span>
-                      )}
+                    <td
+                      className={`schedule-priority schedule-compact-cell whitespace-nowrap tabular-nums ${canReorder ? "is-reorderable" : ""}`}
+                      onContextMenu={canReorder ? e => {
+                        e.preventDefault();
+                        openPriorityModal({ id: p.id, wbs: p.wbs, name: displayName, rank });
+                      } : undefined}
+                      title={canReorder ? t("timeline.priorityContextTitle", { rank }) : t("timeline.activePriorityTitle", { rank })}
+                    >
+                      <span className="schedule-compact-pill">#{rank}</span>
                     </td>
 
                     <th scope="row">
@@ -258,15 +290,26 @@ export function ProjectTimeline({
                       </div>
                     </td>
 
-                    <td className="schedule-dates-cell tabular-nums" title={t("timeline.datesTitle", { start: p.start_date, target: p.target_date })}>
+                    <td
+                      className="schedule-dates-cell tabular-nums"
+                      aria-label={t("timeline.datesTitle", { start: p.start_date, target: p.target_date })}
+                      title={t("timeline.datesTitle", { start: p.start_date, target: p.target_date })}
+                    >
                       <div className="schedule-dates-stack">
-                        <span>{p.start_date}</span>
-                        <span className="schedule-date-end">{p.target_date}</span>
+                        <span>{compactStart}</span>
+                        <span className="schedule-date-end">{compactTarget}</span>
                       </div>
                     </td>
 
-                    <td>
-                      <span className="schedule-status">{statuses[p.status]}</span>
+                    <td className="schedule-compact-cell">
+                      <span
+                        className={`schedule-status-badge ${statusMeta.className}`}
+                        role="img"
+                        aria-label={statuses[p.status]}
+                        title={statuses[p.status]}
+                      >
+                        <statusMeta.Icon size={13} strokeWidth={2.25} aria-hidden="true" />
+                      </span>
                     </td>
 
                     <td className="schedule-compact-cell" aria-label={stackedPeople.fullText} title={stackedPeople.fullText}>
@@ -293,8 +336,8 @@ export function ProjectTimeline({
                       return (
                         <td
                           key={c.start}
-                          className={`schedule-day ${overlaps(c.start, c.end, today, today) ? "schedule-today" : ""}`}
-                          aria-label={t(active ? "timeline.cellScheduled" : "timeline.cellUnscheduled", { label: c.label })}
+                          className={`schedule-day ${c.isWeekend ? "schedule-weekend" : ""} ${overlaps(c.start, c.end, today, today) ? "schedule-today" : ""}`.trim()}
+                          aria-label={t(active ? "timeline.cellScheduled" : "timeline.cellUnscheduled", { label: c.fullLabel })}
                         >
                           {active && (
                             <span
@@ -339,10 +382,63 @@ export function ProjectTimeline({
         </div>
       )}
 
-      <p className="schedule-legend">
-        <span /> {t("timeline.legendBase")}
-        {data.can_create && t("timeline.legendReorder")}
-      </p>
+      <div className="schedule-legend">
+        <span className="schedule-legend-bar" aria-hidden="true" />
+        <span>
+          {t("timeline.legendBase")}
+          {canReorder && t("timeline.legendReorder")}
+        </span>
+        <span className="schedule-legend-statuses" aria-label={t("common.status")}>
+          {(["Not Started", "In Progress", "Completed", "On Hold"] as const).map(status => {
+            const StatusIcon = STATUS_META[status].Icon;
+            return (
+              <span key={status} className="schedule-legend-status-item">
+                <span className={`schedule-status-badge ${STATUS_META[status].className}`} aria-hidden="true">
+                  <StatusIcon size={12} strokeWidth={2.25} />
+                </span>
+                {statuses[status]}
+              </span>
+            );
+          })}
+        </span>
+      </div>
+
+      {priorityModal && (
+        <ResultsModal
+          title={t("timeline.priorityModalTitle")}
+          busy={false}
+          onClose={() => setPriorityModal(null)}
+        >
+          <form onSubmit={submitPriority} className="space-y-4">
+            <p className="text-sm text-kmx-gray-600">
+              {t("timeline.priorityModalCurrent", {
+                wbs: priorityModal.wbs,
+                name: priorityModal.name,
+                rank: priorityModal.rank,
+              })}
+            </p>
+            <label className="field">
+              {t("timeline.priorityModalLabel", { max: data.projects.length })}
+              <input
+                type="number"
+                min={1}
+                max={data.projects.length}
+                required
+                value={priorityValue}
+                onChange={e => setPriorityValue(e.target.value)}
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="action" onClick={() => setPriorityModal(null)}>
+                {t("common.cancel")}
+              </button>
+              <button type="submit" className="btn-primary">
+                {t("timeline.priorityModalSave")}
+              </button>
+            </div>
+          </form>
+        </ResultsModal>
+      )}
     </div>
   );
 }

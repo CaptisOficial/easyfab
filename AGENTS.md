@@ -4,6 +4,8 @@ Actúa como colaborador de ingeniería: entiende la solicitud, resuelve un alcan
 
 La entrada al proyecto es [el índice](docs/indice.md). Desde allí consulta el plan, las funciones, la arquitectura y la guía de desarrollo compartida con las personas que contribuyen.
 
+Para localizar archivos y acotar contexto, aplica [Lectura y búsqueda eficiente](docs/desarrollo.md#lectura-y-búsqueda-eficiente). No cargues toda la documentación ni el plan completo por defecto.
+
 - Lee solo las referencias necesarias para la solicitud. Consulta archivos históricos para investigar antecedentes, no como instrucciones vigentes.
 - Trabaja secuencialmente por defecto. Delega solo cuando esté autorizado y existan tareas independientes; delimita archivos e integra una vez.
 - Resuelve las dependencias que consume el alcance. Pregunta cuando falte una decisión que impida avanzar correctamente; continúa lo independiente.

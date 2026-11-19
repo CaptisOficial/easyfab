@@ -312,5 +312,29 @@ pub fn reorder(
     overview(dir, session, workspace_id)
 }
 
+pub fn delete(
+    dir: &Path,
+    session: &auth::Session,
+    workspace_id: &str,
+    project_id: &str,
+) -> Result<Overview, String> {
+    active(dir, workspace_id)?;
+    require_supervisor(dir, session)?;
+    let (mut doc, previous) = storage::read(dir)?;
+    let before = doc.projects.len();
+    doc.projects.retain(|p| p.id != project_id);
+    if doc.projects.len() == before {
+        return Err("Proyecto no encontrado.".into());
+    }
+    for (idx, p) in doc.projects.iter_mut().enumerate() {
+        p.priority = Some((idx + 1) as u32);
+    }
+    storage::save(dir, &doc, &previous, || {
+        active(dir, workspace_id)?;
+        require_supervisor(dir, session)
+    })?;
+    overview(dir, session, workspace_id)
+}
+
 #[cfg(test)]
 mod tests;

@@ -10,12 +10,16 @@ export function periodRange(anchor: string, period: Period, locale = "es-MX") {
   if (period === "week") end.setUTCDate(end.getUTCDate() + 7);
   else if (period === "month") end.setUTCMonth(end.getUTCMonth() + 1);
   else end.setUTCFullYear(end.getUTCFullYear() + 1);
-  const columns: { start: string; end: string; label: string }[] = [];
+  const columns: { start: string; end: string; label: string; fullLabel: string; isWeekend: boolean }[] = [];
   for (let cursor = new Date(start); cursor < end;) {
     const next = new Date(cursor);
     if (period === "year") next.setUTCMonth(next.getUTCMonth() + 1);
     else next.setUTCDate(next.getUTCDate() + 1);
-    columns.push({ start: dateKey(cursor), end: dateKey(new Date(next.getTime() - day)), label: new Intl.DateTimeFormat(locale, period === "year" ? { month: "short", timeZone: "UTC" } : { weekday: "short", day: "2-digit", timeZone: "UTC" }).format(cursor) });
+    const weekday = cursor.getUTCDay();
+    const isWeekend = period !== "year" && (weekday === 0 || weekday === 6);
+    const fullLabel = new Intl.DateTimeFormat(locale, period === "year" ? { month: "short", timeZone: "UTC" } : { weekday: "short", day: "2-digit", timeZone: "UTC" }).format(cursor);
+    const label = period === "month" ? String(cursor.getUTCDate()) : fullLabel;
+    columns.push({ start: dateKey(cursor), end: dateKey(new Date(next.getTime() - day)), label, fullLabel, isWeekend });
     cursor = next;
   }
   return { start: dateKey(start), end: dateKey(new Date(end.getTime() - day)), columns };

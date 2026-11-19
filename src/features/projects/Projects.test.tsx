@@ -117,9 +117,11 @@ it("filtra el cronograma por periodo, cambia escala y vuelve a hoy", async () =>
   expect(screen.getByRole("button", { name: "Semana" }).getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByRole("table")).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "Mes" }));
-  expect(screen.getByText(/2026-10-01 — 2026-10-31/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Mes" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText(/2026-10-01.*2026-10-31/)).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "Año" }));
-  expect(screen.getByText(/2026-01-01 — 2026-12-31/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Año" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText(/2026-01-01.*2026-12-31/)).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "Periodo siguiente" }));
   expect(screen.getByText("No hay proyectos planificados en este periodo.")).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "Periodo anterior" }));
@@ -151,7 +153,7 @@ it("recarga el cronograma al cerrar el trabajo para mostrar el proyecto iniciado
   await screen.findByText("Definir el resultado antes de planear");
   vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [{ ...project, status: "In Progress" }] });
   await userEvent.click(screen.getByRole("button", { name: "Cerrar detalle del proyecto" }));
-  await screen.findByText("En curso", { selector: ".schedule-status" });
+  await screen.findByRole("img", { name: "En curso" });
   expect(api.projectsOverview).toHaveBeenCalledTimes(2);
 });
 
@@ -252,7 +254,7 @@ it("simplifica el registro unificando objetivo global y subactividades con entre
   );
 });
 
-it("muestra la prioridad activa y permite al supervisor reordenar proyectos", async () => {
+it("muestra la prioridad activa y permite al supervisor reordenar proyectos con clic derecho", async () => {
   const p1: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Proyecto Uno", priority: 1 };
   const p2: api.Project = { ...project, id: "PRJ-2", wbs: "FAB-02", name: "Proyecto Dos", priority: 2 };
   vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [p1, p2], can_create: true });
@@ -265,26 +267,34 @@ it("muestra la prioridad activa y permite al supervisor reordenar proyectos", as
   await screen.findByLabelText("Fecha de referencia");
   fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
 
-  expect(screen.getByText("#1")).toBeTruthy();
+  const p1Badge = screen.getByText("#1");
+  expect(p1Badge).toBeTruthy();
   expect(screen.getByText("#2")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Bajar prioridad de FAB-01" })).toBeNull();
 
-  const downBtn = screen.getByRole("button", { name: "Bajar prioridad de FAB-01" });
-  await userEvent.click(downBtn);
+  fireEvent.contextMenu(p1Badge);
+  const dialog = screen.getByRole("dialog", { name: "Cambiar prioridad" });
+  const input = dialog.querySelector("input[type='number']") as HTMLInputElement;
+  expect(input.value).toBe("1");
+  fireEvent.change(input, { target: { value: "2" } });
+  await userEvent.click(screen.getByRole("button", { name: "Guardar ubicación" }));
 
   expect(api.reorderProjects).toHaveBeenCalledWith(["PRJ-2", "PRJ-1"]);
   await screen.findByText("Prioridad de proyectos actualizada.");
 });
 
-it("no muestra controles de reordenamiento de prioridad a no supervisores", async () => {
+it("no abre el modal de prioridad con clic derecho para no supervisores", async () => {
   const p1: api.Project = { ...project, id: "PRJ-1", wbs: "FAB-01", name: "Proyecto Uno", priority: 1 };
-  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [p1], can_create: false });
+  const p2: api.Project = { ...project, id: "PRJ-2", wbs: "FAB-02", name: "Proyecto Dos", priority: 2 };
+  vi.mocked(api.projectsOverview).mockResolvedValue({ ...overview, projects: [p1, p2], can_create: false });
   render(<Projects />);
   await screen.findByLabelText("Fecha de referencia");
   fireEvent.change(screen.getByLabelText("Fecha de referencia"), { target: { value: "2026-10-29" } });
 
-  expect(screen.getByText("#1")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Subir prioridad de FAB-01" })).toBeNull();
-  expect(screen.queryByRole("button", { name: "Bajar prioridad de FAB-01" })).toBeNull();
+  const p1Badge = screen.getByText("#1");
+  expect(p1Badge).toBeTruthy();
+  fireEvent.contextMenu(p1Badge);
+  expect(screen.queryByRole("dialog", { name: "Cambiar prioridad" })).toBeNull();
 });
 
 it("filtra proyectos por activos, en curso y completados", async () => {
@@ -378,4 +388,21 @@ it("en inglés muestra etiquetas de líneas con pick() pero guarda el valor bili
   const titleInput = screen.getByLabelText("Project title") as HTMLInputElement;
   fireEvent.change(titleInput, { target: { value: "Celda | Cell" } });
   expect(titleInput.value).toBe("Celda | Cell");
+});
+
+it("integra Actualizar y Nuevo proyecto en la misma barra del cronograma y omite el texto informativo cuando puede crear", async () => {
+  vi.mocked(api.projectsOverview).mockResolvedValue({
+    ...overview,
+    can_create: true,
+    write_message: "Registra el proyecto y selecciona a los ingenieros responsables.",
+  });
+  const { container } = render(<Projects />);
+  await screen.findByText("No hay proyectos registrados.");
+
+  expect(screen.queryByText("Registra el proyecto y selecciona a los ingenieros responsables.")).toBeNull();
+  expect(container.querySelector(".schedule-summary")).toBeNull();
+  const toolbar = container.querySelector(".schedule-toolbar");
+  expect(toolbar).toBeTruthy();
+  expect(toolbar?.contains(screen.getByRole("button", { name: "Actualizar proyectos" }))).toBe(true);
+  expect(toolbar?.contains(screen.getByRole("button", { name: "Nuevo proyecto" }))).toBe(true);
 });

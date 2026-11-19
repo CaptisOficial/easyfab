@@ -66,6 +66,7 @@ fn app_builder<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<
             results_commands::results_open_evidence,
             project_commands::create_project,
             project_commands::reorder_projects,
+            project_commands::delete_project,
             project_commands::set_project_target,
             activity_commands::set_project_progress,
             activity_commands::project_detail,

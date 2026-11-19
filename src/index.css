@@ -404,6 +404,26 @@ progress {
   padding: .55rem 0;
 }
 
+.schedule-table.is-month .schedule-day,
+.schedule-table.is-month thead tr:nth-child(2) th {
+  min-width: 26px;
+  padding-left: .15rem;
+  padding-right: .15rem;
+}
+
+.schedule-table thead th.schedule-weekend {
+  background: #475569;
+  color: #e2e8f0;
+}
+
+.schedule-table td.schedule-weekend {
+  background: color-mix(in srgb, var(--kmx-gray-300) 32%, var(--kmx-white));
+}
+
+.schedule-table tbody tr:hover td.schedule-weekend {
+  background: color-mix(in srgb, var(--kmx-gray-300) 45%, var(--kmx-white));
+}
+
 .schedule-table .schedule-today {
   background: var(--kmx-lime-tint);
   color: #14532d;
@@ -444,26 +464,76 @@ progress {
   background: #b45309;
 }
 
-.schedule-status {
-  font-weight: 600;
+.schedule-priority.is-reorderable {
+  cursor: context-menu;
+}
+
+.schedule-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.schedule-status-badge.is-not-started {
+  background: var(--kmx-gray-100);
+  color: var(--kmx-gray-600);
+  border: 1px solid var(--kmx-gray-300);
+}
+
+.schedule-status-badge.is-in-progress {
+  background: var(--kmx-lime-tint);
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.schedule-status-badge.is-completed {
+  background: #f0fdfa;
+  color: #0f766e;
+  border: 1px solid #5eead4;
+}
+
+.schedule-status-badge.is-on-hold {
+  background: var(--kmx-amber-tint);
+  color: #b45309;
+  border: 1px solid #fcd34d;
 }
 
 .schedule-legend {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: .5rem;
-  padding: .85rem 1rem;
+  gap: .5rem .85rem;
+  padding: .75rem 1rem;
   font-size: .75rem;
   color: var(--kmx-gray-600);
 }
 
-.schedule-legend>span {
+.schedule-legend-bar {
   width: 18px;
   height: 8px;
   flex-shrink: 0;
   background: #15803d;
   border-radius: 2px;
+}
+
+.schedule-legend-statuses {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .55rem;
+  margin-left: auto;
+}
+
+.schedule-legend-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
 }
 
 @media (max-width: 768px) {

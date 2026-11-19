@@ -293,6 +293,8 @@ progress {
 }
 
 .schedule-table thead {
+  position: relative;
+  z-index: 20;
   background: #334155;
   color: white;
 }
@@ -338,6 +340,7 @@ progress {
 }
 
 .schedule-table thead tr> :first-child {
+  z-index: 25;
   background: #334155;
 }
 
@@ -402,6 +405,10 @@ progress {
   position: relative;
   min-width: 42px;
   padding: .55rem 0;
+}
+
+.schedule-table .schedule-day:has(.gantt-tooltip) {
+  z-index: 45;
 }
 
 .schedule-table.is-month .schedule-day,
@@ -508,6 +515,11 @@ progress {
   position: relative;
 }
 
+.schedule-status-th:hover,
+.schedule-status-th:focus-within {
+  z-index: 60;
+}
+
 .schedule-status-help-trigger {
   display: inline-flex;
   align-items: center;
@@ -525,7 +537,7 @@ progress {
   top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 40;
+  z-index: 70;
   min-width: 150px;
   padding: .55rem .7rem;
   border-radius: .375rem;

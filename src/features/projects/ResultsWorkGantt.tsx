@@ -250,7 +250,7 @@ export function ResultsGantt({
             </div>
           )}
           <div
-            className="relative ml-auto"
+            className="relative z-50 ml-auto"
             onMouseEnter={() => setShowLegend(true)}
             onMouseLeave={() => setShowLegend(false)}
           >

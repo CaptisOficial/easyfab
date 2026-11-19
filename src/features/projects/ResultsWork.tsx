@@ -605,7 +605,7 @@ export function ResultsWork({ projectId, onBack, onBusyChange, onDelete }: { pro
 
               {(isEngineerView || activeTab === "gantt") && (
                 <div
-                  className="relative"
+                  className="relative z-50"
                   onMouseEnter={() => setShowGanttLegend(true)}
                   onMouseLeave={() => setShowGanttLegend(false)}
                 >

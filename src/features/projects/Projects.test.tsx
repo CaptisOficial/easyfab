@@ -349,6 +349,12 @@ it("filtra proyectos por activos, en curso y completados", async () => {
   expect(screen.queryByText("FAB-01 · Sin iniciar Uno")).toBeNull();
   expect(screen.queryByText("FAB-02 · En curso Dos")).toBeNull();
   expect(screen.getByText("FAB-03 · Completado Tres")).toBeTruthy();
+
+  await userEvent.click(screen.getByRole("button", { name: "Todos" }));
+  expect(screen.getByRole("button", { name: "Todos" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("FAB-01 · Sin iniciar Uno")).toBeTruthy();
+  expect(screen.getByText("FAB-02 · En curso Dos")).toBeTruthy();
+  expect(screen.getByText("FAB-03 · Completado Tres")).toBeTruthy();
 });
 
 it("muestra estado vacío cuando no hay proyectos completados en el filtro", async () => {

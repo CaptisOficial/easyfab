@@ -7,7 +7,7 @@ import { GanttTooltip, type GanttTooltipData } from "./GanttTooltip";
 import { ResultsModal } from "./ResultsWorkModal";
 import { movePeriod, overlaps, periodRange, todayKey, type Period } from "./timeline";
 
-type StatusFilter = "active" | "in_progress" | "completed";
+type StatusFilter = "all" | "active" | "in_progress" | "completed";
 
 const STATUS_META: Record<Project["status"], { Icon: LucideIcon; className: string }> = {
   "Not Started": { Icon: Clock, className: "is-not-started" },
@@ -65,6 +65,7 @@ export function ProjectTimeline({
     "On Hold": t("common.status.onHold"),
   };
   const statusFilterLabels: Record<StatusFilter, string> = {
+    all: t("timeline.filterLabel.all"),
     active: t("timeline.filterLabel.active"),
     in_progress: t("timeline.filterLabel.inProgress"),
     completed: t("timeline.filterLabel.completed"),
@@ -83,6 +84,7 @@ export function ProjectTimeline({
   const anchorYear = anchor.slice(0, 4);
   const canReorder = Boolean(onReorder && data.can_create && data.projects.length > 1);
   const statusProjects = data.projects.filter(p => {
+    if (statusFilter === "all") return true;
     if (statusFilter === "in_progress") return p.status === "In Progress";
     if (statusFilter === "completed") return p.status === "Completed";
     return p.status !== "Completed";
@@ -146,6 +148,7 @@ export function ProjectTimeline({
         <div role="group" aria-label={t("timeline.statusFilterGroupLabel")} className="schedule-periods">
           {(
             [
+              ["all", t("timeline.filter.all")],
               ["active", t("timeline.filter.active")],
               ["in_progress", t("common.status.inProgress")],
               ["completed", t("timeline.filter.completed")],
